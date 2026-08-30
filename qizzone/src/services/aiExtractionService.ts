@@ -3,6 +3,7 @@ import type {
   ExtractedQuestion,
   DetectionStrategy,
 } from "@/types/extractor";
+import type { OptionId } from "@/types/quiz";
 import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
 import { getGeminiApiKey, AI_CONFIG } from "@/config/aiConfig";
 
@@ -311,4 +312,132 @@ QUY TẮC BẮT BUỘC:
     warningsCount: 0,
     extractedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Tự động dùng Google Gemini AI giải các câu hỏi chưa có đáp án trong đề thi
+ */
+export async function solveMissingAnswersWithAI(
+  questions: ExtractedQuestion[],
+  apiKeyInput?: string,
+  onProgress?: (current: number, total: number) => void
+): Promise<{
+  updatedQuestions: ExtractedQuestion[];
+  solvedCount: number;
+}> {
+  const apiKey = (apiKeyInput || getGeminiApiKey()).trim();
+
+  // Tìm các câu hỏi chưa có đáp án
+  const unanswered = questions.filter(
+    (q) => !q.correctAnswers || q.correctAnswers.length === 0
+  );
+
+  if (unanswered.length === 0) {
+    return { updatedQuestions: questions, solvedCount: 0 };
+  }
+
+  // Nếu không có API key, trả về nguyên trạng
+  if (!apiKey) {
+    return { updatedQuestions: questions, solvedCount: 0 };
+  }
+
+  // Chia nhỏ câu hỏi theo batch 15 câu để đảm bảo tốc độ và độ tin cậy
+  const batchSize = 15;
+  const solutionsMap = new Map<number, { correctAnswer: OptionId; explanation: string }>();
+
+  for (let i = 0; i < unanswered.length; i += batchSize) {
+    const batch = unanswered.slice(i, i + batchSize);
+    if (onProgress) {
+      onProgress(Math.min(i + batchSize, unanswered.length), unanswered.length);
+    }
+
+    const questionsPrompt = batch
+      .map(
+        (q) =>
+          `Câu ${q.order}: ${q.content}\n` +
+          q.options.map((opt) => `${opt.id}. ${opt.content}`).join("\n")
+      )
+      .join("\n\n");
+
+    const prompt = `Bạn là chuyên gia khảo thí và giải đề thi. Hãy giải các câu hỏi trắc nghiệm sau và chọn đáp án đúng nhất (A, B, C hoặc D) cho từng câu.
+Yêu cầu:
+1. Đọc kỹ câu hỏi và các phương án.
+2. Xác định CHÍNH XÁC đáp án đúng (A, B, C hoặc D).
+3. Viết giải thích ngắn gọn, súc tích (1-3 câu).
+
+Danh sách câu hỏi:
+${questionsPrompt}
+
+Trả về JSON duy nhất theo schema:
+{
+  "solutions": [
+    {
+      "order": 1,
+      "correctAnswer": "A",
+      "explanation": "Giải thích ngắn gọn tại sao chọn đáp án..."
+    }
+  ]
+}`;
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            response_mime_type: "application/json",
+            temperature: 0.1,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const parsed = JSON.parse(
+            rawText.replace(/^```json\s*/gi, "").replace(/```\s*$/gi, "").trim()
+          );
+          if (Array.isArray(parsed.solutions)) {
+            for (const item of parsed.solutions) {
+              const ans = (item.correctAnswer || "").toUpperCase() as OptionId;
+              if (["A", "B", "C", "D"].includes(ans)) {
+                solutionsMap.set(item.order, {
+                  correctAnswer: ans,
+                  explanation: item.explanation || "",
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("AI solve batch failed:", err);
+    }
+  }
+
+  // Cập nhật lại danh sách câu hỏi
+  let solvedCount = 0;
+  const updatedQuestions = questions.map((q) => {
+    const solution = solutionsMap.get(q.order);
+    if (solution) {
+      solvedCount++;
+      const filteredWarnings = (q.warningFlags || []).filter(
+        (w) => !w.includes("Chưa có đáp án") && !w.includes("Tạm gán A")
+      );
+      return {
+        ...q,
+        correctAnswers: [solution.correctAnswer],
+        explanation: solution.explanation || q.explanation,
+        detectionStrategy: "ai_inference" as DetectionStrategy,
+        confidenceScore: 0.95,
+        warningFlags: filteredWarnings.length > 0 ? filteredWarnings : undefined,
+      };
+    }
+    return q;
+  });
+
+  return { updatedQuestions, solvedCount };
 }

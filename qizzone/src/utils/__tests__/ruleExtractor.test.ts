@@ -64,6 +64,22 @@ D. JPEG
     expect(result.questions[1].correctAnswers).toEqual(["C"]);
   });
 
+  it("Câu hỏi không có dấu hiệu đáp án thì để rỗng correctAnswers: [] (Không tự ý gán A)", () => {
+    const rawExam = `
+Câu 1: Câu hỏi không chọn đáp án sẵn trong tài liệu:
+A. Phương án 1
+B. Phương án 2
+C. Phương án 3
+D. Phương án 4
+`;
+    const result = parseRawExamText(rawExam);
+
+    expect(result.questions.length).toBe(1);
+    expect(result.questions[0].correctAnswers).toEqual([]);
+    expect(result.questions[0].warningFlags).toBeDefined();
+    expect(result.questions[0].warningFlags?.[0]).toContain("Chưa có đáp án");
+  });
+
   it("Chiến lược 1 (Bảng đáp án cuối đề): Nhận diện chính xác 100% từ ma trận bảng đáp án", () => {
     const rawExam = `
 Câu 1: Cho hàm số $y = x^2$. Đạo hàm là:

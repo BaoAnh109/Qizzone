@@ -31,4 +31,32 @@ D. $4x$
     expect(result.questions[0].correctAnswers).toEqual(["B"]);
     expect(result.questions[0].detectionStrategy).toBe("underline");
   });
+
+  it("Hàm solveMissingAnswersWithAI xử lý danh sách câu hỏi chưa có đáp án an toàn", async () => {
+    const { solveMissingAnswersWithAI } = await import("@/services/aiExtractionService");
+    const sampleQuestions = [
+      {
+        id: "q-1",
+        tempId: "t-1",
+        order: 1,
+        content: "Thủ đô của Pháp là gì?",
+        options: [
+          { id: "A" as const, content: "London", rawContent: "A. London" },
+          { id: "B" as const, content: "Paris", rawContent: "B. Paris" },
+          { id: "C" as const, content: "Berlin", rawContent: "C. Berlin" },
+          { id: "D" as const, content: "Rome", rawContent: "D. Rome" },
+        ],
+        correctAnswers: [],
+        points: 1,
+        confidenceScore: 0,
+        detectionStrategy: "ai_inference" as const,
+        rawTextSegment: "...",
+      },
+    ];
+
+    const res = await solveMissingAnswersWithAI(sampleQuestions, "");
+    expect(res).toBeDefined();
+    expect(res.updatedQuestions.length).toBe(1);
+    expect(res.updatedQuestions[0].options.length).toBe(4);
+  });
 });

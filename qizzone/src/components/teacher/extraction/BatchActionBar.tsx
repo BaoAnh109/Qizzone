@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Filter,
   Search,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -34,11 +35,13 @@ export function BatchActionBar() {
     setSearchQuery,
     autoBalancePoints,
     addEmptyQuestion,
+    solveUnansweredWithAI,
     clearAll,
   } = useExtractionStore();
 
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSolvingAI, setIsSolvingAI] = useState(false);
 
   const questions = extractionResult?.questions || [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -46,6 +49,30 @@ export function BatchActionBar() {
     (sum, q) => sum + (q.warningFlags?.length || 0),
     0
   );
+  const unansweredCount = questions.filter(
+    (q) => !q.correctAnswers || q.correctAnswers.length === 0
+  ).length;
+
+  const handleSolveAI = async () => {
+    if (unansweredCount === 0) {
+      toast.info("Tất cả câu hỏi đều đã có đáp án!");
+      return;
+    }
+    setIsSolvingAI(true);
+    toast.info(`AI đang suy luận và giải ${unansweredCount} câu hỏi...`);
+    try {
+      const { solvedCount } = await solveUnansweredWithAI();
+      if (solvedCount > 0) {
+        toast.success(`AI đã giải xong và điền đáp án cho ${solvedCount} câu hỏi!`);
+      } else {
+        toast.warning("Chưa cấu hình API Key Gemini hoặc không thể kết nối.");
+      }
+    } catch {
+      toast.error("Quá trình AI giải câu hỏi gặp lỗi.");
+    } finally {
+      setIsSolvingAI(false);
+    }
+  };
 
   const handleFinalizeQuiz = () => {
     if (questions.length === 0) {
@@ -161,6 +188,19 @@ export function BatchActionBar() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Batch Tool Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            {unansweredCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSolveAI}
+                disabled={isSolvingAI}
+                leftIcon={<Sparkles className="h-3.5 w-3.5 text-violet-600 animate-pulse" />}
+                className="text-xs font-bold border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100 shadow-xs"
+              >
+                {isSolvingAI ? "AI đang giải..." : `✨ AI Giải tự động (${unansweredCount} câu)`}
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="sm"

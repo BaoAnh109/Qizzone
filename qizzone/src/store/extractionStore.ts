@@ -36,6 +36,7 @@ interface ExtractionState {
   // Batch actions
   autoBalancePoints: (totalPoints?: number) => void;
   applyBatchAnswerKey: (answerKeyString: string) => { updatedCount: number };
+  solveUnansweredWithAI: (apiKeyInput?: string) => Promise<{ solvedCount: number }>;
   clearAll: () => void;
 }
 
@@ -238,6 +239,36 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     });
 
     return { updatedCount };
+  },
+
+  solveUnansweredWithAI: async (apiKeyInput) => {
+    const { extractionResult, setIsProcessing } = useExtractionStore.getState();
+    if (!extractionResult || extractionResult.questions.length === 0) {
+      return { solvedCount: 0 };
+    }
+
+    setIsProcessing(true, 10);
+    const { solveMissingAnswersWithAI } = await import("@/services/aiExtractionService");
+    
+    const { updatedQuestions, solvedCount } = await solveMissingAnswersWithAI(
+      extractionResult.questions,
+      apiKeyInput,
+      (current, total) => {
+        const progress = Math.round(10 + (current / total) * 85);
+        setIsProcessing(true, progress);
+      }
+    );
+
+    set({
+      extractionResult: {
+        ...extractionResult,
+        questions: updatedQuestions,
+      },
+      isProcessing: false,
+      processProgress: 100,
+    });
+
+    return { solvedCount };
   },
 
   clearAll: () =>

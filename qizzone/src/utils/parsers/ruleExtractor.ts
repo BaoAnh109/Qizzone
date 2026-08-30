@@ -337,12 +337,12 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // Chiến lược 7: Fallback AI Inference / Mặc định -> 80%
+  // Chiến lược 7: Không tìm thấy đáp án đánh dấu trong tài liệu
   if (correctAnswers.length === 0) {
-    correctAnswers = ["A"]; // Mặc định A và gắn cờ cảnh báo
+    correctAnswers = []; // Để rỗng: KHÔNG tự ý gán bừa đáp án A
     detectionStrategy = "ai_inference";
-    confidenceScore = 0.8;
-    warningFlags.push("Chưa phát hiện dấu hiệu đáp án (Tạm gán A)");
+    confidenceScore = 0.0;
+    warningFlags.push("Chưa có đáp án (Cần chọn đáp án hoặc dùng AI giải)");
   }
 
   const tempId = `ext-${order}-${Date.now().toString(36)}`;

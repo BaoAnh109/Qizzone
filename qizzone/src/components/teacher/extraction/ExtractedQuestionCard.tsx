@@ -106,18 +106,27 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
             Câu {question.order}
           </Badge>
 
-          {/* Detection Strategy Badge */}
-          <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badgeInfo.color}`}
-          >
-            <Bookmark className="h-3 w-3" />
-            <span>{badgeInfo.label}</span>
-          </span>
+          {/* Detection Strategy / Unanswered Badge */}
+          {question.correctAnswers && question.correctAnswers.length > 0 ? (
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badgeInfo.color}`}
+            >
+              <Bookmark className="h-3 w-3" />
+              <span>{badgeInfo.label}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-rose-100 text-rose-800 border-rose-200">
+              <AlertTriangle className="h-3 w-3 text-rose-600" />
+              <span>Chưa có đáp án</span>
+            </span>
+          )}
 
           {/* Confidence Badge */}
-          <span className="text-[11px] font-mono font-semibold text-neutral-500">
-            Tin cậy: {Math.round(question.confidenceScore * 100)}%
-          </span>
+          {question.confidenceScore > 0 && (
+            <span className="text-[11px] font-mono font-semibold text-neutral-500">
+              Tin cậy: {Math.round(question.confidenceScore * 100)}%
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -230,10 +239,16 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
         {/* Options Grid */}
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
-            <span>Các lựa chọn (Click để đổi đáp án đúng):</span>
-            <span className="text-emerald-700 font-bold">
-              Đáp án chọn: {question.correctAnswers.join(", ")}
-            </span>
+            <span>Các lựa chọn (Click để chọn đáp án đúng):</span>
+            {question.correctAnswers && question.correctAnswers.length > 0 ? (
+              <span className="text-emerald-700 font-bold">
+                Đáp án chọn: {question.correctAnswers.join(", ")}
+              </span>
+            ) : (
+              <span className="text-rose-600 font-bold flex items-center gap-1">
+                <span>⚠️ Chưa chọn đáp án</span>
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
