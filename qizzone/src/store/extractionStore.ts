@@ -36,7 +36,10 @@ interface ExtractionState {
   // Batch actions
   autoBalancePoints: (totalPoints?: number) => void;
   applyBatchAnswerKey: (answerKeyString: string) => { updatedCount: number };
-  solveUnansweredWithAI: (apiKeyInput?: string) => Promise<{ solvedCount: number }>;
+  solveUnansweredWithAI: (
+    apiKeyInput?: string,
+    onStepProgress?: (current: number, total: number, message?: string) => void
+  ) => Promise<{ solvedCount: number; durationSeconds: number }>;
   clearAll: () => void;
 }
 
@@ -241,21 +244,24 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     return { updatedCount };
   },
 
-  solveUnansweredWithAI: async (apiKeyInput) => {
+  solveUnansweredWithAI: async (apiKeyInput, onStepProgress) => {
     const { extractionResult, setIsProcessing } = useExtractionStore.getState();
     if (!extractionResult || extractionResult.questions.length === 0) {
-      return { solvedCount: 0 };
+      return { solvedCount: 0, durationSeconds: 0 };
     }
 
     setIsProcessing(true, 10);
     const { solveMissingAnswersWithAI } = await import("@/services/aiExtractionService");
     
-    const { updatedQuestions, solvedCount } = await solveMissingAnswersWithAI(
+    const { updatedQuestions, solvedCount, durationSeconds } = await solveMissingAnswersWithAI(
       extractionResult.questions,
       apiKeyInput,
-      (current, total) => {
+      (current, total, message) => {
         const progress = Math.round(10 + (current / total) * 85);
         setIsProcessing(true, progress);
+        if (onStepProgress) {
+          onStepProgress(current, total, message);
+        }
       }
     );
 
@@ -268,7 +274,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
       processProgress: 100,
     });
 
-    return { solvedCount };
+    return { solvedCount, durationSeconds };
   },
 
   clearAll: () =>

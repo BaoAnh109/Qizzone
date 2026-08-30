@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Filter,
   Search,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -42,6 +43,9 @@ export function BatchActionBar() {
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSolvingAI, setIsSolvingAI] = useState(false);
+  const [solveElapsed, setSolveElapsed] = useState(0);
+  const [solveStatusMessage, setSolveStatusMessage] = useState("");
+  const timerIntervalRef = useRef<number | null>(null);
 
   const questions = extractionResult?.questions || [];
   const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -53,23 +57,63 @@ export function BatchActionBar() {
     (q) => !q.correctAnswers || q.correctAnswers.length === 0
   ).length;
 
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, []);
+
   const handleSolveAI = async () => {
     if (unansweredCount === 0) {
       toast.info("Tất cả câu hỏi đều đã có đáp án!");
       return;
     }
+
     setIsSolvingAI(true);
-    toast.info(`AI đang suy luận và giải ${unansweredCount} câu hỏi...`);
+    setSolveElapsed(0);
+    setSolveStatusMessage(`Bắt đầu giải ${unansweredCount} câu...`);
+
+    const startTime = Date.now();
+    timerIntervalRef.current = window.setInterval(() => {
+      setSolveElapsed((Date.now() - startTime) / 1000);
+    }, 100);
+
+    toast.info(`🤖 AI đang bắt đầu giải tự động ${unansweredCount} câu hỏi...`);
+
     try {
-      const { solvedCount } = await solveUnansweredWithAI();
+      const { solvedCount, durationSeconds } = await solveUnansweredWithAI(
+        undefined,
+        (_current, _total, message) => {
+          if (message) {
+            setSolveStatusMessage(message);
+          }
+        }
+      );
+
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+
+      const totalTime = durationSeconds || Math.round(((Date.now() - startTime) / 1000) * 10) / 10;
+      setSolveElapsed(totalTime);
+
       if (solvedCount > 0) {
-        toast.success(`AI đã giải xong và điền đáp án cho ${solvedCount} câu hỏi!`);
+        toast.success(
+          `🎉 AI đã hoàn tất giải toàn bộ ${solvedCount}/${unansweredCount} câu hỏi trong ${totalTime}s!`
+        );
       } else {
-        toast.warning("Chưa cấu hình API Key Gemini hoặc không thể kết nối.");
+        toast.warning("Không thể kết nối AI. Vui lòng kiểm tra lại kết nối mạng!");
       }
     } catch {
-      toast.error("Quá trình AI giải câu hỏi gặp lỗi.");
+      toast.error("Quá trình AI giải câu hỏi gặp sự cố.");
     } finally {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
       setIsSolvingAI(false);
     }
   };
@@ -189,16 +233,28 @@ export function BatchActionBar() {
           {/* Batch Tool Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             {unansweredCount > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSolveAI}
-                disabled={isSolvingAI}
-                leftIcon={<Sparkles className="h-3.5 w-3.5 text-violet-600 animate-pulse" />}
-                className="text-xs font-bold border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100 shadow-xs"
-              >
-                {isSolvingAI ? "AI đang giải..." : `✨ AI Giải tự động (${unansweredCount} câu)`}
-              </Button>
+              isSolvingAI ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={true}
+                  leftIcon={<Sparkles className="h-3.5 w-3.5 text-violet-600 animate-spin" />}
+                  className="text-xs font-bold border-violet-400 bg-violet-100 text-violet-950 ring-2 ring-violet-400/50 shadow-sm"
+                >
+                  <Clock className="h-3 w-3 mr-1 inline animate-pulse text-violet-700" />
+                  <span>{solveElapsed.toFixed(1)}s: {solveStatusMessage || `Đang giải ${unansweredCount} câu...`}</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSolveAI}
+                  leftIcon={<Sparkles className="h-3.5 w-3.5 text-violet-600 animate-pulse" />}
+                  className="text-xs font-bold border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100 shadow-xs"
+                >
+                  ✨ AI Giải tự động ({unansweredCount} câu)
+                </Button>
+              )
             )}
 
             <Button
