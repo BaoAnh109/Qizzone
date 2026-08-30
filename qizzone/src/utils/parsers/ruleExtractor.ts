@@ -100,9 +100,9 @@ export function splitOptionsFromBlock(questionBlockText: string): {
   questionPrompt: string;
   options: ExtractedOption[];
 } {
-  // Regex tìm các đáp án A, B, C, D (bao gồm cả dấu * trước hoặc sau như *A., A.*, *A:)
+  // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
   const headerRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?\)])\s+)(?:<[^>]*>)*\s*([*✓•xX\(\)\[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:\)\/\-])(?!\d)/gi;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?\)])\s+)(?:<[^>]*>)*\s*([*✓•xX\(\)\[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:\)\/\-])(?!\d)/g;
 
   const matches: Array<{
     index: number;
@@ -242,14 +242,14 @@ export function parseSingleQuestionBlock(
 ): ExtractedQuestion | null {
   const warningFlags: string[] = [];
 
-  // Tách phần lời giải (nếu có): "Lời giải:", "Hướng dẫn giải:", "Giải:"
+  // Tách phần lời giải (nếu có): "Lời giải:", "Hướng dẫn giải:", "Giải thích:", "Giải:"
   let questionAndOptionsText = rawBlock;
   let explanation: string | undefined = undefined;
 
   const explanationMatch = rawBlock.match(
-    /(?:(?:Lời\s*giải|Hướng\s*dẫn\s*giải|Giải|Explanation|Phương\s*pháp)[\s.:\-_]+)([\s\S]*)$/i
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>)\s*(?:<[^>]*>)*\s*(?:Lời\s*giải(?:\s*chi\s*tiết)?|Hướng\s*dẫn\s*giải|Giải\s*thích|Explanation|Phương\s*pháp\s*giải|(?:Giải|GIẢI))\s*[:\-]\s*([\s\S]*)$/i
   );
-  if (explanationMatch) {
+  if (explanationMatch && explanationMatch.index !== undefined) {
     explanation = cleanMathAndHtml(explanationMatch[1].trim());
     questionAndOptionsText = rawBlock.substring(0, explanationMatch.index).trim();
   }
@@ -396,9 +396,9 @@ export function parseRawExamText(
   }
 
   // 2. Tìm toàn bộ các ranh giới câu hỏi (Multi-Pass Boundary Finder)
-  // Hỗ trợ: Câu 1, CÂU 1, Bài 1, Question 1, 1. , 1: , 1) , **Câu 1:**, <b>Câu 1:</b>
+  // Hỗ trợ: Câu 1., CÂU 1:, Bài 1 [NB] (1.0đ):, Question 1, 1. , 1: , 1) , **Câu 1:**, <b>Câu 1:</b>, 10.Nội dung
   const questionHeaderRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>)\s*(?:(?:(?:Câu|Bài|Question|CÂU|BÀI|QUESTION|Q)\s*(\d+)|\*{1,2}(?:Câu|Bài)\s*(\d+)\*{0,2}|(?:<[^>]*>)*(?:Câu|Bài)\s*(\d+)(?:<\/[^>]*>)*|(\d+)[\.\:\)\/])(?:\s*\[[^\]]+\]|\s*\([^\)]+\))*[\s.:\-)_]+)/gi;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<tr[^>]*>|<li[^>]*>)\s*(?:<[^>]*>)*\s*(?:(?:(?:Câu|Bài|Question|CÂU|BÀI|QUESTION|Q)\s*(\d+)|\*{1,2}(?:Câu|Bài)\s*(\d+)\*{0,2}|(?:<[^>]*>)*(?:Câu|Bài)\s*(\d+)(?:<\/[^>]*>)*)(?:\s*\[[^\]]+\]|\s*\([^\)]+\))*\s*[\.:\-)_]\s*|(\d+)\s*[\.:\)\/\-]\s*)/gi;
 
   interface Boundary {
     startIndex: number;

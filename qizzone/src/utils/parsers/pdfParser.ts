@@ -1,10 +1,10 @@
 import * as pdfjsLib from "pdfjs-dist";
 import { parseRawExamText } from "./ruleExtractor";
+import { cleanPdfExtractedText } from "./pdfCleaner";
 import type { ExtractionResult } from "@/types/extractor";
 
 // Configure PDF.js worker
 if (typeof window !== "undefined") {
-  // Use unpkg or local worker fallback
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
@@ -18,6 +18,7 @@ export interface ParsedPdfDocument {
 
 /**
  * Trích xuất toàn bộ văn bản và các trang từ tệp PDF thật
+ * Tự động làm sạch watermark Studocu, header lặp lại, và nối liền các câu hỏi bị ngắt qua trang.
  */
 export async function parsePdfFile(file: File): Promise<ParsedPdfDocument> {
   const arrayBuffer = await file.arrayBuffer();
@@ -26,7 +27,6 @@ export async function parsePdfFile(file: File): Promise<ParsedPdfDocument> {
 
   const totalPages = pdf.numPages;
   const pagesText: string[] = [];
-  let fullText = "";
 
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
@@ -60,17 +60,19 @@ export async function parsePdfFile(file: File): Promise<ParsedPdfDocument> {
 
     const pageString = pageLines.join("\n");
     pagesText.push(pageString);
-    fullText += `\n--- Trang ${pageNum} ---\n` + pageString + "\n";
   }
 
+  // Làm sạch watermark, tiêu đề trang rác và ghép liền văn bản giữa các trang
+  const cleanedText = cleanPdfExtractedText(pagesText);
+
   // Chạy qua bộ phân tích đa chiến lược ruleExtractor
-  const result = parseRawExamText(fullText, {
+  const result = parseRawExamText(cleanedText, {
     fileName: file.name,
     fileType: "pdf",
   });
 
   return {
-    rawText: fullText,
+    rawText: cleanedText,
     totalPages,
     pagesText,
     result,
