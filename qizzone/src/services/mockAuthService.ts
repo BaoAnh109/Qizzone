@@ -25,8 +25,8 @@ const DEFAULT_USERS: StoredUser[] = [
   {
     id: "user-stu-001",
     email: "student@qizzone.edu.vn",
-    fullName: "Em Trần Bảo Nam",
-    name: "Em Trần Bảo Nam",
+    fullName: "Trần Bảo Nam",
+    name: "Trần Bảo Nam",
     role: "student",
     avatarUrl: "",
     createdAt: "2026-08-01T08:00:00.000Z",

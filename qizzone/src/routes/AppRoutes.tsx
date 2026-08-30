@@ -14,6 +14,7 @@ import QuizList from "@/pages/teacher/QuizList";
 import QuestionReview from "@/pages/teacher/QuestionReview";
 
 import StudentDashboard from "@/pages/student/StudentDashboard";
+import ExamEntry from "@/pages/student/ExamEntry";
 import QuizRoom from "@/pages/student/QuizRoom";
 import Result from "@/pages/student/Result";
 
@@ -68,13 +69,16 @@ export function AppRoutes() {
         <Route element={<ProtectedRoute allowedRole="student" />}>
           <Route element={<DashboardLayout />}>
             <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/student/quiz/:quizId/lobby" element={<ExamEntry />} />
             <Route path="/student/result/:resultId" element={<Result />} />
           </Route>
         </Route>
 
         {/* Exam Taking Room (Distraction-free ExamLayout) */}
-        <Route element={<ExamLayout />}>
-          <Route path="/student/quiz/:quizId" element={<QuizRoom />} />
+        <Route element={<ProtectedRoute allowedRole="student" />}>
+          <Route element={<ExamLayout />}>
+            <Route path="/student/quiz/:quizId" element={<QuizRoom />} />
+          </Route>
         </Route>
 
         {/* 404 Catch-all */}
