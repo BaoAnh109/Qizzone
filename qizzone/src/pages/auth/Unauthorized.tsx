@@ -1,8 +1,17 @@
-import { Link } from "react-router-dom";
-import { ShieldAlert, ArrowLeft, Home } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { ShieldAlert, LogOut, ArrowRight, Home } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 
 export function Unauthorized() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
+
+  const handleLogoutAndRelogin = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
@@ -18,19 +27,56 @@ export function Unauthorized() {
             Không có quyền truy cập
           </h1>
           <p className="text-sm text-neutral-500 max-w-sm mx-auto">
-            Tài khoản của bạn không có vai trò phù hợp để truy cập vào phân vùng này. Vui lòng chuyển tài khoản hoặc quay về trang chủ.
+            {user ? (
+              <>
+                Bạn đang đăng nhập với vai trò{" "}
+                <strong>{user.role === "teacher" ? "Giáo viên" : "Học sinh"}</strong> (
+                {user.email}), không có quyền truy cập vào đường dẫn này.
+              </>
+            ) : (
+              "Tài khoản của bạn không có vai trò phù hợp để truy cập vào phân vùng này."
+            )}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <Link to="/login" className="w-full sm:w-auto">
-            <Button variant="primary" className="w-full sm:w-auto" leftIcon={<ArrowLeft className="h-4 w-4" />}>
-              Đăng nhập lại
+          {user ? (
+            <Button
+              variant="primary"
+              onClick={() =>
+                navigate(user.role === "teacher" ? "/teacher" : "/student", {
+                  replace: true,
+                })
+              }
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+              className="w-full sm:w-auto"
+            >
+              Về trang {user.role === "teacher" ? "Giáo viên" : "Học sinh"}
             </Button>
-          </Link>
+          ) : (
+            <Link to="/login" className="w-full sm:w-auto">
+              <Button variant="primary" className="w-full sm:w-auto">
+                Đăng nhập
+              </Button>
+            </Link>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={handleLogoutAndRelogin}
+            leftIcon={<LogOut className="h-4 w-4" />}
+            className="w-full sm:w-auto"
+          >
+            Đổi tài khoản khác
+          </Button>
+
           <Link to="/" className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full sm:w-auto" leftIcon={<Home className="h-4 w-4" />}>
-              Về trang chủ
+            <Button
+              variant="ghost"
+              leftIcon={<Home className="h-4 w-4" />}
+              className="w-full sm:w-auto"
+            >
+              Trang chủ
             </Button>
           </Link>
         </div>

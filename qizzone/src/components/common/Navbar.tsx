@@ -16,7 +16,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   const getPageTitle = () => {

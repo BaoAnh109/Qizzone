@@ -27,7 +27,9 @@ export function ProtectedRoute({
   // Check role authorization
   const roles = allowedRoles || (allowedRole ? [allowedRole] : []);
   if (roles.length > 0 && !roles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+    // Graceful fallback to user's home portal instead of 403 error page
+    const fallbackPath = user.role === "teacher" ? "/teacher" : "/student";
+    return <Navigate to={fallbackPath} replace />;
   }
 
   return <Outlet />;
