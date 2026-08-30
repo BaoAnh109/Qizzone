@@ -98,7 +98,7 @@ export function CreateQuiz() {
       shuffleQuestions: false,
       shuffleOptions: false,
       allowReview: true,
-      maxAttempts: 1,
+      maxAttempts: 0,
       passPercentage: 50,
     }
   );
@@ -904,6 +904,47 @@ export function CreateQuiz() {
                       <span className="font-mono font-bold text-sm text-indigo-700 w-12 text-right">
                         {settings.passPercentage}%
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Số lần làm bài tối đa */}
+                  <div className="rounded-xl border border-neutral-200 p-4 space-y-2.5 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900">
+                          Số lần làm bài tối đa:
+                        </p>
+                        <p className="text-xs text-neutral-500 mt-0.5">
+                          Nhập <span className="font-mono font-bold text-indigo-600">"0"</span> để cho phép học sinh làm bài vô hạn số lần (không giới hạn).
+                        </p>
+                      </div>
+
+                      {settings.maxAttempts === 0 ? (
+                        <Badge variant="success" size="md" dot>
+                          Làm bài vô hạn (Không giới hạn)
+                        </Badge>
+                      ) : (
+                        <Badge variant="primary" size="md">
+                          Tối đa {settings.maxAttempts} lượt làm
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="max-w-xs pt-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        placeholder="0 (Vô hạn) hoặc 1, 2, 3..."
+                        value={settings.maxAttempts}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setSettings((prev) => ({
+                            ...prev,
+                            maxAttempts: isNaN(val) || val < 0 ? 0 : val,
+                          }));
+                        }}
+                      />
                     </div>
                   </div>
                 </div>

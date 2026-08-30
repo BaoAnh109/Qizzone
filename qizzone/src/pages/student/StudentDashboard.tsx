@@ -307,19 +307,21 @@ export function StudentDashboard() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 text-xs font-medium"
+                          className={`${quiz.settings.maxAttempts > 0 && studentResults.filter((r) => r.quizId === quiz.id).length >= quiz.settings.maxAttempts ? "w-full" : "flex-1"} text-xs font-medium`}
                           onClick={() => navigate(`/student/result/${latestResult.id}`)}
                         >
                           Xem kết quả
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex-1 text-xs text-indigo-600 hover:bg-indigo-50 font-medium"
-                          onClick={() => navigate(`/student/quiz/${quiz.id}/lobby`)}
-                        >
-                          Làm lại
-                        </Button>
+                        {(quiz.settings.maxAttempts === 0 || studentResults.filter((r) => r.quizId === quiz.id).length < quiz.settings.maxAttempts) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 text-xs text-indigo-600 hover:bg-indigo-50 font-medium"
+                            onClick={() => navigate(`/student/quiz/${quiz.id}/lobby`)}
+                          >
+                            Làm lại
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <Button

@@ -1,5 +1,13 @@
 import type { Quiz, OptionId } from "@/types/quiz";
-import type { ExamResult, QuestionGradingDetail } from "@/types/exam";
+import type { ExamResult, QuestionGradingDetail, AcademicRank } from "@/types/exam";
+
+export function calculateAcademicRank(score: number): AcademicRank {
+  if (score >= 9.0) return "Xuất sắc";
+  if (score >= 8.0) return "Giỏi";
+  if (score >= 6.5) return "Khá";
+  if (score >= 5.0) return "Trung bình";
+  return "Yếu";
+}
 
 export function gradeExamSubmission(params: {
   quiz: Quiz;
@@ -67,6 +75,7 @@ export function gradeExamSubmission(params: {
 
   const passPercentage = quiz.settings.passPercentage ?? 50;
   const isPassed = percentage >= passPercentage;
+  const academicRank = calculateAcademicRank(score);
 
   const resultId = `res-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -90,6 +99,7 @@ export function gradeExamSubmission(params: {
     percentage,
     isPassed,
     passPercentage,
+    academicRank,
     timeSpentSeconds,
     details,
     submittedAt: new Date().toISOString(),

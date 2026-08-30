@@ -42,7 +42,11 @@ export const quizSettingsSchema = z.object({
   shuffleQuestions: z.boolean().default(false),
   shuffleOptions: z.boolean().default(false),
   allowReview: z.boolean().default(true),
-  maxAttempts: z.number().int().min(1).default(1),
+  maxAttempts: z
+    .number({ message: "Vui lòng nhập số lần làm bài hợp lệ" })
+    .int("Số lần làm bài phải là số nguyên")
+    .min(0, "Số lần làm bài tối thiểu là 0 (0 = Vô hạn)")
+    .default(0),
   passPercentage: z.number().min(0).max(100).default(50),
 });
 

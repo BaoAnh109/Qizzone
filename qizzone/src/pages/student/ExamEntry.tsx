@@ -9,6 +9,8 @@ import {
   ShieldCheck,
   AlertCircle,
   Sparkles,
+  RotateCcw,
+  Eye,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
@@ -29,7 +31,7 @@ export function ExamEntry() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
-  const initSession = useExamSessionStore((state) => state.initSession);
+  const { initSession, getResultsByStudent } = useExamSessionStore();
   const toast = useToast();
 
   const quiz = quizId ? getQuizById(quizId) : undefined;
@@ -37,6 +39,12 @@ export function ExamEntry() {
   const [studentName, setStudentName] = useState(() =>
     cleanStudentName(user?.fullName || user?.name)
   );
+
+  const studentResults = user ? getResultsByStudent(user.id) : [];
+  const pastSubmissions = quiz ? studentResults.filter((r) => r.quizId === quiz.id) : [];
+  const attemptsMade = pastSubmissions.length;
+  const maxAttempts = quiz?.settings.maxAttempts || 0; // 0 = unlimited
+  const isAttemptsExceeded = maxAttempts > 0 && attemptsMade >= maxAttempts;
 
   if (!quiz) {
     return (
@@ -77,6 +85,11 @@ export function ExamEntry() {
   }
 
   const handleStartExam = () => {
+    if (isAttemptsExceeded) {
+      toast.error(`Bạn đã hoàn thành đủ ${maxAttempts} lượt làm bài quy định`);
+      return;
+    }
+
     if (!studentName.trim()) {
       toast.error("Vui lòng nhập Họ và tên thí sinh");
       return;
@@ -129,7 +142,7 @@ export function ExamEntry() {
 
         <CardContent className="p-6 sm:p-8 space-y-6">
           {/* Metadata Highlights */}
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
               <Clock className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
               <p className="text-xs text-neutral-500 font-medium">Thời gian</p>
@@ -149,6 +162,14 @@ export function ExamEntry() {
             </div>
 
             <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
+              <RotateCcw className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
+              <p className="text-xs text-neutral-500 font-medium">Số lần làm</p>
+              <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
+                {maxAttempts === 0 ? "Vô hạn (∞)" : `${maxAttempts} lần`}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
               <Award className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
               <p className="text-xs text-neutral-500 font-medium">Điểm đạt</p>
               <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
@@ -156,6 +177,32 @@ export function ExamEntry() {
               </p>
             </div>
           </div>
+
+          {/* Attempts Exceeded Warning */}
+          {isAttemptsExceeded && (
+            <div className="rounded-2xl bg-amber-50 p-4 border border-amber-200 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="font-bold text-sm text-amber-950">
+                  Đã hết lượt làm bài quy định
+                </h4>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Bạn đã thực hiện {attemptsMade}/{maxAttempts} lần làm bài cho đề thi này. Bạn không thể bắt đầu thêm lượt mới.
+                </p>
+                {pastSubmissions[0] && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 text-xs bg-white"
+                    onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
+                    leftIcon={<Eye className="h-3.5 w-3.5" />}
+                  >
+                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(1)}đ)
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Rules & Regulations */}
           <div className="rounded-xl bg-indigo-50/60 p-4 border border-indigo-100/90 text-xs text-indigo-950 space-y-2.5">
@@ -188,31 +235,44 @@ export function ExamEntry() {
           </div>
 
           {/* Student Confirmation Form */}
-          <div className="space-y-3 pt-2 border-t border-neutral-100">
-            <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-600" />
-              <span>Xác nhận thông tin thí sinh</span>
-            </h3>
+          {!isAttemptsExceeded && (
+            <div className="space-y-3 pt-2 border-t border-neutral-100">
+              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <span>Xác nhận thông tin thí sinh</span>
+              </h3>
 
-            <Input
-              label="Họ và tên thí sinh *"
-              placeholder="Nhập họ và tên thí sinh..."
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-            />
-          </div>
+              <Input
+                label="Họ và tên thí sinh *"
+                placeholder="Nhập họ và tên thí sinh..."
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+              />
+            </div>
+          )}
 
           {/* Start Exam CTA */}
           <div className="pt-4">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleStartExam}
-              className="w-full h-12 text-base font-bold shadow-md shadow-indigo-600/20"
-              leftIcon={<Play className="h-5 w-5 fill-current" />}
-            >
-              Bắt đầu làm bài thi ngay
-            </Button>
+            {isAttemptsExceeded ? (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/student")}
+                className="w-full h-12 text-base font-bold"
+              >
+                Quay lại danh sách đề thi
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleStartExam}
+                className="w-full h-12 text-base font-bold shadow-md shadow-indigo-600/20"
+                leftIcon={<Play className="h-5 w-5 fill-current" />}
+              >
+                Bắt đầu làm bài thi ngay
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

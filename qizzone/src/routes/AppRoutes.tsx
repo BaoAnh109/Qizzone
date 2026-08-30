@@ -12,6 +12,7 @@ import TeacherDashboard from "@/pages/teacher/TeacherDashboard";
 import CreateQuiz from "@/pages/teacher/CreateQuiz";
 import QuizList from "@/pages/teacher/QuizList";
 import QuestionReview from "@/pages/teacher/QuestionReview";
+import QuizResultsView from "@/pages/teacher/QuizResultsView";
 
 import StudentDashboard from "@/pages/student/StudentDashboard";
 import ExamEntry from "@/pages/student/ExamEntry";
@@ -61,6 +62,10 @@ export function AppRoutes() {
             <Route
               path="/teacher/quiz/:quizId/review"
               element={<QuestionReview />}
+            />
+            <Route
+              path="/teacher/quiz/:quizId/results"
+              element={<QuizResultsView />}
             />
           </Route>
         </Route>

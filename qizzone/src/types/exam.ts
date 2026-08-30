@@ -1,5 +1,7 @@
 import type { OptionId, OptionItem } from "./quiz";
 
+export type AcademicRank = "Xuất sắc" | "Giỏi" | "Khá" | "Trung bình" | "Yếu";
+
 export interface StudentAnswer {
   questionId: string;
   selectedAnswers: OptionId[];
@@ -55,6 +57,7 @@ export interface ExamResult {
   percentage: number;
   isPassed: boolean;
   passPercentage: number;
+  academicRank: AcademicRank;
   timeSpentSeconds: number;
   details: QuestionGradingDetail[];
   submittedAt: string;

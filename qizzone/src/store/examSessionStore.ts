@@ -10,6 +10,203 @@ export function isSessionInProgress(session?: ExamSession): boolean {
   return Date.now() < session.endTime;
 }
 
+const DEFAULT_RESULTS: ExamResult[] = [
+  {
+    id: "res-seed-001",
+    quizId: "quiz-001",
+    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
+    subject: "Toán học 12",
+    roomCode: "QZ9821",
+    studentId: "user-stu-001",
+    studentName: "Trần Bảo Nam",
+    studentClass: "12A1",
+    totalQuestions: 4,
+    answeredCount: 4,
+    correctCount: 4,
+    incorrectCount: 0,
+    skippedCount: 0,
+    score: 10.0,
+    totalPointsEarned: 10,
+    maxTotalPoints: 10,
+    percentage: 100,
+    isPassed: true,
+    passPercentage: 50,
+    academicRank: "Xuất sắc",
+    timeSpentSeconds: 1240,
+    details: [
+      {
+        questionId: "q-01",
+        order: 1,
+        content: "Cho hàm số $f(x) = x^3 - 3x + 2$. Điểm cực tiểu của đồ thị hàm số là điểm nào sau đây?",
+        options: [
+          { id: "A", content: "$A(-1; 4)$" },
+          { id: "B", content: "$B(1; 0)$" },
+          { id: "C", content: "$C(0; 2)$" },
+          { id: "D", content: "$D(2; 4)$" },
+        ],
+        selectedAnswers: ["B"],
+        correctAnswers: ["B"],
+        isCorrect: true,
+        pointsEarned: 2.5,
+        maxPoints: 2.5,
+        explanation: "Ta có $f'(x) = 3x^2 - 3 = 0 \\Leftrightarrow x = \\pm 1$. Điểm cực tiểu là $B(1; 0)$.",
+      },
+      {
+        questionId: "q-02",
+        order: 2,
+        content: "Tính tích phân $I = \\int_{0}^{1} (2x + 1)e^x dx$ ta được kết quả có dạng $a \\cdot e + b$. Tính giá trị của $S = a + b$.",
+        options: [
+          { id: "A", content: "$S = 1$" },
+          { id: "B", content: "$S = 2$" },
+          { id: "C", content: "$S = 0$" },
+          { id: "D", content: "$S = -1$" },
+        ],
+        selectedAnswers: ["A"],
+        correctAnswers: ["A"],
+        isCorrect: true,
+        pointsEarned: 2.5,
+        maxPoints: 2.5,
+        explanation: "Sử dụng tích phân từng phần: $S = 2$.",
+      },
+      {
+        questionId: "q-03",
+        order: 3,
+        content: "Trong không gian $Oxyz$, cho mặt phẳng $(\\alpha): 2x - y + 2z - 6 = 0$. Khoảng cách từ điểm $M(1; -2; 3)$ đến $(\\alpha)$ bằng:",
+        options: [
+          { id: "A", content: "$d = 1$" },
+          { id: "B", content: "$d = 2$" },
+          { id: "C", content: "$d = \\frac{4}{3}$" },
+          { id: "D", content: "$d = \\frac{8}{3}$" },
+        ],
+        selectedAnswers: ["C"],
+        correctAnswers: ["C"],
+        isCorrect: true,
+        pointsEarned: 2.5,
+        maxPoints: 2.5,
+        explanation: "$d(M, \\alpha) = \\frac{|2(1) - (-2) + 2(3) - 6|}{\\sqrt{2^2 + (-1)^2 + 2^2}} = \\frac{4}{3}$.",
+      },
+      {
+        questionId: "q-04",
+        order: 4,
+        content: "Nghiệm của phương trình $\\log_2(x - 1) + \\log_2(x + 1) = 3$ là:",
+        options: [
+          { id: "A", content: "$x = 3$" },
+          { id: "B", content: "$x = \\pm 3$" },
+          { id: "C", content: "$x = \\sqrt{10}$" },
+          { id: "D", content: "$x = 4$" },
+        ],
+        selectedAnswers: ["A"],
+        correctAnswers: ["A"],
+        isCorrect: true,
+        pointsEarned: 2.5,
+        maxPoints: 2.5,
+        explanation: "Điều kiện $x > 1$. Phương trình $\\log_2(x^2 - 1) = 3 \\Leftrightarrow x^2 - 1 = 8 \\Rightarrow x = 3$.",
+      },
+    ],
+    submittedAt: "2026-08-30T10:15:00.000Z",
+  },
+  {
+    id: "res-seed-002",
+    quizId: "quiz-001",
+    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
+    subject: "Toán học 12",
+    roomCode: "QZ9821",
+    studentId: "stu-seed-002",
+    studentName: "Lê Thị Mai",
+    studentClass: "12A1",
+    totalQuestions: 4,
+    answeredCount: 4,
+    correctCount: 3,
+    incorrectCount: 1,
+    skippedCount: 0,
+    score: 7.5,
+    totalPointsEarned: 7.5,
+    maxTotalPoints: 10,
+    percentage: 75,
+    isPassed: true,
+    passPercentage: 50,
+    academicRank: "Khá",
+    timeSpentSeconds: 1580,
+    details: [],
+    submittedAt: "2026-08-30T10:22:00.000Z",
+  },
+  {
+    id: "res-seed-003",
+    quizId: "quiz-001",
+    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
+    subject: "Toán học 12",
+    roomCode: "QZ9821",
+    studentId: "stu-seed-003",
+    studentName: "Phạm Minh Đức",
+    studentClass: "12A2",
+    totalQuestions: 4,
+    answeredCount: 4,
+    correctCount: 4,
+    incorrectCount: 0,
+    skippedCount: 0,
+    score: 10.0,
+    totalPointsEarned: 10,
+    maxTotalPoints: 10,
+    percentage: 100,
+    isPassed: true,
+    passPercentage: 50,
+    academicRank: "Xuất sắc",
+    timeSpentSeconds: 980,
+    details: [],
+    submittedAt: "2026-08-30T10:30:00.000Z",
+  },
+  {
+    id: "res-seed-004",
+    quizId: "quiz-001",
+    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
+    subject: "Toán học 12",
+    roomCode: "QZ9821",
+    studentId: "stu-seed-004",
+    studentName: "Hoàng Nhật Anh",
+    studentClass: "12A1",
+    totalQuestions: 4,
+    answeredCount: 3,
+    correctCount: 2,
+    incorrectCount: 1,
+    skippedCount: 1,
+    score: 5.0,
+    totalPointsEarned: 5.0,
+    maxTotalPoints: 10,
+    percentage: 50,
+    isPassed: true,
+    passPercentage: 50,
+    academicRank: "Trung bình",
+    timeSpentSeconds: 2100,
+    details: [],
+    submittedAt: "2026-08-30T10:45:00.000Z",
+  },
+  {
+    id: "res-seed-005",
+    quizId: "quiz-001",
+    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
+    subject: "Toán học 12",
+    roomCode: "QZ9821",
+    studentId: "stu-seed-005",
+    studentName: "Đỗ Phương Thảo",
+    studentClass: "12A3",
+    totalQuestions: 4,
+    answeredCount: 4,
+    correctCount: 3,
+    incorrectCount: 1,
+    skippedCount: 0,
+    score: 7.5,
+    totalPointsEarned: 7.5,
+    maxTotalPoints: 10,
+    percentage: 75,
+    isPassed: true,
+    passPercentage: 50,
+    academicRank: "Khá",
+    timeSpentSeconds: 1420,
+    details: [],
+    submittedAt: "2026-08-30T11:00:00.000Z",
+  },
+];
+
 interface ExamSessionState {
   activeSessions: Record<string, ExamSession>; // keyed by quizId
   results: ExamResult[];
@@ -49,13 +246,14 @@ interface ExamSessionState {
 
   getResultById: (resultId: string) => ExamResult | undefined;
   getResultsByStudent: (studentId: string) => ExamResult[];
+  getResultsByQuiz: (quizId: string) => ExamResult[];
 }
 
 export const useExamSessionStore = create<ExamSessionState>()(
   persist(
     (set, get) => ({
       activeSessions: {},
-      results: [],
+      results: DEFAULT_RESULTS,
       isSubmitting: false,
 
       initSession: ({ quiz, studentId, studentName, studentClass }) => {
@@ -133,14 +331,12 @@ export const useExamSessionStore = create<ExamSessionState>()(
           let updated: OptionId[];
 
           if (isMultipleChoice) {
-            // Toggle selection for multiple choice
             if (currentAnswers.includes(optionId)) {
               updated = currentAnswers.filter((id) => id !== optionId);
             } else {
               updated = [...currentAnswers, optionId];
             }
           } else {
-            // Single choice replaces existing selection
             updated = [optionId];
           }
 
@@ -306,6 +502,10 @@ export const useExamSessionStore = create<ExamSessionState>()(
 
       getResultsByStudent: (studentId) => {
         return get().results.filter((r) => r.studentId === studentId);
+      },
+
+      getResultsByQuiz: (quizId) => {
+        return get().results.filter((r) => r.quizId === quizId);
       },
     }),
     {

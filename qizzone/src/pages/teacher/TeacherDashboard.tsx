@@ -7,9 +7,11 @@ import {
   ArrowRight,
   Sparkles,
   TrendingUp,
+  BarChart2,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
+import { useExamSessionStore } from "@/store/examSessionStore";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -24,22 +26,24 @@ export function TeacherDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const quizzes = useQuizStore((state) => state.quizzes);
+  const results = useExamSessionStore((state) => state.results);
+  const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
 
   const publishedCount = quizzes.filter((q) => q.status === "published").length;
-  const totalQuestions = quizzes.reduce((sum, q) => sum + q.totalQuestions, 0);
+  const totalSubmissions = results.length;
 
   const stats = [
     {
       title: "Tổng số đề thi",
       value: quizzes.length.toString(),
-      change: `${publishedCount} đề đã xuất bản`,
+      change: `${publishedCount} đề đang mở thi`,
       icon: FileQuestion,
       color: "text-indigo-600 bg-indigo-50 border-indigo-100",
     },
     {
-      title: "Tổng số câu hỏi",
-      value: totalQuestions.toString(),
-      change: "Hỗ trợ KaTeX Math",
+      title: "Lượt học sinh nộp bài",
+      value: totalSubmissions.toString(),
+      change: "Chấm điểm tự động",
       icon: Users,
       color: "text-emerald-600 bg-emerald-50 border-emerald-100",
     },
@@ -67,7 +71,7 @@ export function TeacherDashboard() {
             Xin chào, {user?.name || user?.fullName || "Thầy Cô"}! 👋
           </h1>
           <p className="text-sm text-indigo-200/90 max-w-xl">
-            Tạo đề thi trắc nghiệm công thức Toán LaTeX, mở phòng thi tức thì và quản lý kết quả học sinh.
+            Tạo đề thi trắc nghiệm công thức Toán LaTeX, mở phòng thi tức thì và quản lý bảng điểm học sinh.
           </p>
         </div>
 
@@ -102,7 +106,7 @@ export function TeacherDashboard() {
                 </div>
 
                 <div className="mt-4 flex items-baseline justify-between">
-                  <span className="text-3xl font-extrabold tracking-tight text-neutral-900">
+                  <span className="text-3xl font-extrabold tracking-tight text-neutral-900 font-mono">
                     {stat.value}
                   </span>
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
@@ -138,58 +142,72 @@ export function TeacherDashboard() {
 
         <CardContent className="p-0">
           <div className="divide-y divide-neutral-100">
-            {recentQuizzes.map((quiz) => (
-              <div
-                key={quiz.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:px-6 hover:bg-neutral-50/70 transition"
-              >
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-sm text-neutral-900 truncate">
-                      {quiz.title}
-                    </h3>
-                    <Badge variant={quiz.status} size="sm" dot>
-                      {quiz.status === "published"
-                        ? "Đã xuất bản"
-                        : quiz.status === "closed"
-                        ? "Đã đóng"
-                        : "Bản nháp"}
-                    </Badge>
+            {recentQuizzes.map((quiz) => {
+              const submissionCount = getResultsByQuiz(quiz.id).length;
+
+              return (
+                <div
+                  key={quiz.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:px-6 hover:bg-neutral-50/70 transition"
+                >
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-semibold text-sm text-neutral-900 truncate">
+                        {quiz.title}
+                      </h3>
+                      <Badge variant={quiz.status} size="sm" dot>
+                        {quiz.status === "published"
+                          ? "Đang mở"
+                          : quiz.status === "closed"
+                          ? "Đã đóng"
+                          : "Bản nháp"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
+                      <span className="font-medium text-neutral-700">
+                        {quiz.subject}
+                      </span>
+                      <span>•</span>
+                      <span>{quiz.totalQuestions} câu hỏi</span>
+                      <span>•</span>
+                      <span>
+                        {quiz.settings.durationMinutes === 0
+                          ? "Vô thời hạn"
+                          : `${quiz.settings.durationMinutes} phút`}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Mã phòng:{" "}
+                        <strong className="font-mono text-indigo-600">
+                          {quiz.code}
+                        </strong>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-                    <span className="font-medium text-neutral-700">
-                      {quiz.subject}
-                    </span>
-                    <span>•</span>
-                    <span>{quiz.totalQuestions} câu hỏi</span>
-                    <span>•</span>
-                    <span>
-                      {quiz.settings.durationMinutes === 0
-                        ? "Vô thời hạn"
-                        : `${quiz.settings.durationMinutes} phút`}
-                    </span>
-                    <span>•</span>
-                    <span>
-                      Mã phòng:{" "}
-                      <strong className="font-mono text-indigo-600">
-                        {quiz.code}
-                      </strong>
-                    </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/teacher/quiz/${quiz.id}/results`)}
+                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-indigo-600" />}
+                      className="font-semibold text-xs"
+                    >
+                      Bảng điểm {submissionCount > 0 && `(${submissionCount})`}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/teacher/quiz/${quiz.id}/review`)}
+                      className="text-xs"
+                    >
+                      Xem đề
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/teacher/quiz/${quiz.id}/review`)}
-                  >
-                    Xem chi tiết
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
