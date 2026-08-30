@@ -77,12 +77,21 @@ export function TeacherDashboard() {
 
         <div className="flex flex-wrap items-center gap-3">
           <Button
+            variant="outline"
+            onClick={() => navigate("/teacher/extract-quiz")}
+            className="bg-white/10 hover:bg-white/20 text-white border-white/30 font-semibold h-11 px-4 backdrop-blur-xs"
+            leftIcon={<Sparkles className="h-4 w-4 text-indigo-200" />}
+          >
+            Bóc tách file bằng AI
+          </Button>
+
+          <Button
             variant="default"
             onClick={() => navigate("/teacher/create-quiz")}
             className="bg-white text-indigo-900 hover:bg-neutral-100 shadow-md font-semibold h-11 px-5"
             leftIcon={<PlusCircle className="h-4 w-4 text-indigo-600" />}
           >
-            Tạo đề thi mới
+            Tạo đề thủ công
           </Button>
         </div>
       </div>

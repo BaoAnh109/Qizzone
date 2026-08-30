@@ -99,14 +99,25 @@ export function QuizList() {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={() => navigate("/teacher/create-quiz")}
-          leftIcon={<PlusCircle className="h-4 w-4" />}
-          className="shadow-sm font-bold"
-        >
-          Tạo đề thi mới
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/teacher/extract-quiz")}
+            leftIcon={<Sparkles className="h-4 w-4 text-indigo-600" />}
+            className="font-bold border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-900 shadow-2xs"
+          >
+            Bóc tách file bằng AI
+          </Button>
+
+          <Button
+            variant="primary"
+            onClick={() => navigate("/teacher/create-quiz")}
+            leftIcon={<PlusCircle className="h-4 w-4" />}
+            className="shadow-sm font-bold"
+          >
+            Tạo đề thủ công
+          </Button>
+        </div>
       </div>
 
       {/* Filter & Search Bar */}

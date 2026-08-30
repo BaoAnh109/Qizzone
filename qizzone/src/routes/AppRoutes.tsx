@@ -13,6 +13,7 @@ import CreateQuiz from "@/pages/teacher/CreateQuiz";
 import QuizList from "@/pages/teacher/QuizList";
 import QuestionReview from "@/pages/teacher/QuestionReview";
 import QuizResultsView from "@/pages/teacher/QuizResultsView";
+import SplitExamEditor from "@/pages/teacher/SplitExamEditor";
 
 import StudentDashboard from "@/pages/student/StudentDashboard";
 import ExamEntry from "@/pages/student/ExamEntry";
@@ -66,6 +67,10 @@ export function AppRoutes() {
             <Route
               path="/teacher/quiz/:quizId/results"
               element={<QuizResultsView />}
+            />
+            <Route
+              path="/teacher/extract-quiz"
+              element={<SplitExamEditor />}
             />
           </Route>
         </Route>

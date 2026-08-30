@@ -198,7 +198,13 @@ interface QuizStoreState {
   // Actions
   getQuizById: (id: string) => Quiz | undefined;
   getQuizByCode: (code: string) => Quiz | undefined;
-  createQuiz: (data: Omit<Quiz, "id" | "createdAt" | "updatedAt">) => Quiz;
+  createQuiz: (
+    data: Omit<Quiz, "id" | "createdAt" | "updatedAt" | "code" | "totalQuestions" | "totalPoints"> & {
+      code?: string;
+      totalQuestions?: number;
+      totalPoints?: number;
+    }
+  ) => Quiz;
   updateQuiz: (id: string, data: Partial<Quiz>) => Quiz;
   deleteQuiz: (id: string) => void;
   togglePublishStatus: (id: string) => Quiz;
