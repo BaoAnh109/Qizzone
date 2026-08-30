@@ -55,6 +55,7 @@ export function AppRoutes() {
           <Route element={<DashboardLayout />}>
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/create-quiz" element={<CreateQuiz />} />
+            <Route path="/teacher/edit-quiz/:quizId" element={<CreateQuiz />} />
             <Route path="/teacher/quizzes" element={<QuizList />} />
             <Route
               path="/teacher/quiz/:quizId/review"

@@ -9,6 +9,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { useQuizStore } from "@/store/quizStore";
 import { Button } from "@/components/ui/Button";
 import {
   Card,
@@ -22,66 +23,39 @@ import { Badge } from "@/components/ui/Badge";
 export function TeacherDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const quizzes = useQuizStore((state) => state.quizzes);
+
+  const publishedCount = quizzes.filter((q) => q.status === "published").length;
+  const totalQuestions = quizzes.reduce((sum, q) => sum + q.totalQuestions, 0);
 
   const stats = [
     {
       title: "Tổng số đề thi",
-      value: "12",
-      change: "+2 trong tuần này",
+      value: quizzes.length.toString(),
+      change: `${publishedCount} đề đã xuất bản`,
       icon: FileQuestion,
       color: "text-indigo-600 bg-indigo-50 border-indigo-100",
     },
     {
-      title: "Học sinh tham gia",
-      value: "128",
-      change: "+15 học sinh mới",
+      title: "Tổng số câu hỏi",
+      value: totalQuestions.toString(),
+      change: "Hỗ trợ KaTeX Math",
       icon: Users,
       color: "text-emerald-600 bg-emerald-50 border-emerald-100",
     },
     {
-      title: "Tổng lượt nộp bài",
-      value: "356",
-      change: "Tỉ lệ hoàn thành 94%",
+      title: "Phòng thi đang mở",
+      value: publishedCount.toString(),
+      change: "Sẵn sàng đón thí sinh",
       icon: CheckSquare,
       color: "text-violet-600 bg-violet-50 border-violet-100",
     },
   ];
 
-  const recentQuizzes = [
-    {
-      id: "qz-01",
-      title: "Kiểm tra Giải tích: Đạo hàm & Khảo sát hàm số",
-      subject: "Toán học 12",
-      questionsCount: 20,
-      submissionsCount: 42,
-      roomCode: "QZ9821",
-      status: "published" as const,
-      createdAt: "Hôm nay, 09:30",
-    },
-    {
-      id: "qz-02",
-      title: "Ôn tập Định luật Newton & Chuyển động tròn",
-      subject: "Vật lý 10",
-      questionsCount: 15,
-      submissionsCount: 28,
-      roomCode: "QZ7734",
-      status: "active" as const,
-      createdAt: "Hôm qua, 14:15",
-    },
-    {
-      id: "qz-03",
-      title: "Hợp chất hữu cơ chứa Nitơ (Amin - Amino Axit)",
-      subject: "Hóa học 12",
-      questionsCount: 30,
-      submissionsCount: 0,
-      roomCode: "QZ1045",
-      status: "draft" as const,
-      createdAt: "28/08/2026",
-    },
-  ];
+  const recentQuizzes = quizzes.slice(0, 4);
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-8 pb-12">
       {/* Header Banner */}
       <div className="flex flex-col justify-between gap-4 rounded-2xl bg-linear-to-r from-indigo-900 via-indigo-800 to-violet-900 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/10 sm:flex-row sm:items-center">
         <div className="space-y-1.5">
@@ -120,7 +94,9 @@ export function TeacherDashboard() {
                   <span className="text-sm font-medium text-neutral-500">
                     {stat.title}
                   </span>
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${stat.color}`}>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl border ${stat.color}`}
+                  >
                     <Icon className="h-5 w-5" />
                   </div>
                 </div>
@@ -175,20 +151,31 @@ export function TeacherDashboard() {
                     <Badge variant={quiz.status} size="sm" dot>
                       {quiz.status === "published"
                         ? "Đã xuất bản"
-                        : quiz.status === "active"
-                        ? "Đang mở thi"
+                        : quiz.status === "closed"
+                        ? "Đã đóng"
                         : "Bản nháp"}
                     </Badge>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-                    <span className="font-medium text-neutral-700">{quiz.subject}</span>
+                    <span className="font-medium text-neutral-700">
+                      {quiz.subject}
+                    </span>
                     <span>•</span>
-                    <span>{quiz.questionsCount} câu hỏi</span>
+                    <span>{quiz.totalQuestions} câu hỏi</span>
                     <span>•</span>
-                    <span>{quiz.submissionsCount} lượt nộp</span>
+                    <span>
+                      {quiz.settings.durationMinutes === 0
+                        ? "Vô thời hạn"
+                        : `${quiz.settings.durationMinutes} phút`}
+                    </span>
                     <span>•</span>
-                    <span>Mã phòng: <strong className="font-mono text-indigo-600">{quiz.roomCode}</strong></span>
+                    <span>
+                      Mã phòng:{" "}
+                      <strong className="font-mono text-indigo-600">
+                        {quiz.code}
+                      </strong>
+                    </span>
                   </div>
                 </div>
 
@@ -196,9 +183,9 @@ export function TeacherDashboard() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/teacher/quizzes`)}
+                    onClick={() => navigate(`/teacher/quiz/${quiz.id}/review`)}
                   >
-                    Chi tiết
+                    Xem chi tiết
                   </Button>
                 </div>
               </div>
