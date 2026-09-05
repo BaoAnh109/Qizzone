@@ -34,7 +34,7 @@ export async function parsePdfFile(file: File): Promise<ParsedPdfDocument> {
 
     // Group items into lines based on vertical position
     let lastY: number | null = null;
-    let pageLines: string[] = [];
+    const pageLines: string[] = [];
     let currentLine = "";
 
     for (const item of textContent.items) {

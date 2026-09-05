@@ -15,6 +15,19 @@ export interface AIExtractParams {
   modelName?: string;
 }
 
+interface RawSolutionItem {
+  id?: string;
+  order?: number | string;
+  index?: number | string;
+  correctAnswer?: string;
+  answer?: string;
+  correct_answer?: string;
+  choice?: string;
+  explanation?: string;
+  explain?: string;
+  reason?: string;
+}
+
 /**
  * Dịch vụ AI bóc tách đề thi thông minh (Gemini Flash & Deep Reasoning Multimodal)
  */
@@ -444,7 +457,7 @@ Trả về JSON duy nhất theo schema:
                 : [];
 
               if (solutionsArray.length > 0) {
-                solutionsArray.forEach((item: any, solIdx: number) => {
+                solutionsArray.forEach((item: RawSolutionItem, solIdx: number) => {
                   const ans = (
                     item.correctAnswer ||
                     item.answer ||

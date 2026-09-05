@@ -34,7 +34,7 @@ describe("PDF Parser & Cleaner Tests", () => {
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
         let lastY: number | null = null;
-        let pageLines: string[] = [];
+        const pageLines: string[] = [];
         let currentLine = "";
 
         for (const item of textContent.items) {
