@@ -7,6 +7,7 @@ Deno.serve(async req => {
   const startedAt = performance.now();
   let uid = 'unknown';
   let model = 'unknown';
+  let upstreamStatus: number | undefined;
   try {
     const token = await identity(req);
     uid = token.uid;
@@ -32,13 +33,20 @@ Deno.serve(async req => {
     // new environments use the conventional GEMINI_API_KEY name.
     const key = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini');
     if (!key) throw new Error('NOT_CONFIGURED');
-    model = Deno.env.get('GEMINI_MODEL') || 'gemini-2.5-flash';
+    model = Deno.env.get('GEMINI_MODEL') || 'gemini-3.6-flash';
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } }),
       signal: AbortSignal.timeout(55000),
     });
-    if (!response.ok) throw new Error(response.status === 429 ? 'RATE_LIMIT' : 'UPSTREAM_ERROR');
+    upstreamStatus = response.status;
+    if (!response.ok) {
+      if (response.status === 429) throw new Error('RATE_LIMIT');
+      if ([401, 403].includes(response.status)) throw new Error('GEMINI_AUTH');
+      if (response.status === 404) throw new Error('GEMINI_MODEL_UNAVAILABLE');
+      if (response.status === 400) throw new Error('GEMINI_BAD_REQUEST');
+      throw new Error('UPSTREAM_ERROR');
+    }
     const result = await response.json();
     const raw = result.candidates?.[0]?.content?.parts?.map((p: {text?: string}) => p.text || '').join('');
     if (!raw) throw new Error('UPSTREAM_ERROR');
@@ -46,11 +54,11 @@ Deno.serve(async req => {
     return respond(req, { result: JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, '')) });
   } catch (error) {
     const rawCode = error instanceof Error ? error.message : 'UNKNOWN';
-    const code = ['UNAUTHORIZED', 'FORBIDDEN', 'INVALID_INPUT', 'TOO_LARGE', 'RATE_LIMIT', 'NOT_CONFIGURED', 'UPSTREAM_ERROR']
+    const code = ['UNAUTHORIZED', 'FORBIDDEN', 'INVALID_INPUT', 'TOO_LARGE', 'RATE_LIMIT', 'NOT_CONFIGURED', 'GEMINI_AUTH', 'GEMINI_MODEL_UNAVAILABLE', 'GEMINI_BAD_REQUEST', 'UPSTREAM_ERROR']
       .includes(rawCode) ? rawCode : 'INTERNAL_ERROR';
     console.error(JSON.stringify({
       requestId, uid, model, durationMs: Math.round(performance.now() - startedAt),
-      status: 'error', code,
+      status: 'error', code, upstreamStatus,
     }));
     return failure(req, error);
   }

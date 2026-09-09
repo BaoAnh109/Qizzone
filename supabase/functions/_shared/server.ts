@@ -69,6 +69,9 @@ export function failure(req: Request, error: unknown) {
     TOO_LARGE: [413, 'Tệp hoặc văn bản quá lớn (tối đa 8 MB).'],
     RATE_LIMIT: [429, 'Quá nhiều yêu cầu AI. Vui lòng chờ một phút.'],
     NOT_CONFIGURED: [503, 'Quản trị viên chưa cấu hình Gemini trên server.'],
+    GEMINI_AUTH: [502, 'Gemini API key không hợp lệ hoặc chưa được cấp quyền sử dụng API.'],
+    GEMINI_MODEL_UNAVAILABLE: [502, 'Mô hình Gemini đã cấu hình không khả dụng cho project này.'],
+    GEMINI_BAD_REQUEST: [502, 'Gemini từ chối nội dung yêu cầu. Vui lòng thử với đề nhỏ hơn.'],
   };
   const [status, message] = messages[code] || [502, 'Dịch vụ đang gặp lỗi. Vui lòng thử lại hoặc liên hệ quản trị viên.'];
   return respond(req, { error: message }, status);
