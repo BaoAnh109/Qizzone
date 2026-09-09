@@ -7,15 +7,15 @@ export function Unauthorized() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
 
-  const handleLogoutAndRelogin = () => {
-    logout();
+  const handleLogoutAndRelogin = async () => {
+    await logout().catch(() => undefined);
     navigate("/login", { replace: true });
   };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
-        <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-rose-100 text-rose-600 shadow-lg shadow-rose-100">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
           <ShieldAlert className="h-10 w-10" />
         </div>
 
@@ -30,7 +30,7 @@ export function Unauthorized() {
             {user ? (
               <>
                 Bạn đang đăng nhập với vai trò{" "}
-                <strong>{user.role === "teacher" ? "Giáo viên" : "Học sinh"}</strong> (
+                <strong>{user.role === "student" ? "Học sinh" : "Giáo viên"}</strong> (
                 {user.email}), không có quyền truy cập vào đường dẫn này.
               </>
             ) : (
@@ -44,14 +44,14 @@ export function Unauthorized() {
             <Button
               variant="primary"
               onClick={() =>
-                navigate(user.role === "teacher" ? "/teacher" : "/student", {
+                navigate(user.role === "student" ? "/student" : "/teacher", {
                   replace: true,
                 })
               }
               rightIcon={<ArrowRight className="h-4 w-4" />}
               className="w-full sm:w-auto"
             >
-              Về trang {user.role === "teacher" ? "Giáo viên" : "Học sinh"}
+              Về trang {user.role === "student" ? "Học sinh" : "Giáo viên"}
             </Button>
           ) : (
             <Link to="/login" className="w-full sm:w-auto">
@@ -63,7 +63,7 @@ export function Unauthorized() {
 
           <Button
             variant="outline"
-            onClick={handleLogoutAndRelogin}
+            onClick={() => void handleLogoutAndRelogin()}
             leftIcon={<LogOut className="h-4 w-4" />}
             className="w-full sm:w-auto"
           >

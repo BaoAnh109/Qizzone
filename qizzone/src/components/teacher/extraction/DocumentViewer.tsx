@@ -204,7 +204,7 @@ export function DocumentViewer() {
             /* Render Image Viewer */
             <div className="flex flex-col items-center justify-center p-2">
               <div
-                className="rounded-2xl shadow-md border border-neutral-200 bg-white p-2 overflow-hidden transition-transform duration-200"
+                className="overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
                 style={{
                   transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
                 }}
@@ -219,7 +219,7 @@ export function DocumentViewer() {
           ) : (
             /* Render Word / Text Document */
             <div
-              className="rounded-2xl bg-white p-6 sm:p-8 shadow-sm border border-neutral-200 text-sm text-neutral-800 leading-relaxed font-sans min-h-[500px]"
+              className="min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
               style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left" }}
             >
               {document?.rawHtml ? (

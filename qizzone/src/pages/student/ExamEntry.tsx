@@ -8,7 +8,7 @@ import {
   Play,
   ShieldCheck,
   AlertCircle,
-  Sparkles,
+  UserCheck,
   RotateCcw,
   Eye,
 } from "lucide-react";
@@ -49,7 +49,7 @@ export function ExamEntry() {
   if (!quiz) {
     return (
       <div className="max-w-md mx-auto my-12 text-center space-y-4">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
           <AlertCircle className="h-8 w-8" />
         </div>
         <h2 className="text-xl font-bold text-neutral-900">
@@ -68,7 +68,7 @@ export function ExamEntry() {
   if (quiz.status !== "published") {
     return (
       <div className="max-w-md mx-auto my-12 text-center space-y-4">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
           <AlertCircle className="h-8 w-8" />
         </div>
         <h2 className="text-xl font-bold text-neutral-900">
@@ -84,7 +84,7 @@ export function ExamEntry() {
     );
   }
 
-  const handleStartExam = () => {
+  const handleStartExam = async () => {
     if (isAttemptsExceeded) {
       toast.error(`Bạn đã hoàn thành đủ ${maxAttempts} lượt làm bài quy định`);
       return;
@@ -96,14 +96,17 @@ export function ExamEntry() {
     }
 
     // Initialize or resume session
-    initSession({
-      quiz,
-      studentId: user?.id || "guest-student",
-      studentName: studentName.trim(),
-    });
-
-    toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
-    navigate(`/student/quiz/${quiz.id}`);
+    try {
+      await initSession({
+        quiz,
+        studentId: user?.id || "guest-student",
+        studentName: studentName.trim(),
+      });
+      toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
+      navigate(`/student/quiz/${quiz.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể bắt đầu bài thi.");
+    }
   };
 
   return (
@@ -118,24 +121,24 @@ export function ExamEntry() {
         Quay lại Sảnh thi
       </Button>
 
-      <Card className="overflow-hidden border-neutral-200/90 shadow-md">
+      <Card className="overflow-hidden">
         {/* Banner Header */}
-        <CardHeader className="bg-linear-to-r from-indigo-900 via-indigo-800 to-violet-900 text-white p-6 sm:p-8">
+        <CardHeader className="bg-white p-6 sm:p-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" size="sm" className="bg-white/20 text-white border-white/30">
+              <Badge variant="secondary" size="sm">
                 {quiz.subject}
               </Badge>
               <Badge variant="success" size="sm" dot>
                 Phòng thi đang mở
               </Badge>
             </div>
-            <CardTitle className="text-2xl sm:text-3xl font-extrabold text-white">
+            <CardTitle className="text-2xl font-semibold sm:text-3xl">
               {quiz.title}
             </CardTitle>
-            <p className="text-xs sm:text-sm text-indigo-200">
+            <p className="text-xs text-neutral-500 sm:text-sm">
               Giáo viên tạo đề: {quiz.teacherName || "Thầy Cô"} · Mã phòng:{" "}
-              <strong className="font-mono text-white font-bold">{quiz.code}</strong>
+              <strong className="font-mono font-semibold text-neutral-950">{quiz.code}</strong>
             </p>
           </div>
         </CardHeader>
@@ -180,7 +183,7 @@ export function ExamEntry() {
 
           {/* Attempts Exceeded Warning */}
           {isAttemptsExceeded && (
-            <div className="rounded-2xl bg-amber-50 p-4 border border-amber-200 flex items-start gap-3">
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
               <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h4 className="font-bold text-sm text-amber-950">
@@ -205,9 +208,9 @@ export function ExamEntry() {
           )}
 
           {/* Rules & Regulations */}
-          <div className="rounded-xl bg-indigo-50/60 p-4 border border-indigo-100/90 text-xs text-indigo-950 space-y-2.5">
+          <div className="space-y-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-950">
             <div className="flex items-center gap-1.5 font-bold text-indigo-900">
-              <ShieldCheck className="h-4 w-4 text-indigo-600" />
+              <ShieldCheck className="h-4 w-4 text-blue-600" />
               <span>Quy chế và hướng dẫn làm bài:</span>
             </div>
 
@@ -238,7 +241,7 @@ export function ExamEntry() {
           {!isAttemptsExceeded && (
             <div className="space-y-3 pt-2 border-t border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <UserCheck className="h-4 w-4 text-blue-600" />
                 <span>Xác nhận thông tin thí sinh</span>
               </h3>
 

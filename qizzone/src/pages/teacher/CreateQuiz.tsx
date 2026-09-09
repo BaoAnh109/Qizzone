@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   PlusCircle,
-  Sparkles,
+  ClipboardList,
   Trash2,
   Copy,
   ChevronUp,
@@ -124,6 +124,18 @@ export function CreateQuiz() {
     ]
   );
 
+  const hydratedQuizId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!existingQuiz || hydratedQuizId.current === existingQuiz.id) return;
+    hydratedQuizId.current = existingQuiz.id;
+    setTitle(existingQuiz.title);
+    setSubjectPreset(POPULAR_SUBJECTS.includes(existingQuiz.subject) ? existingQuiz.subject : "custom");
+    setCustomSubject(POPULAR_SUBJECTS.includes(existingQuiz.subject) ? "" : existingQuiz.subject);
+    setDescription(existingQuiz.description || "");
+    setSettings(existingQuiz.settings);
+    setQuestions(existingQuiz.questions);
+  }, [existingQuiz]);
+
   // Question Management Handlers
   const handleAddQuestion = () => {
     const nextOrder = questions.length + 1;
@@ -231,7 +243,7 @@ export function CreateQuiz() {
   };
 
   // Validate and Save
-  const handleSaveQuiz = (status: "draft" | "published") => {
+  const handleSaveQuiz = async (status: "draft" | "published") => {
     if (!title.trim()) {
       toast.error("Vui lòng nhập tiêu đề bài thi");
       setCurrentStep(3);
@@ -259,22 +271,23 @@ export function CreateQuiz() {
       }
     }
 
-    if (isEditing && quizId) {
-      updateQuiz(quizId, {
+    try {
+      if (isEditing && quizId) {
+        await updateQuiz(quizId, {
         title: title.trim(),
         subject: resolvedSubject,
         description: description.trim(),
         settings,
         questions,
         status,
-      });
-      toast.success(
+        });
+        toast.success(
         status === "published"
           ? "Đề thi đã được xuất bản và cập nhật thành công!"
           : "Đã lưu bản nháp đề thi thành công!"
-      );
-    } else {
-      const created = createQuiz({
+        );
+      } else {
+        const created = await createQuiz({
         title: title.trim(),
         subject: resolvedSubject,
         description: description.trim(),
@@ -286,16 +299,18 @@ export function CreateQuiz() {
         questions,
         totalQuestions: questions.length,
         totalPoints: questions.reduce((sum, q) => sum + (q.points || 1), 0),
-      });
+        });
 
-      toast.success(
+        toast.success(
         status === "published"
           ? `Xuất bản thành công! Mã phòng thi: ${created.code}`
           : "Đã lưu bản nháp đề thi thành công!"
-      );
+        );
+      }
+      navigate("/teacher/quizzes");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lưu đề thi. Vui lòng thử lại!");
     }
-
-    navigate("/teacher/quizzes");
   };
 
   return (
@@ -303,11 +318,11 @@ export function CreateQuiz() {
       {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200/80 pb-5">
         <div>
-          <div className="flex items-center gap-2 text-indigo-600 text-xs font-semibold mb-1">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Teacher Portal · Manual Quiz Builder</span>
+          <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-blue-700">
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span>Soạn đề thi</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+          <h1 className="page-heading">
             {isEditing ? "Chỉnh sửa đề thi" : "Soạn thảo đề thi mới"}
           </h1>
         </div>
@@ -333,7 +348,7 @@ export function CreateQuiz() {
       </div>
 
       {/* 3-Step Wizard Navigation Tabs */}
-      <div className="grid grid-cols-3 gap-2 p-1.5 bg-neutral-100/90 rounded-2xl border border-neutral-200/80 text-xs sm:text-sm font-semibold">
+      <div className="grid grid-cols-3 gap-1 rounded-lg border border-neutral-200 bg-neutral-100 p-1 text-xs font-semibold sm:text-sm">
         <button
           type="button"
           onClick={() => setCurrentStep(1)}
@@ -576,22 +591,22 @@ export function CreateQuiz() {
       {currentStep === 2 && (
         <div className="space-y-6">
           <Card>
-            <CardHeader className="bg-linear-to-r from-indigo-900 to-violet-900 text-white rounded-t-xl">
+            <CardHeader className="bg-neutral-50">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <Badge
                     variant="secondary"
                     size="sm"
-                    className="mb-2 bg-white/20 text-white border-white/30"
+                    className="mb-2"
                   >
                     {resolvedSubject || "Môn học chưa chọn"}
                   </Badge>
-                  <CardTitle className="text-xl sm:text-2xl text-white">
+                  <CardTitle className="text-xl sm:text-2xl">
                     {title || "Đề thi chưa đặt tên"}
                   </CardTitle>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs font-semibold text-indigo-100 bg-white/10 px-4 py-2.5 rounded-xl backdrop-blur-xs shrink-0">
+                <div className="flex shrink-0 items-center gap-3 rounded-md border border-neutral-200 bg-white px-4 py-2.5 text-xs font-medium text-neutral-600">
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-4 w-4 text-indigo-300" />
                     <span>

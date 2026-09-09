@@ -1,0 +1,13 @@
+project_id = "qizzone"
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+# Firebase tokens are verified inside each handler with Firebase Admin SDK.
+[functions.bootstrap-profile]
+verify_jwt = false
+[functions.extract-quiz-with-gemini]
+verify_jwt = false
+[functions.manage-teacher-approvals]
+verify_jwt = false

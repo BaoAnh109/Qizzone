@@ -93,7 +93,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
   return (
     <div
       onClick={() => setSelectedQuestionId(question.id)}
-      className={`rounded-2xl border transition-all cursor-pointer ${
+      className={`cursor-pointer rounded-lg border transition-colors ${
         isSelected
           ? "border-indigo-600 ring-2 ring-indigo-500/20 bg-white shadow-md"
           : "border-neutral-200/90 bg-white hover:border-neutral-300 shadow-2xs"

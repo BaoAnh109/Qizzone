@@ -6,8 +6,8 @@ import {
   Mail,
   Lock,
   User as UserIcon,
-  GraduationCap,
   UserCheck,
+  GraduationCap,
   ArrowRight,
   AlertCircle,
 } from "lucide-react";
@@ -28,7 +28,6 @@ export function Register() {
   const {
     register,
     handleSubmit,
-    setValue,
     control,
     formState: { errors },
   } = useForm<RegisterFormData>({
@@ -38,16 +37,23 @@ export function Register() {
       email: "",
       password: "",
       confirmPassword: "",
-      role: "teacher",
+      role: "student",
     },
   });
-
   const selectedRole = useWatch({ control, name: "role" });
 
   const onSubmit = async (data: RegisterFormData) => {
     setAuthError(null);
     try {
       const newUser = await registerUser(data);
+      if (newUser.approvalStatus === "pending") {
+        toast.info(
+          "Yêu cầu đã được gửi. Bạn chỉ có thể đăng nhập sau khi quản trị viên xét duyệt.",
+          "Đang chờ duyệt"
+        );
+        navigate("/login", { replace: true });
+        return;
+      }
       toast.success(
         `Chúc mừng ${newUser.fullName} đã đăng ký tài khoản thành công!`,
         "Đăng ký thành công"
@@ -65,63 +71,34 @@ export function Register() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
-          Đăng ký tài khoản
-        </h2>
-        <p className="mt-1 text-xs text-neutral-500">
-          Tạo tài khoản Giáo viên hoặc Học sinh để tham gia Qizzone
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
+          Tạo tài khoản
+        </h1>
+        <p className="mt-1.5 text-sm text-neutral-500">
+          Điền thông tin và chọn vai trò phù hợp.
         </p>
       </div>
 
-      {/* Role Selection Cards */}
-      <div>
-        <label className="block text-xs font-semibold text-neutral-700 mb-2">
-          Bạn tham gia với tư cách:
+      <div className="grid grid-cols-2 gap-3">
+        <label className={`cursor-pointer rounded-md border p-3.5 transition-colors ${selectedRole === "student" ? "border-blue-600 bg-blue-50 text-blue-950 ring-1 ring-blue-600" : "border-neutral-200 bg-white text-neutral-700 hover:border-blue-300"}`}>
+          <input type="radio" value="student" className="sr-only" {...register("role")} />
+          <UserCheck className="mb-2 h-5 w-5 text-blue-600" />
+          <span className="block text-xs font-semibold">Học sinh</span>
+          <span className="mt-1 block text-[11px] leading-4 text-neutral-500">Dùng được ngay sau đăng ký</span>
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setValue("role", "teacher", { shouldValidate: true })}
-            className={`flex flex-col items-center gap-1.5 rounded-xl border p-3.5 text-center transition cursor-pointer ${
-              selectedRole === "teacher"
-                ? "border-indigo-600 bg-indigo-50/70 text-indigo-950 font-semibold shadow-xs"
-                : "border-neutral-200 hover:border-neutral-300 text-neutral-700 bg-white"
-            }`}
-          >
-            <GraduationCap
-              className={`h-5 w-5 ${
-                selectedRole === "teacher" ? "text-indigo-600" : "text-neutral-500"
-              }`}
-            />
-            <span className="text-xs">Giáo viên</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setValue("role", "student", { shouldValidate: true })}
-            className={`flex flex-col items-center gap-1.5 rounded-xl border p-3.5 text-center transition cursor-pointer ${
-              selectedRole === "student"
-                ? "border-indigo-600 bg-indigo-50/70 text-indigo-950 font-semibold shadow-xs"
-                : "border-neutral-200 hover:border-neutral-300 text-neutral-700 bg-white"
-            }`}
-          >
-            <UserCheck
-              className={`h-5 w-5 ${
-                selectedRole === "student" ? "text-indigo-600" : "text-neutral-500"
-              }`}
-            />
-            <span className="text-xs">Học sinh</span>
-          </button>
-        </div>
-        {errors.role && (
-          <p className="mt-1 text-xs text-rose-600">{errors.role.message}</p>
-        )}
+        <label className={`cursor-pointer rounded-md border p-3.5 transition-colors ${selectedRole === "teacher" ? "border-blue-600 bg-blue-50 text-blue-950 ring-1 ring-blue-600" : "border-neutral-200 bg-white text-neutral-700 hover:border-blue-300"}`}>
+          <input type="radio" value="teacher" className="sr-only" {...register("role")} />
+          <GraduationCap className="mb-2 h-5 w-5 text-blue-600" />
+          <span className="block text-xs font-semibold">Giáo viên</span>
+          <span className="mt-1 block text-[11px] leading-4 text-neutral-500">Cần quản trị viên xét duyệt</span>
+        </label>
       </div>
+      {errors.role?.message && <p className="text-xs text-rose-600">{errors.role.message}</p>}
 
       {/* Backend / General Error Alert */}
       {authError && (
-        <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 border border-rose-200 text-xs font-medium text-rose-800 animate-in fade-in">
+        <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
           <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
           <span>{authError}</span>
         </div>
@@ -139,7 +116,7 @@ export function Register() {
         />
 
         <Input
-          label="Địa chỉ Email"
+          label="Email"
           type="email"
           placeholder="your.email@example.com"
           leftIcon={<Mail className="h-4 w-4" />}
@@ -172,7 +149,7 @@ export function Register() {
         <Button
           type="submit"
           variant="primary"
-          className="w-full h-11 text-sm font-semibold mt-2"
+          className="mt-2 h-11 w-full"
           isLoading={isLoading}
           rightIcon={<ArrowRight className="h-4 w-4" />}
         >
@@ -180,11 +157,11 @@ export function Register() {
         </Button>
       </form>
 
-      <div className="text-center text-xs text-neutral-500 pt-2 border-t border-neutral-100">
+      <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
         Đã có tài khoản?{" "}
         <Link
           to="/login"
-          className="font-semibold text-indigo-600 hover:text-indigo-700 underline"
+          className="font-semibold text-blue-700 hover:text-blue-800"
         >
           Đăng nhập ngay
         </Link>

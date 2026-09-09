@@ -44,7 +44,7 @@ export function SplitExamEditor() {
         <div className="max-w-4xl mx-auto space-y-6 pt-4">
           <div className="text-center space-y-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
-              Bóc tách đề thi thông minh bằng AI
+              Nhập và kiểm tra đề thi từ tệp
             </h1>
             <p className="text-xs sm:text-sm text-neutral-500 max-w-xl mx-auto">
               Tải lên file Word (<strong className="text-neutral-700">.docx</strong>), PDF hoặc Ảnh chụp đề thi. Hệ thống tự động nhận diện câu hỏi, công thức Toán LaTeX và đáp án đúng.
@@ -58,7 +58,7 @@ export function SplitExamEditor() {
         <div className="space-y-4">
           <BatchActionBar />
 
-          <div className="flex flex-col md:flex-row gap-0 h-[calc(100vh-210px)] min-h-[600px] rounded-2xl overflow-hidden border border-neutral-200 shadow-sm bg-neutral-100/50">
+          <div className="flex h-[calc(100vh-210px)] min-h-[600px] flex-col gap-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100/50 md:flex-row">
             {/* Left Column: Document Viewer */}
             <div
               className="w-full md:h-full overflow-hidden"
@@ -94,7 +94,7 @@ export function SplitExamEditor() {
                   />
                 ))
               ) : (
-                <div className="rounded-2xl border border-neutral-200 bg-white p-12 text-center text-neutral-400 space-y-2">
+                <div className="space-y-2 rounded-lg border border-neutral-200 bg-white p-12 text-center text-neutral-400">
                   <p className="text-sm font-bold text-neutral-800">
                     Không tìm thấy câu hỏi nào phù hợp với bộ lọc
                   </p>

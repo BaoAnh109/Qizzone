@@ -5,7 +5,6 @@ import {
   BookOpen,
   Clock,
   Award,
-  Sparkles,
   Search,
   CheckCircle2,
   ArrowRight,
@@ -42,10 +41,8 @@ export function StudentDashboard() {
 
   // Auto-finalize any expired exam sessions when visiting dashboard
   useEffect(() => {
-    if (publishedQuizzes.length > 0) {
-      checkAndAutoSubmitExpired(publishedQuizzes);
-    }
-  }, [publishedQuizzes, checkAndAutoSubmitExpired]);
+    void checkAndAutoSubmitExpired();
+  }, [checkAndAutoSubmitExpired]);
 
   // In-progress active sessions count (only valid within time)
   const inProgressQuizzes = publishedQuizzes.filter((q) => {
@@ -92,51 +89,46 @@ export function StudentDashboard() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Header Welcome Banner */}
-      <div className="flex flex-col justify-between gap-6 rounded-3xl bg-linear-to-r from-indigo-900 via-indigo-800 to-violet-900 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/10 md:flex-row md:items-center">
-        <div className="space-y-2 max-w-xl">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-indigo-200 backdrop-blur-xs">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Cổng thi trực tuyến Học sinh</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}! 🎓
+    <div className="space-y-7 pb-16">
+      <div className="grid gap-5 border-b border-neutral-200 pb-7 lg:grid-cols-[1fr_360px] lg:items-end">
+        <div>
+          <p className="text-sm font-medium text-blue-700">Trang học sinh</p>
+          <h1 className="page-heading mt-1">
+            Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
           </h1>
-          <p className="text-xs sm:text-sm text-indigo-200/90 leading-relaxed">
-            Nhập mã phòng thi từ Thầy/Cô hoặc chọn bài thi đang mở để bắt đầu thử sức và xem kết quả tức thì.
+          <p className="page-description">
+            Nhập mã phòng do giáo viên cung cấp hoặc chọn một bài thi đang mở.
           </p>
         </div>
 
-        {/* 1-Click Join Room Code Box */}
-        <div className="w-full md:max-w-xs rounded-2xl bg-white/10 p-4 backdrop-blur-md border border-white/20 shadow-lg space-y-3">
-          <label className="text-xs font-bold uppercase tracking-wider text-indigo-200 block">
-            Tham gia phòng thi bằng mã:
+        <div className="space-y-2 rounded-lg border border-neutral-200 bg-white p-4">
+          <label className="block text-sm font-medium text-neutral-800" htmlFor="room-code">
+            Mã phòng thi
           </label>
-          <form onSubmit={handleJoinByCode} className="space-y-2">
+          <form onSubmit={handleJoinByCode} className="flex gap-2">
             <input
+              id="room-code"
               type="text"
-              placeholder="VD: QZ9821"
+              placeholder="Ví dụ: QZ9821"
               maxLength={6}
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              className="w-full text-center font-mono font-black text-lg tracking-widest uppercase rounded-xl bg-white text-neutral-900 placeholder:text-neutral-400 py-2.5 px-3 focus:outline-hidden focus:ring-2 focus:ring-white shadow-inner"
+              className="h-10 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-3 text-center font-mono text-sm font-semibold uppercase tracking-widest text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
             <Button
               type="submit"
-              variant="default"
-              className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm h-10 shadow-sm"
+              variant="primary"
               leftIcon={<LogIn className="h-4 w-4" />}
             >
-              Vào phòng thi ngay
+              Tham gia
             </Button>
           </form>
         </div>
       </div>
 
       {/* Overview Stats */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Card hoverEffect>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-neutral-500">Phòng thi đang mở</p>
@@ -144,13 +136,13 @@ export function StudentDashboard() {
                 {publishedQuizzes.length}
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-700">
               <BookOpen className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card hoverEffect className={inProgressQuizzes.length > 0 ? "border-amber-300 bg-amber-50/20" : ""}>
+        <Card className={inProgressQuizzes.length > 0 ? "border-amber-300 bg-amber-50/20" : ""}>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-neutral-500">Bài đang làm dở</p>
@@ -158,13 +150,13 @@ export function StudentDashboard() {
                 {inProgressQuizzes.length}
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100 text-amber-700">
               <Timer className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card hoverEffect>
+        <Card>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-neutral-500">Bài đã hoàn thành</p>
@@ -172,13 +164,13 @@ export function StudentDashboard() {
                 {studentResults.length}
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
 
-        <Card hoverEffect>
+        <Card>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-neutral-500">Điểm trung bình</p>
@@ -191,7 +183,7 @@ export function StudentDashboard() {
                   : "--"}
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-neutral-100 text-neutral-700">
               <TrendingUp className="h-5 w-5" />
             </div>
           </CardContent>
@@ -202,8 +194,8 @@ export function StudentDashboard() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-indigo-600" />
+            <h2 className="section-heading flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-blue-600" />
               <span>Phòng thi sẵn sàng tham gia</span>
             </h2>
             <p className="text-xs text-neutral-500 mt-0.5">
@@ -222,7 +214,7 @@ export function StudentDashboard() {
         </div>
 
         {filteredQuizzes.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filteredQuizzes.map((quiz) => {
               const activeSession = activeSessions[quiz.id];
               const isInProgress = isSessionInProgress(activeSession);
@@ -235,13 +227,12 @@ export function StudentDashboard() {
               return (
                 <Card
                   key={quiz.id}
-                  hoverEffect
                   className={`flex flex-col justify-between overflow-hidden transition ${
                     isInProgress
-                      ? "border-amber-300 ring-2 ring-amber-400/20 bg-amber-50/10 shadow-sm"
+                      ? "border-amber-300 bg-amber-50/10"
                       : latestResult
-                      ? "border-emerald-200/90 shadow-2xs"
-                      : "border-neutral-200/90 shadow-xs"
+                      ? "border-emerald-200"
+                      : "border-neutral-200"
                   }`}
                 >
                   <CardHeader className={`pb-3 ${isInProgress ? "bg-amber-50/50" : "bg-neutral-50/40"}`}>

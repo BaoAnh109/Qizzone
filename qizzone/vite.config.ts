@@ -18,6 +18,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes("node_modules/pdfjs-dist")) {
+            return "pdf-parser";
+          }
+          if (
+            id.includes("node_modules/mammoth") ||
+            id.includes("node_modules/jszip") ||
+            id.includes("node_modules/@xmldom")
+          ) {
+            return "document-parser";
+          }
           if (
             id.includes("node_modules/katex") ||
             id.includes("node_modules/dompurify")
