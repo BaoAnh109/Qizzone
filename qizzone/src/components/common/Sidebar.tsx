@@ -3,11 +3,10 @@ import {
   LayoutDashboard,
   PlusCircle,
   FileQuestion,
-  Palette,
   GraduationCap,
-  Sparkles,
   X,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
@@ -37,11 +36,6 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       path: "/teacher/quizzes",
       icon: FileQuestion,
     },
-    {
-      label: "Design System (UI)",
-      path: "/design-system",
-      icon: Palette,
-    },
   ];
 
   const studentMenuItems = [
@@ -51,30 +45,34 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       icon: BookOpen,
       end: true,
     },
-    {
-      label: "Design System (UI)",
-      path: "/design-system",
-      icon: Palette,
-    },
   ];
 
-  const menuItems =
-    user?.role === "teacher" ? teacherMenuItems : studentMenuItems;
+  const adminMenuItems = [
+    {
+      label: "Duyệt giáo viên",
+      path: "/admin/teacher-approvals",
+      icon: ShieldCheck,
+    },
+    ...teacherMenuItems,
+  ];
+
+  const menuItems = user?.role === "admin"
+    ? adminMenuItems
+    : user?.role === "teacher"
+      ? teacherMenuItems
+      : studentMenuItems;
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-white">
       {/* Brand Logo Header */}
-      <div className="flex h-16 items-center justify-between border-b border-neutral-200/80 px-6">
-        <NavLink to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs">
-            <GraduationCap className="h-5 w-5" />
+      <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-5">
+        <NavLink to="/" className="flex items-center gap-2.5" onClick={onCloseMobile}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <GraduationCap className="h-[18px] w-[18px]" />
           </div>
           <div className="leading-tight">
-            <span className="text-lg font-black tracking-tight text-neutral-950">
-              Qiz<span className="text-indigo-600">zone</span>
-            </span>
-            <span className="ml-1.5 inline-block rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
-              PRO
+            <span className="text-lg font-bold tracking-tight text-neutral-950">
+              Qiz<span className="text-blue-600">zone</span>
             </span>
           </div>
         </NavLink>
@@ -91,9 +89,9 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <p className="px-3 mb-2 text-[11px] font-semibold tracking-wider text-neutral-400 uppercase">
-          {user?.role === "teacher" ? "Giáo viên" : "Học sinh"} Navigation
+      <div className="flex-1 overflow-y-auto px-3 py-5">
+        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+          {user?.role === "admin" ? "Quản trị" : user?.role === "teacher" ? "Giáo viên" : "Học sinh"}
         </p>
 
         <nav className="space-y-1">
@@ -107,9 +105,9 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-150",
+                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-150",
                     isActive
-                      ? "bg-indigo-600 text-white shadow-xs shadow-indigo-200"
+                      ? "bg-blue-50 text-blue-700"
                       : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
                   )
                 }
@@ -122,17 +120,8 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Footer Banner */}
-      <div className="border-t border-neutral-200/80 p-4">
-        <div className="rounded-xl bg-linear-to-br from-indigo-50 to-violet-50 p-3.5 border border-indigo-100/70">
-          <div className="flex items-center gap-2 text-indigo-700 font-semibold text-xs mb-1">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Qizzone Engine v1.0</span>
-          </div>
-          <p className="text-[11px] text-neutral-500 leading-normal">
-            Hỗ trợ công thức Toán LaTeX, Chấm điểm tức thì & Chống mất bài.
-          </p>
-        </div>
+      <div className="border-t border-neutral-200 px-5 py-4">
+        <p className="text-xs leading-5 text-neutral-500">Qizzone · Quản lý thi trực tuyến</p>
       </div>
     </div>
   );
@@ -140,7 +129,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden w-64 shrink-0 border-r border-neutral-200/80 bg-white lg:block">
+      <aside className="hidden w-60 shrink-0 border-r border-neutral-200 bg-white lg:block">
         {sidebarContent}
       </aside>
 
@@ -149,13 +138,13 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-neutral-950/50 backdrop-blur-xs transition-opacity animate-in fade-in"
+            className="fixed inset-0 bg-neutral-950/50"
             onClick={onCloseMobile}
             aria-hidden="true"
           />
 
           {/* Drawer Panel */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[80vw] bg-white shadow-2xl transition-transform transform animate-in slide-in-from-left duration-200">
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-xl">
             {sidebarContent}
           </div>
         </div>

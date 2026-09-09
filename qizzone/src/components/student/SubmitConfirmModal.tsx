@@ -75,8 +75,8 @@ export function SubmitConfirmModal({
         }
       >
         <div className="space-y-4 text-sm">
-          <div className="rounded-2xl bg-rose-50 border-2 border-rose-200 p-4 text-rose-950 space-y-2 text-center">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 mb-1">
+          <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-4 text-center text-rose-950">
+            <div className="mb-1 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
               <ShieldAlert className="h-6 w-6" />
             </div>
             <h4 className="font-extrabold text-base text-rose-900">

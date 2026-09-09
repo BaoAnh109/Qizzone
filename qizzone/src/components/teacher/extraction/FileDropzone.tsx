@@ -347,7 +347,7 @@ D. $u_5 = 15$
           />
 
           <div className="max-w-md mx-auto space-y-4">
-            <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-100/80 text-indigo-700 shadow-inner">
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
               <UploadCloud className="h-10 w-10 animate-pulse" />
             </div>
 
@@ -461,7 +461,7 @@ BẢNG ĐÁP ÁN:
       )}
 
       {/* 1-Click Sample Demos */}
-      <div className="rounded-2xl bg-white p-5 border border-neutral-200 shadow-2xs space-y-3">
+      <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-neutral-700 uppercase tracking-wider flex items-center gap-1.5">
             <Zap className="h-4 w-4 text-amber-500 fill-current" />

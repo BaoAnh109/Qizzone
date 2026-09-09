@@ -72,7 +72,7 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-neutral-950/55 transition-opacity"
         onClick={() => closeOnOverlayClick && onClose()}
         aria-hidden="true"
       />
@@ -80,8 +80,8 @@ export function Modal({
       {/* Modal Dialog Content */}
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-2xl bg-white shadow-2xl border border-neutral-200/80",
-          "transition-all transform animate-in zoom-in-95 duration-200",
+          "relative w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl",
+          "transition-opacity duration-150",
           sizeStyles[size],
           className
         )}

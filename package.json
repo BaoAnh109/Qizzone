@@ -1,0 +1,10 @@
+{
+  "name": "qizzone-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix qizzone run dev",
+    "build": "npm --prefix qizzone run build",
+    "lint": "npm --prefix qizzone run lint",
+    "test": "npm --prefix qizzone run test"
+  }
+}

@@ -12,7 +12,6 @@ import {
   Filter,
   Eye,
   AlertCircle,
-  Sparkles,
 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
@@ -193,7 +192,7 @@ export function QuizResultsView() {
                 {totalSubmissions}
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-700">
               <Award className="h-5 w-5" />
             </div>
           </CardContent>
@@ -207,7 +206,7 @@ export function QuizResultsView() {
                 {averageScore} <span className="text-sm font-normal text-neutral-400">/ 10</span>
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-neutral-100 text-neutral-700">
               <TrendingUp className="h-5 w-5" />
             </div>
           </CardContent>
@@ -221,8 +220,8 @@ export function QuizResultsView() {
                 {maxScore} <span className="text-xs font-normal text-neutral-400">/ {minScore}</span>
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Sparkles className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+              <Award className="h-5 w-5" />
             </div>
           </CardContent>
         </Card>
@@ -235,7 +234,7 @@ export function QuizResultsView() {
                 {passRate}%
               </p>
             </div>
-            <div className="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-700">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </CardContent>
@@ -243,7 +242,7 @@ export function QuizResultsView() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
+      <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <Input
             placeholder="Tìm theo tên học sinh, lớp..."
