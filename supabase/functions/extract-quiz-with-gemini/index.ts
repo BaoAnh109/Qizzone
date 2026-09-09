@@ -27,7 +27,10 @@ Deno.serve(async req => {
     const { data: allowed, error } = await databaseAdmin().rpc('consume_ai_quota', { p_uid: user.uid });
     if (error) throw error;
     if (!allowed) throw new Error('RATE_LIMIT');
-    const key = Deno.env.get('GEMINI_API_KEY');
+    // `Gemini` was the original production secret name. Keep it as a
+    // compatibility fallback so existing deployments continue to work while
+    // new environments use the conventional GEMINI_API_KEY name.
+    const key = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini');
     if (!key) throw new Error('NOT_CONFIGURED');
     model = Deno.env.get('GEMINI_MODEL') || 'gemini-2.5-flash';
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {

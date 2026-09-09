@@ -83,7 +83,7 @@ export function BatchActionBar() {
     toast.info(`🤖 AI đang bắt đầu giải tự động ${unansweredCount} câu hỏi...`);
 
     try {
-      const { solvedCount, durationSeconds } = await solveUnansweredWithAI(
+      const { solvedCount, durationSeconds, failureMessage } = await solveUnansweredWithAI(
         (_current, _total, message) => {
           if (message) {
             setSolveStatusMessage(message);
@@ -104,10 +104,10 @@ export function BatchActionBar() {
           `🎉 AI đã hoàn tất giải toàn bộ ${solvedCount}/${unansweredCount} câu hỏi trong ${totalTime}s!`
         );
       } else {
-        toast.warning("Không thể kết nối AI. Vui lòng kiểm tra lại kết nối mạng!");
+        toast.warning(failureMessage || "AI không trả về đáp án hợp lệ. Vui lòng thử lại!");
       }
-    } catch {
-      toast.error("Quá trình AI giải câu hỏi gặp sự cố.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Quá trình AI giải câu hỏi gặp sự cố.");
     } finally {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);

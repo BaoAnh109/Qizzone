@@ -39,7 +39,7 @@ interface ExtractionState {
   applyBatchAnswerKey: (answerKeyString: string) => { updatedCount: number };
   solveUnansweredWithAI: (
     onStepProgress?: (current: number, total: number, message?: string) => void
-  ) => Promise<{ solvedCount: number; durationSeconds: number }>;
+  ) => Promise<{ solvedCount: number; durationSeconds: number; failureMessage?: string }>;
   clearAll: () => void;
 }
 
@@ -251,7 +251,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     }
 
     setIsProcessing(true, 10);
-    const { updatedQuestions, solvedCount, durationSeconds } = await solveMissingAnswersWithAI(
+    const { updatedQuestions, solvedCount, durationSeconds, failureMessage } = await solveMissingAnswersWithAI(
       extractionResult.questions,
       (current, total, message) => {
         const progress = Math.round(10 + (current / total) * 85);
@@ -271,7 +271,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
       processProgress: 100,
     });
 
-    return { solvedCount, durationSeconds };
+    return { solvedCount, durationSeconds, failureMessage };
   },
 
   clearAll: () =>

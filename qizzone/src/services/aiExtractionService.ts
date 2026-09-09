@@ -1,6 +1,6 @@
 import type { ExtractionResult, ExtractedQuestion, DetectionStrategy } from '@/types/extractor';
 import type { OptionId } from '@/types/quiz';
-import { edge } from '@/lib/cloud';
+import { edge, errorMessage } from '@/lib/cloud';
 import { parseRawExamText } from '@/utils/parsers/ruleExtractor';
 
 export interface AIExtractParams {
@@ -95,11 +95,12 @@ ${questions}`;
 export async function solveMissingAnswersWithAI(
   questions: ExtractedQuestion[],
   onProgress?: (current: number, total: number, message?: string) => void,
-): Promise<{ updatedQuestions: ExtractedQuestion[]; solvedCount: number; durationSeconds: number }> {
+): Promise<{ updatedQuestions: ExtractedQuestion[]; solvedCount: number; durationSeconds: number; failureMessage?: string }> {
   const start = performance.now();
   const unanswered = questions.filter(question => !question.correctAnswers?.length);
   if (unanswered.length === 0) return { updatedQuestions: questions, solvedCount: 0, durationSeconds: 0 };
   const solutions = new Map<string, { answer: OptionId; explanation: string }>();
+  let failureMessage: string | undefined;
   const batchSize = unanswered.length <= 60 ? unanswered.length : 45;
   onProgress?.(0, unanswered.length, `Đang xử lý ${unanswered.length} câu hỏi qua Gemini AI...`);
   for (let offset = 0; offset < unanswered.length; offset += batchSize) {
@@ -116,8 +117,9 @@ export async function solveMissingAnswersWithAI(
         const target = byId || byOrder || batch[index];
         if (target) solutions.set(target.id, { answer, explanation: item.explanation || item.explain || item.reason || 'AI phân tích đáp án.' });
       });
-    } catch {
+    } catch (error) {
       // Keep unanswered questions visible for manual review when AI is unavailable.
+      failureMessage ??= errorMessage(error);
     }
     onProgress?.(Math.min(offset + batch.length, unanswered.length), unanswered.length, `Đã xử lý ${Math.min(offset + batch.length, unanswered.length)}/${unanswered.length} câu...`);
   }
@@ -130,5 +132,5 @@ export async function solveMissingAnswersWithAI(
   });
   const durationSeconds = Math.round((performance.now() - start) / 100) / 10;
   onProgress?.(unanswered.length, unanswered.length, `Hoàn thành giải ${solvedCount}/${unanswered.length} câu trong ${durationSeconds}s`);
-  return { updatedQuestions, solvedCount, durationSeconds };
+  return { updatedQuestions, solvedCount, durationSeconds, failureMessage };
 }
