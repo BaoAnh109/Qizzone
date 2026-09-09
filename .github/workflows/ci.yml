@@ -1,4 +1,4 @@
-name: Qizzone Enterprise CI Pipeline
+name: Qizzone CI
 
 on:
   push:
@@ -36,6 +36,9 @@ jobs:
 
       - name: Code Quality & Lint Check
         run: npm run lint
+
+      - name: Run Tests
+        run: npm test
 
       - name: TypeScript Compile & Vite Production Build
         run: npm run build

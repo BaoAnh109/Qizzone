@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, User as UserIcon, Menu, Bell } from "lucide-react";
+import { LogOut, User as UserIcon, Menu } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Badge } from "@/components/ui/Badge";
 
@@ -14,8 +14,8 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout().catch(() => undefined);
     navigate("/login", { replace: true });
   };
 
@@ -23,13 +23,13 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
     if (location.pathname.startsWith("/teacher/create-quiz")) return "Soạn đề thi mới";
     if (location.pathname.startsWith("/teacher/quizzes")) return "Quản lý danh sách đề";
     if (location.pathname.startsWith("/teacher")) return "Bảng điều khiển Giáo viên";
-    if (location.pathname.startsWith("/design-system")) return "Design System UI Primitives";
+    if (location.pathname.startsWith("/admin/teacher-approvals")) return "Duyệt tài khoản Giáo viên";
     if (location.pathname.startsWith("/student")) return "Cổng làm bài Học sinh";
     return "Tổng quan";
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-neutral-200/80 bg-white/90 backdrop-blur-md">
+    <header className="sticky top-0 z-30 h-16 border-b border-neutral-200 bg-white">
       <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left: Mobile hamburger & breadcrumbs */}
         <div className="flex items-center gap-3">
@@ -48,44 +48,29 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
             <h2 className="text-sm font-semibold text-neutral-900 leading-none">
               {getPageTitle()}
             </h2>
-            <p className="mt-1 hidden text-xs text-neutral-500 sm:block">
-              Hệ thống thi trắc nghiệm trực tuyến thế hệ mới
-            </p>
           </div>
         </div>
 
-        {/* Right: User status, notifications & Actions */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <button
-            type="button"
-            aria-label="Thông báo"
-            className="relative rounded-full p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 transition cursor-pointer"
-          >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-indigo-600" />
-          </button>
-
-          <div className="h-6 w-px bg-neutral-200" />
-
+        <div className="flex items-center gap-3">
           {/* User profile info */}
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <div className="flex items-center gap-2 justify-end">
-                <p className="text-xs font-semibold text-neutral-900">
+                <p className="text-sm font-medium text-neutral-900">
                   {user?.fullName || user?.email || "Người dùng"}
                 </p>
                 <Badge
                   size="sm"
-                  variant={user?.role === "teacher" ? "primary" : "success"}
+                  variant={user?.role !== "student" ? "primary" : "success"}
                 >
-                  {user?.role === "teacher" ? "Giáo viên" : "Học sinh"}
+                  {user?.role === "admin" ? "Quản trị" : user?.role === "teacher" ? "Giáo viên" : "Học sinh"}
                 </Badge>
               </div>
-              <p className="text-[11px] text-neutral-500">{user?.email}</p>
+              <p className="mt-0.5 max-w-48 truncate text-[11px] text-neutral-500">{user?.email}</p>
             </div>
 
             {/* Avatar */}
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-linear-to-tr from-indigo-600 to-violet-500 text-sm font-bold text-white shadow-xs">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
               {user?.fullName?.charAt(0).toUpperCase() || (
                 <UserIcon className="h-4 w-4" />
               )}
@@ -94,9 +79,9 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
             {/* Logout button */}
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={() => void handleLogout()}
               title="Đăng xuất"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition cursor-pointer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-200 px-3 text-xs font-medium text-neutral-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Đăng xuất</span>

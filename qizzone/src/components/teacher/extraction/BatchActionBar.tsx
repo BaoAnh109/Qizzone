@@ -84,7 +84,6 @@ export function BatchActionBar() {
 
     try {
       const { solvedCount, durationSeconds } = await solveUnansweredWithAI(
-        undefined,
         (_current, _total, message) => {
           if (message) {
             setSolveStatusMessage(message);
@@ -118,7 +117,7 @@ export function BatchActionBar() {
     }
   };
 
-  const handleFinalizeQuiz = () => {
+  const handleFinalizeQuiz = async () => {
     if (questions.length === 0) {
       toast.error("Đề thi chưa có câu hỏi nào để xuất bản");
       return;
@@ -141,7 +140,7 @@ export function BatchActionBar() {
         points: q.points,
       }));
 
-      const newQuiz = createQuiz({
+      const newQuiz = await createQuiz({
         title: extractionResult?.title || "Đề thi bóc tách từ tài liệu",
         subject: extractionResult?.subject || "Toán học",
         description: `Bóc tách tự động từ file ${extractionResult?.fileName || "tài liệu"}.`,
@@ -173,7 +172,7 @@ export function BatchActionBar() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
+      <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4">
         {/* Top Row: Navigation and Main CTA */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-100 pb-3">
           <div className="flex items-center gap-3">

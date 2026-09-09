@@ -60,12 +60,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 : undefined
             }
             className={cn(
-              "w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-neutral-900 placeholder:text-neutral-400",
-              "transition-colors duration-150 shadow-xs",
-              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1",
+              "h-10 w-full rounded-md border bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400",
+              "transition-colors duration-150",
+              "focus-visible:outline-hidden focus-visible:ring-2",
               error
                 ? "border-rose-500 focus-visible:border-rose-500 focus-visible:ring-rose-500 text-rose-900"
-                : "border-neutral-300 focus-visible:border-indigo-600 focus-visible:ring-indigo-500",
+                : "border-neutral-300 focus-visible:border-blue-600 focus-visible:ring-blue-200",
               disabled && "cursor-not-allowed bg-neutral-50 text-neutral-400 opacity-70",
               leftIcon && "pl-10",
               rightIcon && "pr-10",

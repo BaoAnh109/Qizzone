@@ -24,9 +24,7 @@ export const registerSchema = z
       .string()
       .min(1, "Vui lòng nhập địa chỉ email")
       .email("Địa chỉ email không đúng định dạng"),
-    role: z.enum(["teacher", "student"], {
-      message: "Vui lòng chọn vai trò Giáo viên hoặc Học sinh",
-    }),
+    role: z.enum(["student", "teacher"]),
     password: z
       .string()
       .min(1, "Vui lòng nhập mật khẩu")

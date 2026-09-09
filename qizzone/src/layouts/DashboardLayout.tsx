@@ -7,7 +7,7 @@ export function DashboardLayout() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-neutral-50/70">
+    <div className="flex min-h-screen bg-[#f6f7f9]">
       {/* Sidebar (Desktop + Mobile Drawer) */}
       <Sidebar
         isOpenMobile={isMobileSidebarOpen}
@@ -20,7 +20,7 @@ export function DashboardLayout() {
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="mx-auto w-full max-w-[1440px] flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

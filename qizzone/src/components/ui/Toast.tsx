@@ -36,7 +36,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     <div
       role="alert"
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border p-4 shadow-lg backdrop-blur-xs",
+        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-white p-4 shadow-lg",
         "animate-in slide-in-from-top-2 sm:slide-in-from-bottom-2 duration-200 transition-all",
         typeStyles[toast.type]
       )}

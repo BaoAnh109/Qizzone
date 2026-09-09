@@ -1,41 +1,46 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { ExamLayout } from "@/layouts/ExamLayout";
-
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
-import Unauthorized from "@/pages/auth/Unauthorized";
-import NotFound from "@/pages/auth/NotFound";
-
-import TeacherDashboard from "@/pages/teacher/TeacherDashboard";
-import CreateQuiz from "@/pages/teacher/CreateQuiz";
-import QuizList from "@/pages/teacher/QuizList";
-import QuestionReview from "@/pages/teacher/QuestionReview";
-import QuizResultsView from "@/pages/teacher/QuizResultsView";
-import SplitExamEditor from "@/pages/teacher/SplitExamEditor";
-
-import StudentDashboard from "@/pages/student/StudentDashboard";
-import ExamEntry from "@/pages/student/ExamEntry";
-import QuizRoom from "@/pages/student/QuizRoom";
-import Result from "@/pages/student/Result";
-
-import DesignSystemShowcase from "@/pages/DesignSystemShowcase";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { useAuthStore } from "@/store/authStore";
 
+const Login = lazy(() => import("@/pages/auth/Login"));
+const Register = lazy(() => import("@/pages/auth/Register"));
+const Unauthorized = lazy(() => import("@/pages/auth/Unauthorized"));
+const NotFound = lazy(() => import("@/pages/auth/NotFound"));
+const TeacherDashboard = lazy(() => import("@/pages/teacher/TeacherDashboard"));
+const CreateQuiz = lazy(() => import("@/pages/teacher/CreateQuiz"));
+const QuizList = lazy(() => import("@/pages/teacher/QuizList"));
+const QuestionReview = lazy(() => import("@/pages/teacher/QuestionReview"));
+const QuizResultsView = lazy(() => import("@/pages/teacher/QuizResultsView"));
+const SplitExamEditor = lazy(() => import("@/pages/teacher/SplitExamEditor"));
+const StudentDashboard = lazy(() => import("@/pages/student/StudentDashboard"));
+const ExamEntry = lazy(() => import("@/pages/student/ExamEntry"));
+const QuizRoom = lazy(() => import("@/pages/student/QuizRoom"));
+const Result = lazy(() => import("@/pages/student/Result"));
+const TeacherApprovals = lazy(() => import("@/pages/admin/TeacherApprovals"));
+
 function RootRedirect() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isInitialized } = useAuthStore();
+  if (!isInitialized) return <AuthLoading />;
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
-  return <Navigate to={user.role === "teacher" ? "/teacher" : "/student"} replace />;
+  const home = user.role === "admin" ? "/admin/teacher-approvals" : user.role === "student" ? "/student" : "/teacher";
+  return <Navigate to={home} replace />;
+}
+
+function AuthLoading() {
+  return <div className="min-h-screen grid place-items-center text-sm text-neutral-500">Đang khôi phục phiên đăng nhập...</div>;
 }
 
 export function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
+      <Suspense fallback={<AuthLoading />}>
+        <Routes>
         {/* Root Redirect */}
         <Route path="/" element={<RootRedirect />} />
 
@@ -48,13 +53,8 @@ export function AppRoutes() {
         {/* Error Pages */}
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* Design System Showcase */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/design-system" element={<DesignSystemShowcase />} />
-        </Route>
-
         {/* Protected Teacher Routes */}
-        <Route element={<ProtectedRoute allowedRole="teacher" />}>
+        <Route element={<ProtectedRoute allowedRoles={["teacher", "admin"]} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/teacher/create-quiz" element={<CreateQuiz />} />
@@ -72,6 +72,13 @@ export function AppRoutes() {
               path="/teacher/extract-quiz"
               element={<SplitExamEditor />}
             />
+          </Route>
+        </Route>
+
+        {/* Protected Admin Routes */}
+        <Route element={<ProtectedRoute allowedRole="admin" />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/admin/teacher-approvals" element={<TeacherApprovals />} />
           </Route>
         </Route>
 
@@ -93,7 +100,8 @@ export function AppRoutes() {
 
         {/* 404 Catch-all */}
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

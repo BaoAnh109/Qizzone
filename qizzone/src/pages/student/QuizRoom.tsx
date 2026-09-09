@@ -6,10 +6,12 @@ import {
   Flag,
   ChevronLeft,
   ChevronRight,
+  Cloud,
   CloudCheck,
+  CloudOff,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
+  ListChecks,
   RotateCcw,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
@@ -43,7 +45,9 @@ export function QuizRoom() {
   const setQuestionIndex = useExamSessionStore((state) => state.setQuestionIndex);
   const submitExam = useExamSessionStore((state) => state.submitExam);
   const initSession = useExamSessionStore((state) => state.initSession);
+  const flushSession = useExamSessionStore((state) => state.flushSession);
   const isSubmitting = useExamSessionStore((state) => state.isSubmitting);
+  const saveStatus = useExamSessionStore((state) => quizId ? state.saveStatus[quizId] || 'idle' : 'idle');
 
   const toast = useToast();
 
@@ -53,7 +57,7 @@ export function QuizRoom() {
   // Auto-init session on mount if not exists
   useEffect(() => {
     if (quiz && !session) {
-      initSession({
+      void initSession({
         quiz,
         studentId: user?.id || "guest-student",
         studentName: cleanStudentName(user?.fullName || user?.name),
@@ -61,15 +65,38 @@ export function QuizRoom() {
     }
   }, [quiz, session, initSession, user]);
 
-  const [currentIndex, setCurrentIndex] = useState(
-    session?.currentQuestionIndex || 0
-  );
+  const currentIndex = session?.currentQuestionIndex || 0;
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!quizId) return;
+    const flush = () => { void flushSession(quizId).catch(() => undefined); };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('online', flush);
+    return () => {
+      flush();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('online', flush);
+    };
+  }, [quizId, flushSession]);
 
   const questions: Question[] = useMemo(() => {
     if (!quiz) return [];
-    return quiz.questions;
-  }, [quiz]);
+    const order = session?.questionOrder || quiz.questions.map(question => question.id);
+    return order.flatMap(id => {
+      const question = quiz.questions.find(item => item.id === id);
+      if (!question) return [];
+      const optionOrder = session?.optionOrder?.[question.id];
+      if (!optionOrder) return [question];
+      return [{ ...question, options: optionOrder.flatMap(optionId => {
+        const option = question.options.find(item => item.id === optionId);
+        return option ? [option] : [];
+      }) }];
+    });
+  }, [quiz, session?.questionOrder, session?.optionOrder]);
 
   const currentQuestion: Question | undefined = questions[currentIndex];
 
@@ -82,10 +109,10 @@ export function QuizRoom() {
       : false;
 
   // Submit Handler
-  const handleFinalSubmit = useCallback(() => {
+  const handleFinalSubmit = useCallback(async () => {
     if (!quiz || !session) return;
     try {
-      const result = submitExam({
+      const result = await submitExam({
         quiz,
         studentId: session.studentId,
         studentName: session.studentName,
@@ -109,13 +136,6 @@ export function QuizRoom() {
       handleFinalSubmit();
     },
   });
-
-  // Keep question index synced in session store
-  useEffect(() => {
-    if (quiz) {
-      setQuestionIndex(quiz.id, currentIndex);
-    }
-  }, [currentIndex, quiz, setQuestionIndex]);
 
   // Handle Option Select
   const handleSelectOption = (optId: OptionId) => {
@@ -174,11 +194,23 @@ export function QuizRoom() {
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Auto-Save Buffer Cloud Icon */}
             <div
-              title="Đáp án được lưu tự động"
-              className="flex items-center gap-1 text-xs text-emerald-600 font-medium px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-100 hidden md:flex"
+              title={saveStatus === 'error' ? 'Chưa thể lưu. Hệ thống sẽ thử lại khi có mạng.' : 'Đáp án được lưu tự động'}
+              className={`items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border hidden md:flex ${
+                saveStatus === 'error'
+                  ? 'text-rose-700 bg-rose-50 border-rose-200'
+                  : saveStatus === 'saving'
+                    ? 'text-amber-700 bg-amber-50 border-amber-200'
+                    : 'text-emerald-600 bg-emerald-50 border-emerald-100'
+              }`}
             >
-              <CloudCheck className="h-4 w-4 text-emerald-600" />
-              <span>Đã lưu</span>
+              {saveStatus === 'error' ? (
+                <CloudOff className="h-4 w-4" />
+              ) : saveStatus === 'saving' ? (
+                <Cloud className="h-4 w-4 animate-pulse" />
+              ) : (
+                <CloudCheck className="h-4 w-4" />
+              )}
+              <span>{saveStatus === 'error' ? 'Lỗi lưu' : saveStatus === 'saving' ? 'Đang lưu...' : 'Đã lưu'}</span>
             </div>
 
             {/* Countdown Timer Badge */}
@@ -284,14 +316,14 @@ export function QuizRoom() {
                           key={opt.id}
                           type="button"
                           onClick={() => handleSelectOption(opt.id)}
-                          className={`w-full text-left flex items-start gap-4 rounded-2xl border p-4 sm:p-5 transition cursor-pointer ${
+                          className={`flex w-full cursor-pointer items-start gap-4 rounded-lg border p-4 text-left transition-colors sm:p-5 ${
                             isSelected
-                              ? "border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/40 shadow-xs"
+                              ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100"
                               : "border-neutral-200 bg-white hover:border-indigo-300 hover:bg-neutral-50/80"
                           }`}
                         >
                           <span
-                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl font-bold text-xs sm:text-sm transition ${
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold transition sm:text-sm ${
                               isSelected
                                 ? "bg-indigo-600 text-white shadow-2xs"
                                 : "bg-neutral-100 text-neutral-700 border border-neutral-200"
@@ -317,7 +349,7 @@ export function QuizRoom() {
                     <Button
                       variant="outline"
                       disabled={currentIndex === 0}
-                      onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                      onClick={() => setQuestionIndex(quiz.id, Math.max(0, currentIndex - 1))}
                       leftIcon={<ChevronLeft className="h-4 w-4" />}
                     >
                       Câu trước
@@ -326,11 +358,7 @@ export function QuizRoom() {
                     {currentIndex < questions.length - 1 ? (
                       <Button
                         variant="primary"
-                        onClick={() =>
-                          setCurrentIndex((prev) =>
-                            Math.min(questions.length - 1, prev + 1)
-                          )
-                        }
+                        onClick={() => setQuestionIndex(quiz.id, Math.min(questions.length - 1, currentIndex + 1))}
                         rightIcon={<ChevronRight className="h-4 w-4" />}
                       >
                         Câu tiếp theo
@@ -357,7 +385,7 @@ export function QuizRoom() {
               <CardHeader className="pb-3 border-b border-neutral-100">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-bold flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-indigo-600" />
+                    <ListChecks className="h-4 w-4 text-blue-600" />
                     <span>Danh sách câu hỏi</span>
                   </CardTitle>
                   <span className="text-xs font-semibold text-neutral-500">
@@ -404,7 +432,7 @@ export function QuizRoom() {
                       <button
                         key={q.id || idx}
                         type="button"
-                        onClick={() => setCurrentIndex(idx)}
+                        onClick={() => setQuestionIndex(quiz.id, idx)}
                         className={`h-10 w-full rounded-xl text-xs flex items-center justify-center font-mono transition cursor-pointer relative ${bgClass} ${
                           isCurrent
                             ? "ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-xs z-10"

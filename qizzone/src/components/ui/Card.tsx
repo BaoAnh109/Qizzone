@@ -13,8 +13,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-neutral-200 bg-white shadow-xs",
-        hoverEffect && "transition-all duration-200 hover:shadow-md hover:border-neutral-300",
+        "rounded-lg border border-neutral-200 bg-white",
+        hoverEffect && "transition-colors duration-150 hover:border-neutral-300 hover:bg-neutral-50/30",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-col space-y-1.5 p-6 border-b border-neutral-100", className)}
+      className={cn("flex flex-col space-y-1.5 border-b border-neutral-200 p-5", className)}
       {...props}
     />
   );
@@ -40,7 +40,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("font-semibold leading-none tracking-tight text-neutral-900", className)}
+      className={cn("font-semibold leading-snug tracking-tight text-neutral-950", className)}
       {...props}
     />
   );
@@ -62,7 +62,7 @@ export function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-6", className)} {...props} />;
+  return <div className={cn("p-5", className)} {...props} />;
 }
 
 export function CardFooter({

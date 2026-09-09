@@ -11,7 +11,7 @@ import {
   Check,
   ToggleLeft,
   ToggleRight,
-  Sparkles,
+  FileUp,
   BarChart2,
 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
@@ -56,46 +56,51 @@ export function QuizList() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const handleDuplicate = (id: string) => {
-    const dup = duplicateQuiz(id);
-    if (dup) {
+  const handleDuplicate = async (id: string) => {
+    try {
+      const dup = await duplicateQuiz(id);
       toast.success(`Đã nhân bản đề thi thành công! Mã mới: ${dup.code}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể nhân bản đề thi.");
     }
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (deleteTarget) {
-      deleteQuiz(deleteTarget.id);
-      toast.info(`Đã xóa đề thi "${deleteTarget.title}"`);
-      setDeleteTarget(null);
+      try {
+        await deleteQuiz(deleteTarget.id);
+        toast.info(`Đã xóa đề thi "${deleteTarget.title}"`);
+        setDeleteTarget(null);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không thể xóa đề thi.");
+      }
     }
   };
 
-  const handleTogglePublish = (id: string) => {
-    const updated = togglePublishStatus(id);
-    if (updated) {
+  const handleTogglePublish = async (id: string) => {
+    try {
+      const updated = await togglePublishStatus(id);
       toast.success(
         updated.status === "published"
           ? "Đề thi đã được xuất bản công khai"
-          : "Đã chuyển đề thi về trạng thái Bản nháp"
+          : "Đề thi đã được đóng và không nhận thêm lượt làm"
       );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật trạng thái đề thi.");
     }
   };
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-7 pb-16">
       {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200/80 pb-5">
+      <div className="flex flex-col gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-indigo-600 text-xs font-semibold mb-1">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Teacher Portal · Management</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
-            Quản lý danh sách đề thi
+          <p className="text-sm font-medium text-blue-700">Đề thi</p>
+          <h1 className="page-heading mt-1">
+            Danh sách đề thi
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 mt-1">
-            Tạo, xuất bản, nhân bản đề thi KaTeX và theo dõi mã phòng thi học sinh.
+          <p className="page-description">
+            Tạo, xuất bản và theo dõi kết quả của từng đề thi.
           </p>
         </div>
 
@@ -103,25 +108,23 @@ export function QuizList() {
           <Button
             variant="outline"
             onClick={() => navigate("/teacher/extract-quiz")}
-            leftIcon={<Sparkles className="h-4 w-4 text-indigo-600" />}
-            className="font-bold border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-900 shadow-2xs"
+            leftIcon={<FileUp className="h-4 w-4" />}
           >
-            Bóc tách file bằng AI
+            Nhập từ tệp
           </Button>
 
           <Button
             variant="primary"
             onClick={() => navigate("/teacher/create-quiz")}
             leftIcon={<PlusCircle className="h-4 w-4" />}
-            className="shadow-sm font-bold"
           >
-            Tạo đề thủ công
+            Tạo đề thi
           </Button>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-2xl border border-neutral-200/90 shadow-xs">
+      <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <Input
             placeholder="Tìm theo tên đề, môn học, mã phòng..."
@@ -132,15 +135,15 @@ export function QuizList() {
         </div>
 
         {/* Status Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-neutral-100/80 rounded-xl text-xs font-semibold overflow-x-auto">
+        <div className="flex items-center gap-1 overflow-x-auto rounded-md bg-neutral-100 p-1 text-xs font-semibold">
           {(["all", "published", "draft", "closed"] as const).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 ${
+              className={`shrink-0 cursor-pointer rounded px-3 py-1.5 transition-colors ${
                 statusFilter === st
-                  ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                  ? "bg-white text-blue-700 shadow-sm"
                   : "text-neutral-600 hover:text-neutral-900"
               }`}
             >
@@ -158,7 +161,7 @@ export function QuizList() {
 
       {/* Quizzes Grid */}
       {filteredQuizzes.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredQuizzes.map((quiz) => {
             const submissionCount = getResultsByQuiz(quiz.id).length;
 
@@ -166,7 +169,7 @@ export function QuizList() {
               <Card
                 key={quiz.id}
                 hoverEffect
-                className="flex flex-col justify-between border-neutral-200/90 shadow-xs overflow-hidden"
+                className="flex flex-col justify-between overflow-hidden"
               >
                 <CardHeader className="pb-3 bg-neutral-50/50">
                   <div className="flex items-center justify-between gap-2 mb-2">

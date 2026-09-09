@@ -7,7 +7,7 @@ import {
   XCircle,
   HelpCircle,
   Clock,
-  Sparkles,
+  ListChecks,
   Lock,
   RotateCcw,
 } from "lucide-react";
@@ -75,10 +75,10 @@ export function Result() {
       {/* Top Banner */}
       <div className="text-center space-y-3 pt-4">
         <div
-          className={`inline-flex h-20 w-20 items-center justify-center rounded-3xl shadow-lg ${
+          className={`inline-flex h-16 w-16 items-center justify-center rounded-lg ${
             result.isPassed
-              ? "bg-emerald-100 text-emerald-600 shadow-emerald-100"
-              : "bg-amber-100 text-amber-600 shadow-amber-100"
+              ? "bg-emerald-100 text-emerald-600"
+              : "bg-amber-100 text-amber-600"
           }`}
         >
           <Award className="h-10 w-10" />
@@ -192,8 +192,8 @@ export function Result() {
       {allowReview ? (
         <div className="space-y-6">
           <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-indigo-600" />
-            <span>Chi tiết toàn bộ câu hỏi & Đáp án bài làm</span>
+            <ListChecks className="h-5 w-5 text-blue-600" />
+            <span>Chi tiết câu hỏi và đáp án</span>
           </h2>
 
           {result.details.map((item, idx) => {
@@ -361,7 +361,7 @@ export function Result() {
         </div>
       ) : (
         <Card className="border-neutral-200/90 bg-neutral-50/50 p-6 text-center space-y-3">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-200 text-neutral-600 mx-auto">
+          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-200 text-neutral-600">
             <Lock className="h-6 w-6" />
           </div>
           <h3 className="font-bold text-neutral-900 text-base">

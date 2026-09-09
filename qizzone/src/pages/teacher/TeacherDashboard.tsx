@@ -5,7 +5,7 @@ import {
   Users,
   CheckSquare,
   ArrowRight,
-  Sparkles,
+  FileUp,
   TrendingUp,
   BarChart2,
 } from "lucide-react";
@@ -38,7 +38,7 @@ export function TeacherDashboard() {
       value: quizzes.length.toString(),
       change: `${publishedCount} đề đang mở thi`,
       icon: FileQuestion,
-      color: "text-indigo-600 bg-indigo-50 border-indigo-100",
+      color: "text-blue-700 bg-blue-50 border-blue-100",
     },
     {
       title: "Lượt học sinh nộp bài",
@@ -52,26 +52,22 @@ export function TeacherDashboard() {
       value: publishedCount.toString(),
       change: "Sẵn sàng đón thí sinh",
       icon: CheckSquare,
-      color: "text-violet-600 bg-violet-50 border-violet-100",
+      color: "text-amber-700 bg-amber-50 border-amber-100",
     },
   ];
 
   const recentQuizzes = quizzes.slice(0, 4);
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header Banner */}
-      <div className="flex flex-col justify-between gap-4 rounded-2xl bg-linear-to-r from-indigo-900 via-indigo-800 to-violet-900 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/10 sm:flex-row sm:items-center">
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-indigo-200 backdrop-blur-xs">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Qizzone Giáo viên Dashboard</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Xin chào, {user?.name || user?.fullName || "Thầy Cô"}! 👋
+    <div className="space-y-7 pb-12">
+      <div className="flex flex-col justify-between gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-medium text-blue-700">Tổng quan</p>
+          <h1 className="page-heading mt-1">
+            Xin chào, {user?.name || user?.fullName || "Thầy Cô"}
           </h1>
-          <p className="text-sm text-indigo-200/90 max-w-xl">
-            Tạo đề thi trắc nghiệm công thức Toán LaTeX, mở phòng thi tức thì và quản lý bảng điểm học sinh.
+          <p className="page-description">
+            Theo dõi đề thi, lượt nộp bài và nhanh chóng tạo nội dung mới.
           </p>
         </div>
 
@@ -79,19 +75,17 @@ export function TeacherDashboard() {
           <Button
             variant="outline"
             onClick={() => navigate("/teacher/extract-quiz")}
-            className="bg-white/10 hover:bg-white/20 text-white border-white/30 font-semibold h-11 px-4 backdrop-blur-xs"
-            leftIcon={<Sparkles className="h-4 w-4 text-indigo-200" />}
+            leftIcon={<FileUp className="h-4 w-4" />}
           >
-            Bóc tách file bằng AI
+            Nhập đề từ tệp
           </Button>
 
           <Button
-            variant="default"
+            variant="primary"
             onClick={() => navigate("/teacher/create-quiz")}
-            className="bg-white text-indigo-900 hover:bg-neutral-100 shadow-md font-semibold h-11 px-5"
-            leftIcon={<PlusCircle className="h-4 w-4 text-indigo-600" />}
+            leftIcon={<PlusCircle className="h-4 w-4" />}
           >
-            Tạo đề thủ công
+            Tạo đề thi
           </Button>
         </div>
       </div>
@@ -101,24 +95,24 @@ export function TeacherDashboard() {
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
-            <Card key={idx} hoverEffect className="relative overflow-hidden">
-              <CardContent className="p-6">
+            <Card key={idx}>
+              <CardContent>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-neutral-500">
                     {stat.title}
                   </span>
                   <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl border ${stat.color}`}
+                    className={`flex h-10 w-10 items-center justify-center rounded-md border ${stat.color}`}
                   >
                     <Icon className="h-5 w-5" />
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-baseline justify-between">
-                  <span className="text-3xl font-extrabold tracking-tight text-neutral-900 font-mono">
+                <div className="mt-4 flex items-end justify-between gap-4">
+                  <span className="font-mono text-3xl font-semibold tracking-tight text-neutral-950">
                     {stat.value}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+                  <span className="inline-flex items-center gap-1 text-right text-xs text-neutral-500">
                     <TrendingUp className="h-3.5 w-3.5" />
                     {stat.change}
                   </span>

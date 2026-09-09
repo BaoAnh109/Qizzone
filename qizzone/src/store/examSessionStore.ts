@@ -1,518 +1,229 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import type { OptionId, Quiz } from "@/types/quiz";
-import type { ExamResult, ExamSession } from "@/types/exam";
-import { gradeExamSubmission } from "@/utils/gradingEngine";
+import { create } from 'zustand';
+import type { OptionId, Quiz } from '@/types/quiz';
+import type { ExamResult, ExamSession } from '@/types/exam';
+import { errorMessage, rpc } from '@/lib/cloud';
+
+type CloudSession = ExamSession & { id: string; revision: number; questionOrder?: string[]; optionOrder?: Record<string, string[]> };
+export type SessionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+const timers = new Map<string, ReturnType<typeof setTimeout>>();
+const saving = new Map<string, Promise<void>>();
+let generation = 0;
 
 export function isSessionInProgress(session?: ExamSession): boolean {
   if (!session || session.isSubmitted) return false;
-  if (session.durationMinutes === 0) return true; // 0 = unlimited
+  if (session.durationMinutes === 0) return true;
   return Date.now() < session.endTime;
 }
 
-const DEFAULT_RESULTS: ExamResult[] = [
-  {
-    id: "res-seed-001",
-    quizId: "quiz-001",
-    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
-    subject: "Toán học 12",
-    roomCode: "QZ9821",
-    studentId: "user-stu-001",
-    studentName: "Trần Bảo Nam",
-    studentClass: "12A1",
-    totalQuestions: 4,
-    answeredCount: 4,
-    correctCount: 4,
-    incorrectCount: 0,
-    skippedCount: 0,
-    score: 10.0,
-    totalPointsEarned: 10,
-    maxTotalPoints: 10,
-    percentage: 100,
-    isPassed: true,
-    passPercentage: 50,
-    academicRank: "Xuất sắc",
-    timeSpentSeconds: 1240,
-    details: [
-      {
-        questionId: "q-01",
-        order: 1,
-        content: "Cho hàm số $f(x) = x^3 - 3x + 2$. Điểm cực tiểu của đồ thị hàm số là điểm nào sau đây?",
-        options: [
-          { id: "A", content: "$A(-1; 4)$" },
-          { id: "B", content: "$B(1; 0)$" },
-          { id: "C", content: "$C(0; 2)$" },
-          { id: "D", content: "$D(2; 4)$" },
-        ],
-        selectedAnswers: ["B"],
-        correctAnswers: ["B"],
-        isCorrect: true,
-        pointsEarned: 2.5,
-        maxPoints: 2.5,
-        explanation: "Ta có $f'(x) = 3x^2 - 3 = 0 \\Leftrightarrow x = \\pm 1$. Điểm cực tiểu là $B(1; 0)$.",
-      },
-      {
-        questionId: "q-02",
-        order: 2,
-        content: "Tính tích phân $I = \\int_{0}^{1} (2x + 1)e^x dx$ ta được kết quả có dạng $a \\cdot e + b$. Tính giá trị của $S = a + b$.",
-        options: [
-          { id: "A", content: "$S = 1$" },
-          { id: "B", content: "$S = 2$" },
-          { id: "C", content: "$S = 0$" },
-          { id: "D", content: "$S = -1$" },
-        ],
-        selectedAnswers: ["A"],
-        correctAnswers: ["A"],
-        isCorrect: true,
-        pointsEarned: 2.5,
-        maxPoints: 2.5,
-        explanation: "Sử dụng tích phân từng phần: $S = 2$.",
-      },
-      {
-        questionId: "q-03",
-        order: 3,
-        content: "Trong không gian $Oxyz$, cho mặt phẳng $(\\alpha): 2x - y + 2z - 6 = 0$. Khoảng cách từ điểm $M(1; -2; 3)$ đến $(\\alpha)$ bằng:",
-        options: [
-          { id: "A", content: "$d = 1$" },
-          { id: "B", content: "$d = 2$" },
-          { id: "C", content: "$d = \\frac{4}{3}$" },
-          { id: "D", content: "$d = \\frac{8}{3}$" },
-        ],
-        selectedAnswers: ["C"],
-        correctAnswers: ["C"],
-        isCorrect: true,
-        pointsEarned: 2.5,
-        maxPoints: 2.5,
-        explanation: "$d(M, \\alpha) = \\frac{|2(1) - (-2) + 2(3) - 6|}{\\sqrt{2^2 + (-1)^2 + 2^2}} = \\frac{4}{3}$.",
-      },
-      {
-        questionId: "q-04",
-        order: 4,
-        content: "Nghiệm của phương trình $\\log_2(x - 1) + \\log_2(x + 1) = 3$ là:",
-        options: [
-          { id: "A", content: "$x = 3$" },
-          { id: "B", content: "$x = \\pm 3$" },
-          { id: "C", content: "$x = \\sqrt{10}$" },
-          { id: "D", content: "$x = 4$" },
-        ],
-        selectedAnswers: ["A"],
-        correctAnswers: ["A"],
-        isCorrect: true,
-        pointsEarned: 2.5,
-        maxPoints: 2.5,
-        explanation: "Điều kiện $x > 1$. Phương trình $\\log_2(x^2 - 1) = 3 \\Leftrightarrow x^2 - 1 = 8 \\Rightarrow x = 3$.",
-      },
-    ],
-    submittedAt: "2026-08-30T10:15:00.000Z",
-  },
-  {
-    id: "res-seed-002",
-    quizId: "quiz-001",
-    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
-    subject: "Toán học 12",
-    roomCode: "QZ9821",
-    studentId: "stu-seed-002",
-    studentName: "Lê Thị Mai",
-    studentClass: "12A1",
-    totalQuestions: 4,
-    answeredCount: 4,
-    correctCount: 3,
-    incorrectCount: 1,
-    skippedCount: 0,
-    score: 7.5,
-    totalPointsEarned: 7.5,
-    maxTotalPoints: 10,
-    percentage: 75,
-    isPassed: true,
-    passPercentage: 50,
-    academicRank: "Khá",
-    timeSpentSeconds: 1580,
-    details: [],
-    submittedAt: "2026-08-30T10:22:00.000Z",
-  },
-  {
-    id: "res-seed-003",
-    quizId: "quiz-001",
-    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
-    subject: "Toán học 12",
-    roomCode: "QZ9821",
-    studentId: "stu-seed-003",
-    studentName: "Phạm Minh Đức",
-    studentClass: "12A2",
-    totalQuestions: 4,
-    answeredCount: 4,
-    correctCount: 4,
-    incorrectCount: 0,
-    skippedCount: 0,
-    score: 10.0,
-    totalPointsEarned: 10,
-    maxTotalPoints: 10,
-    percentage: 100,
-    isPassed: true,
-    passPercentage: 50,
-    academicRank: "Xuất sắc",
-    timeSpentSeconds: 980,
-    details: [],
-    submittedAt: "2026-08-30T10:30:00.000Z",
-  },
-  {
-    id: "res-seed-004",
-    quizId: "quiz-001",
-    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
-    subject: "Toán học 12",
-    roomCode: "QZ9821",
-    studentId: "stu-seed-004",
-    studentName: "Hoàng Nhật Anh",
-    studentClass: "12A1",
-    totalQuestions: 4,
-    answeredCount: 3,
-    correctCount: 2,
-    incorrectCount: 1,
-    skippedCount: 1,
-    score: 5.0,
-    totalPointsEarned: 5.0,
-    maxTotalPoints: 10,
-    percentage: 50,
-    isPassed: true,
-    passPercentage: 50,
-    academicRank: "Trung bình",
-    timeSpentSeconds: 2100,
-    details: [],
-    submittedAt: "2026-08-30T10:45:00.000Z",
-  },
-  {
-    id: "res-seed-005",
-    quizId: "quiz-001",
-    quizTitle: "Kiểm tra Giải tích 12: Đạo hàm & Ứng dụng hình học",
-    subject: "Toán học 12",
-    roomCode: "QZ9821",
-    studentId: "stu-seed-005",
-    studentName: "Đỗ Phương Thảo",
-    studentClass: "12A3",
-    totalQuestions: 4,
-    answeredCount: 4,
-    correctCount: 3,
-    incorrectCount: 1,
-    skippedCount: 0,
-    score: 7.5,
-    totalPointsEarned: 7.5,
-    maxTotalPoints: 10,
-    percentage: 75,
-    isPassed: true,
-    passPercentage: 50,
-    academicRank: "Khá",
-    timeSpentSeconds: 1420,
-    details: [],
-    submittedAt: "2026-08-30T11:00:00.000Z",
-  },
-];
+function asSession(value: unknown): CloudSession {
+  if (!value || typeof value !== 'object') throw new Error('Phiên làm bài không hợp lệ.');
+  return value as CloudSession;
+}
+
+function asResults(value: unknown): ExamResult[] {
+  return Array.isArray(value) ? value as ExamResult[] : [];
+}
 
 interface ExamSessionState {
-  activeSessions: Record<string, ExamSession>; // keyed by quizId
+  activeSessions: Record<string, CloudSession>;
   results: ExamResult[];
+  saveStatus: Record<string, SessionSaveStatus>;
   isSubmitting: boolean;
-
-  // Actions
-  initSession: (params: {
-    quiz: Quiz;
-    studentId: string;
-    studentName: string;
-    studentClass?: string;
-  }) => ExamSession;
-
+  isLoading: boolean;
+  error: string | null;
+  load: () => Promise<void>;
+  retry: () => Promise<void>;
+  reset: () => void;
+  initSession: (params: { quiz: Quiz; studentId: string; studentName: string; studentClass?: string }) => Promise<ExamSession>;
   getSession: (quizId: string) => ExamSession | undefined;
-
-  selectAnswer: (params: {
-    quizId: string;
-    questionId: string;
-    optionId: OptionId;
-    isMultipleChoice?: boolean;
-  }) => void;
-
+  selectAnswer: (params: { quizId: string; questionId: string; optionId: OptionId; isMultipleChoice?: boolean }) => void;
   toggleFlagQuestion: (quizId: string, questionId: string) => void;
-
   clearAnswer: (quizId: string, questionId: string) => void;
-
   setQuestionIndex: (quizId: string, index: number) => void;
-
-  submitExam: (params: {
-    quiz: Quiz;
-    studentId: string;
-    studentName: string;
-    studentClass?: string;
-  }) => ExamResult;
-
-  checkAndAutoSubmitExpired: (quizzes: Quiz[]) => void;
-
+  flushSession: (quizId: string) => Promise<void>;
+  submitExam: (params: { quiz: Quiz; studentId: string; studentName: string; studentClass?: string }) => Promise<ExamResult>;
+  checkAndAutoSubmitExpired: () => Promise<void>;
   getResultById: (resultId: string) => ExamResult | undefined;
   getResultsByStudent: (studentId: string) => ExamResult[];
   getResultsByQuiz: (quizId: string) => ExamResult[];
 }
 
-export const useExamSessionStore = create<ExamSessionState>()(
-  persist(
-    (set, get) => ({
-      activeSessions: {},
-      results: DEFAULT_RESULTS,
-      isSubmitting: false,
+function buildAnswers(session: CloudSession) {
+  return session.answers || {};
+}
 
-      initSession: ({ quiz, studentId, studentName, studentClass }) => {
-        const existing = get().activeSessions[quiz.id];
-        const now = Date.now();
-
-        // If session exists and has not expired, resume it
-        if (existing && !existing.isSubmitted) {
-          // If duration > 0 and expired, auto finalize
-          if (existing.durationMinutes > 0 && now >= existing.endTime) {
-            const timeSpentSeconds = existing.durationMinutes * 60;
-            const result = gradeExamSubmission({
-              quiz,
-              studentId: existing.studentId,
-              studentName: existing.studentName,
-              studentClass: existing.studentClass,
-              answers: existing.answers,
-              timeSpentSeconds,
-            });
-
-            set((state) => ({
-              results: [result, ...state.results],
-              activeSessions: {
-                ...state.activeSessions,
-                [quiz.id]: {
-                  ...existing,
-                  isSubmitted: true,
-                },
-              },
-            }));
-          } else {
-            return existing;
-          }
-        }
-
-        const durationMinutes = quiz.settings.durationMinutes || 0;
-        const endTime =
-          durationMinutes > 0 ? now + durationMinutes * 60 * 1000 : 0;
-
-        const newSession: ExamSession = {
-          quizId: quiz.id,
-          studentId,
-          studentName,
-          studentClass,
-          startTime: now,
-          endTime,
-          durationMinutes,
-          answers: {},
-          flaggedQuestionIds: [],
-          currentQuestionIndex: 0,
-          isSubmitted: false,
-          lastSavedAt: new Date().toISOString(),
-        };
-
-        set((state) => ({
-          activeSessions: {
-            ...state.activeSessions,
-            [quiz.id]: newSession,
-          },
+export const useExamSessionStore = create<ExamSessionState>((set, get) => {
+  const saveNow = (quizId: string): Promise<void> => {
+    const currentGeneration = generation;
+    const previous = saving.get(quizId) || Promise.resolve();
+    const task = previous.catch(() => undefined).then(async () => {
+      if (currentGeneration !== generation) return;
+      const session = get().activeSessions[quizId];
+      if (!session || session.isSubmitted) return;
+      set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: 'saving' } }));
+      try {
+        const saved = asSession(await rpc<unknown>('save_attempt', {
+          p_id: session.id,
+          p_revision: session.revision,
+          p_answers: buildAnswers(session),
+          p_flags: session.flaggedQuestionIds || [],
+          p_index: session.currentQuestionIndex,
         }));
-
-        return newSession;
-      },
-
-      getSession: (quizId: string) => {
-        return get().activeSessions[quizId];
-      },
-
-      selectAnswer: ({ quizId, questionId, optionId, isMultipleChoice }) => {
-        set((state) => {
-          const session = state.activeSessions[quizId];
-          if (!session) return state;
-
-          const currentAnswers = session.answers[questionId] || [];
-          let updated: OptionId[];
-
-          if (isMultipleChoice) {
-            if (currentAnswers.includes(optionId)) {
-              updated = currentAnswers.filter((id) => id !== optionId);
-            } else {
-              updated = [...currentAnswers, optionId];
-            }
-          } else {
-            updated = [optionId];
-          }
-
-          const updatedSession: ExamSession = {
-            ...session,
-            answers: {
-              ...session.answers,
-              [questionId]: updated,
-            },
-            lastSavedAt: new Date().toISOString(),
-          };
-
+        if (currentGeneration !== generation) return;
+        set(state => {
+          const latest = state.activeSessions[quizId];
+          if (!latest) return state;
           return {
             activeSessions: {
               ...state.activeSessions,
-              [quizId]: updatedSession,
+              [quizId]: { ...latest, revision: saved.revision, lastSavedAt: saved.lastSavedAt },
             },
+            saveStatus: { ...state.saveStatus, [quizId]: 'saved' },
           };
         });
-      },
+      } catch (error) {
+        if (currentGeneration === generation) {
+          set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: 'error' } }));
+        }
+        throw error;
+      }
+    });
+    saving.set(quizId, task);
+    void task.finally(() => {
+      if (saving.get(quizId) === task) saving.delete(quizId);
+    }).catch(() => undefined);
+    return task;
+  };
+  const queueSave = (quizId: string) => {
+    const session = get().activeSessions[quizId];
+    if (!session || session.isSubmitted) return;
+    const oldTimer = timers.get(quizId);
+    if (oldTimer) clearTimeout(oldTimer);
+    timers.set(quizId, setTimeout(() => {
+      timers.delete(quizId);
+      void saveNow(quizId).catch(() => undefined);
+    }, 450));
+    set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: 'saving' } }));
+  };
+  const flushSave = async (quizId: string) => {
+    const oldTimer = timers.get(quizId);
+    if (oldTimer) { clearTimeout(oldTimer); timers.delete(quizId); }
+    await saveNow(quizId);
+  };
 
-      toggleFlagQuestion: (quizId, questionId) => {
-        set((state) => {
-          const session = state.activeSessions[quizId];
-          if (!session) return state;
-
-          const flagged = session.flaggedQuestionIds || [];
-          const isFlagged = flagged.includes(questionId);
-          const updatedFlagged = isFlagged
-            ? flagged.filter((id) => id !== questionId)
-            : [...flagged, questionId];
-
+  return {
+    activeSessions: {}, results: [], saveStatus: {}, isSubmitting: false, isLoading: false, error: null,
+    reset: () => {
+      generation++;
+      timers.forEach(timer => clearTimeout(timer)); timers.clear(); saving.clear();
+      set({ activeSessions: {}, results: [], saveStatus: {}, isLoading: false, isSubmitting: false, error: null });
+    },
+    load: async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const [sessions, results] = await Promise.all([
+          rpc<unknown>('list_sessions'), rpc<unknown>('list_results'),
+        ]);
+        const records = Object.fromEntries((Array.isArray(sessions) ? sessions : []).map(item => {
+          const session = asSession(item);
+          return [session.quizId, session];
+        }));
+        const statuses = Object.fromEntries(Object.keys(records).map(quizId => [quizId, 'saved' as const]));
+        set({ activeSessions: records, results: asResults(results), saveStatus: statuses, isLoading: false, error: null });
+      } catch (error) {
+        set({ isLoading: false, error: errorMessage(error) });
+        throw error;
+      }
+    },
+    retry: () => get().load(),
+    initSession: async ({ quiz, studentClass }) => {
+      const existing = get().activeSessions[quiz.id];
+      if (existing && !existing.isSubmitted) return existing;
+      const session = asSession(await rpc<unknown>('start_attempt', { p_quiz_id: quiz.id, p_class: studentClass || null }));
+      set(state => ({
+        activeSessions: { ...state.activeSessions, [quiz.id]: session },
+        saveStatus: { ...state.saveStatus, [quiz.id]: 'saved' },
+      }));
+      return session;
+    },
+    getSession: quizId => get().activeSessions[quizId],
+    selectAnswer: ({ quizId, questionId, optionId, isMultipleChoice }) => {
+      set(state => {
+        const session = state.activeSessions[quizId];
+        if (!session || session.isSubmitted) return state;
+        const current = session.answers[questionId] || [];
+        const answers = isMultipleChoice
+          ? current.includes(optionId) ? current.filter(item => item !== optionId) : [...current, optionId]
+          : [optionId];
+        return { activeSessions: { ...state.activeSessions, [quizId]: { ...session, answers: { ...session.answers, [questionId]: answers }, lastSavedAt: new Date().toISOString() } } };
+      });
+      queueSave(quizId);
+    },
+    toggleFlagQuestion: (quizId, questionId) => {
+      set(state => {
+        const session = state.activeSessions[quizId];
+        if (!session || session.isSubmitted) return state;
+        const current = session.flaggedQuestionIds || [];
+        const flags = current.includes(questionId) ? current.filter(item => item !== questionId) : [...current, questionId];
+        return { activeSessions: { ...state.activeSessions, [quizId]: { ...session, flaggedQuestionIds: flags, lastSavedAt: new Date().toISOString() } } };
+      });
+      queueSave(quizId);
+    },
+    clearAnswer: (quizId, questionId) => {
+      set(state => {
+        const session = state.activeSessions[quizId];
+        if (!session || session.isSubmitted) return state;
+        const answers = { ...session.answers };
+        delete answers[questionId];
+        return { activeSessions: { ...state.activeSessions, [quizId]: { ...session, answers, lastSavedAt: new Date().toISOString() } } };
+      });
+      queueSave(quizId);
+    },
+    setQuestionIndex: (quizId, index) => {
+      set(state => {
+        const session = state.activeSessions[quizId];
+        if (!session || session.isSubmitted) return state;
+        return { activeSessions: { ...state.activeSessions, [quizId]: { ...session, currentQuestionIndex: index } } };
+      });
+      queueSave(quizId);
+    },
+    flushSession: flushSave,
+    submitExam: async ({ quiz }) => {
+      const session = get().activeSessions[quiz.id];
+      if (!session) throw new Error('Không tìm thấy phiên làm bài.');
+      set({ isSubmitting: true });
+      try {
+        try {
+          await flushSave(quiz.id);
+        } catch (error) {
+          // At the deadline the database rejects further writes, but submission must
+          // still finalize the answers that were saved before time expired.
+          if (!(error instanceof Error) || !/hết giờ/i.test(error.message)) throw error;
+        }
+        const result = await rpc<ExamResult>('submit_attempt', { p_id: session.id });
+        set(state => {
+          const current = state.activeSessions[quiz.id] || session;
           return {
-            activeSessions: {
-              ...state.activeSessions,
-              [quizId]: {
-                ...session,
-                flaggedQuestionIds: updatedFlagged,
-                lastSavedAt: new Date().toISOString(),
-              },
-            },
-          };
-        });
-      },
-
-      clearAnswer: (quizId, questionId) => {
-        set((state) => {
-          const session = state.activeSessions[quizId];
-          if (!session) return state;
-
-          const newAnswers = { ...session.answers };
-          delete newAnswers[questionId];
-
-          return {
-            activeSessions: {
-              ...state.activeSessions,
-              [quizId]: {
-                ...session,
-                answers: newAnswers,
-                lastSavedAt: new Date().toISOString(),
-              },
-            },
-          };
-        });
-      },
-
-      setQuestionIndex: (quizId, index) => {
-        set((state) => {
-          const session = state.activeSessions[quizId];
-          if (!session) return state;
-
-          return {
-            activeSessions: {
-              ...state.activeSessions,
-              [quizId]: {
-                ...session,
-                currentQuestionIndex: index,
-              },
-            },
-          };
-        });
-      },
-
-      submitExam: ({ quiz, studentId, studentName, studentClass }) => {
-        set({ isSubmitting: true });
-
-        const session = get().activeSessions[quiz.id];
-        const answers = session ? session.answers : {};
-        const startTime = session ? session.startTime : Date.now();
-        const durationSeconds = (quiz.settings.durationMinutes || 0) * 60;
-        const elapsed = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
-        const timeSpentSeconds =
-          durationSeconds > 0 ? Math.min(elapsed, durationSeconds) : elapsed;
-
-        const result = gradeExamSubmission({
-          quiz,
-          studentId,
-          studentName,
-          studentClass,
-          answers,
-          timeSpentSeconds,
-        });
-
-        // Store result and mark session submitted
-        set((state) => {
-          const updatedSessions = { ...state.activeSessions };
-          if (updatedSessions[quiz.id]) {
-            updatedSessions[quiz.id] = {
-              ...updatedSessions[quiz.id],
-              isSubmitted: true,
-            };
-          }
-
-          return {
-            results: [result, ...state.results],
-            activeSessions: updatedSessions,
+            results: [result, ...state.results.filter(item => item.id !== result.id)],
+            activeSessions: { ...state.activeSessions, [quiz.id]: { ...current, isSubmitted: true } },
+            saveStatus: { ...state.saveStatus, [quiz.id]: 'saved' },
             isSubmitting: false,
           };
         });
-
         return result;
-      },
-
-      checkAndAutoSubmitExpired: (quizzes: Quiz[]) => {
-        const now = Date.now();
-        const sessions = get().activeSessions;
-        let hasChanges = false;
-        const newResults: ExamResult[] = [];
-        const updatedSessions = { ...sessions };
-
-        quizzes.forEach((quiz) => {
-          const s = updatedSessions[quiz.id];
-          if (s && !s.isSubmitted && s.durationMinutes > 0 && now >= s.endTime) {
-            hasChanges = true;
-            const timeSpentSeconds = s.durationMinutes * 60;
-            const res = gradeExamSubmission({
-              quiz,
-              studentId: s.studentId,
-              studentName: s.studentName,
-              studentClass: s.studentClass,
-              answers: s.answers,
-              timeSpentSeconds,
-            });
-            newResults.push(res);
-            updatedSessions[quiz.id] = {
-              ...s,
-              isSubmitted: true,
-            };
-          }
-        });
-
-        if (hasChanges) {
-          set((state) => ({
-            results: [...newResults, ...state.results],
-            activeSessions: updatedSessions,
-          }));
-        }
-      },
-
-      getResultById: (resultId) => {
-        return get().results.find((r) => r.id === resultId);
-      },
-
-      getResultsByStudent: (studentId) => {
-        return get().results.filter((r) => r.studentId === studentId);
-      },
-
-      getResultsByQuiz: (quizId) => {
-        return get().results.filter((r) => r.quizId === quizId);
-      },
-    }),
-    {
-      name: "qizzone_exam_sessions_db",
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
-);
+      } catch (error) {
+        set({ isSubmitting: false });
+        throw error;
+      }
+    },
+    checkAndAutoSubmitExpired: async () => {
+      await rpc<void>('finalize_expired');
+      await get().load();
+    },
+    getResultById: resultId => get().results.find(result => result.id === resultId),
+    getResultsByStudent: studentId => get().results.filter(result => result.studentId === studentId),
+    getResultsByQuiz: quizId => get().results.filter(result => result.quizId === quizId),
+  };
+});
 
 export default useExamSessionStore;

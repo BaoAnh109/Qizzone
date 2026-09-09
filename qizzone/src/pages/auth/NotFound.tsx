@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/Button";
 
 export function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-neutral-50 to-indigo-50/30 px-4 py-12 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
         <div className="relative inline-flex">
-          <div className="h-24 w-24 rounded-3xl bg-indigo-100/80 flex items-center justify-center text-indigo-600 shadow-xl shadow-indigo-100/50">
-            <Compass className="h-12 w-12 animate-pulse" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+            <Compass className="h-10 w-10" />
           </div>
-          <span className="absolute -top-2 -right-2 rounded-full bg-indigo-600 px-2.5 py-0.5 text-xs font-bold text-white shadow-sm">
+          <span className="absolute -right-3 -top-2 rounded bg-blue-600 px-2.5 py-0.5 text-xs font-bold text-white">
             404
           </span>
         </div>

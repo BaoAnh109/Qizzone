@@ -6,7 +6,7 @@ import {
   Clock,
   BookOpen,
   Award,
-  Sparkles,
+  ListChecks,
   HelpCircle,
 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
@@ -79,21 +79,21 @@ export function QuestionReview() {
       </div>
 
       {/* Quiz Overview Banner */}
-      <Card className="overflow-hidden border-neutral-200/90 shadow-xs">
-        <CardHeader className="bg-linear-to-r from-indigo-900 to-violet-900 text-white p-6">
+      <Card className="overflow-hidden">
+        <CardHeader className="bg-white p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <Badge variant="secondary" size="sm" className="bg-white/20 text-white border-white/30">
+              <Badge variant="secondary" size="sm">
                 {quiz.subject}
               </Badge>
-              <CardTitle className="text-xl sm:text-2xl font-bold text-white">
+              <CardTitle className="text-xl font-semibold sm:text-2xl">
                 {quiz.title}
               </CardTitle>
             </div>
 
-            <div className="flex items-center gap-4 text-xs font-semibold text-indigo-100 bg-white/10 px-4 py-2.5 rounded-xl backdrop-blur-xs">
+            <div className="flex items-center gap-4 rounded-md bg-neutral-50 px-4 py-2.5 text-xs font-medium text-neutral-600">
               <div className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-indigo-300" />
+                <Clock className="h-4 w-4 text-blue-600" />
                 <span>
                   {quiz.settings.durationMinutes === 0
                     ? "Vô thời hạn"
@@ -102,13 +102,13 @@ export function QuestionReview() {
               </div>
               <span>•</span>
               <div className="flex items-center gap-1.5">
-                <BookOpen className="h-4 w-4 text-indigo-300" />
+                <BookOpen className="h-4 w-4 text-blue-600" />
                 <span>{quiz.questions.length} câu hỏi</span>
               </div>
               <span>•</span>
               <div className="flex items-center gap-1.5">
-                <Award className="h-4 w-4 text-indigo-300" />
-                <span>Mã phòng: <strong className="font-mono text-white">{quiz.code}</strong></span>
+                <Award className="h-4 w-4 text-blue-600" />
+                <span>Mã phòng: <strong className="font-mono text-neutral-950">{quiz.code}</strong></span>
               </div>
             </div>
           </div>
@@ -124,9 +124,9 @@ export function QuestionReview() {
 
       {/* Questions Review List */}
       <div className="space-y-6">
-        <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-indigo-600" />
-          <span>Danh sách câu hỏi & Barem đáp án chi tiết</span>
+        <h2 className="section-heading flex items-center gap-2">
+          <ListChecks className="h-5 w-5 text-blue-600" />
+          <span>Danh sách câu hỏi và đáp án</span>
         </h2>
 
         {quiz.questions.map((q, idx) => (
