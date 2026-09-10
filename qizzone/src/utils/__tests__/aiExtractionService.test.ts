@@ -5,7 +5,7 @@ import { extractQuizWithAI } from "@/services/aiExtractionService";
 describe("AI Configuration & Extraction Service Unit Tests", () => {
   it("Cung cấp cấu hình mặc định cho mô hình mạnh nhất", () => {
     expect(AI_CONFIG.DEFAULT_MODEL).toBe("gemini-3.6-flash");
-    expect(AI_CONFIG.FALLBACK_MODEL).toBe("gemini-2.5-flash");
+    expect(AI_CONFIG.MAX_RETRIES).toBe(3);
     expect(AI_CONFIG.TEMPERATURE).toBe(0.1);
   });
 

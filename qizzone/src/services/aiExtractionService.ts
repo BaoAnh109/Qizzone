@@ -66,7 +66,7 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
 async function requestAI(prompt: string, imageBase64?: string): Promise<unknown> {
   const response = await edge<{ result: unknown }>('extract-quiz-with-gemini', {
     prompt, imageBase64,
-  });
+  }, 90_000);
   return response.result;
 }
 
@@ -102,9 +102,9 @@ export async function solveMissingAnswersWithAI(
   if (unanswered.length === 0) return { updatedQuestions: questions, solvedCount: 0, durationSeconds: 0 };
   const solutions = new Map<string, { answer: OptionId; explanation: string }>();
   let failureMessage: string | undefined;
-  // Smaller batches keep Gemini reasoning requests below the Edge Function timeout
-  // and let later batches continue if a single upstream request is overloaded.
-  const batchSize = 15;
+  // Gemini 3.6 can solve a complete normal exam in one request. Only split
+  // unusually large exams to stay within the existing request-size guard.
+  const batchSize = unanswered.length <= 60 ? unanswered.length : 45;
   onProgress?.(0, unanswered.length, `Đang xử lý ${unanswered.length} câu hỏi qua Gemini AI...`);
   for (let offset = 0; offset < unanswered.length; offset += batchSize) {
     const batch = unanswered.slice(offset, offset + batchSize);

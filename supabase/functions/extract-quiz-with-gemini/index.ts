@@ -1,8 +1,8 @@
 import { bodyJson, cors, databaseAdmin, failure, firebaseAdmin, identity, respond } from '../_shared/server.ts';
 
 const DEFAULT_MODEL = 'gemini-3.6-flash';
-const DEFAULT_FALLBACK_MODEL = 'gemini-2.5-flash';
-const GEMINI_ATTEMPT_TIMEOUT_MS = 26_000;
+const GEMINI_ATTEMPT_TIMEOUT_MS = 55_000;
+const GEMINI_MAX_ATTEMPTS = 3;
 
 type GeminiResult = {
   candidates?: Array<{
@@ -11,11 +11,8 @@ type GeminiResult = {
   }>;
 };
 
-function modelCandidates() {
-  return [...new Set([
-    Deno.env.get('GEMINI_MODEL') || DEFAULT_MODEL,
-    Deno.env.get('GEMINI_FALLBACK_MODEL') || DEFAULT_FALLBACK_MODEL,
-  ].map(value => value.trim()).filter(Boolean))];
+function configuredModel() {
+  return (Deno.env.get('GEMINI_MODEL') || DEFAULT_MODEL).trim();
 }
 
 function transientGeminiStatus(status: number) {
@@ -44,11 +41,10 @@ function parseGeminiJson(result: GeminiResult) {
 }
 
 async function callGemini(key: string, parts: unknown[], requestId: string) {
-  const candidates = modelCandidates();
+  const selectedModel = configuredModel();
   let lastError: Error = new Error('GEMINI_UNAVAILABLE');
 
-  for (let attempt = 0; attempt < candidates.length; attempt++) {
-    const selectedModel = candidates[attempt];
+  for (let attempt = 0; attempt < GEMINI_MAX_ATTEMPTS; attempt++) {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selectedModel)}:generateContent`, {
         method: 'POST',
@@ -63,17 +59,17 @@ async function callGemini(key: string, parts: unknown[], requestId: string) {
 
       lastError = upstreamError(response.status);
       console.warn(JSON.stringify({ requestId, model: selectedModel, attempt: attempt + 1, upstreamStatus: response.status }));
-      if (!transientGeminiStatus(response.status) && response.status !== 404) throw lastError;
+      if (!transientGeminiStatus(response.status)) throw lastError;
     } catch (error) {
       if (error instanceof Error && error.message.startsWith('GEMINI_')) lastError = error;
-      else if (error instanceof DOMException && error.name === 'TimeoutError') lastError = new Error('GEMINI_TIMEOUT');
+      else if (error instanceof DOMException && error.name === 'TimeoutError') throw new Error('GEMINI_TIMEOUT');
       else lastError = new Error('UPSTREAM_ERROR');
 
       console.warn(JSON.stringify({ requestId, model: selectedModel, attempt: attempt + 1, code: lastError.message }));
-      if (['GEMINI_AUTH', 'GEMINI_BAD_REQUEST'].includes(lastError.message)) throw lastError;
+      if (!['RATE_LIMIT', 'GEMINI_UNAVAILABLE', 'UPSTREAM_ERROR'].includes(lastError.message)) throw lastError;
     }
 
-    if (attempt < candidates.length - 1) {
+    if (attempt < GEMINI_MAX_ATTEMPTS - 1) {
       const delayMs = 500 * (2 ** attempt) + Math.floor(Math.random() * 250);
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
@@ -88,7 +84,7 @@ Deno.serve(async req => {
   const requestId = crypto.randomUUID();
   const startedAt = performance.now();
   let uid = 'unknown';
-  let model = 'unknown';
+  let model = configuredModel();
   try {
     const token = await identity(req);
     uid = token.uid;
