@@ -72,6 +72,11 @@ export function failure(req: Request, error: unknown) {
     GEMINI_AUTH: [502, 'Gemini API key không hợp lệ hoặc chưa được cấp quyền sử dụng API.'],
     GEMINI_MODEL_UNAVAILABLE: [502, 'Mô hình Gemini đã cấu hình không khả dụng cho project này.'],
     GEMINI_BAD_REQUEST: [502, 'Gemini từ chối nội dung yêu cầu. Vui lòng thử với đề nhỏ hơn.'],
+    GEMINI_TIMEOUT: [504, 'Gemini phản hồi quá lâu. Hệ thống đã thử model dự phòng nhưng chưa thành công.'],
+    GEMINI_UNAVAILABLE: [503, 'Gemini đang quá tải. Hệ thống đã thử model dự phòng; vui lòng thử lại sau ít phút.'],
+    GEMINI_EMPTY_RESPONSE: [502, 'Gemini không trả về nội dung đáp án. Vui lòng thử lại.'],
+    GEMINI_INVALID_RESPONSE: [502, 'Gemini trả về dữ liệu đáp án không hợp lệ. Vui lòng thử lại.'],
+    UPSTREAM_ERROR: [502, 'Không thể kết nối tới Gemini. Vui lòng thử lại sau ít phút.'],
   };
   const [status, message] = messages[code] || [502, 'Dịch vụ đang gặp lỗi. Vui lòng thử lại hoặc liên hệ quản trị viên.'];
   return respond(req, { error: message }, status);

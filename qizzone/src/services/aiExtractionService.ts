@@ -12,6 +12,7 @@ export interface AIExtractParams {
 interface RawSolutionItem {
   id?: string; order?: number | string; index?: number | string;
   correctAnswer?: string; answer?: string; correct_answer?: string; choice?: string;
+  correctAnswers?: string[];
   explanation?: string; explain?: string; reason?: string;
 }
 
@@ -101,7 +102,9 @@ export async function solveMissingAnswersWithAI(
   if (unanswered.length === 0) return { updatedQuestions: questions, solvedCount: 0, durationSeconds: 0 };
   const solutions = new Map<string, { answer: OptionId; explanation: string }>();
   let failureMessage: string | undefined;
-  const batchSize = unanswered.length <= 60 ? unanswered.length : 45;
+  // Smaller batches keep Gemini reasoning requests below the Edge Function timeout
+  // and let later batches continue if a single upstream request is overloaded.
+  const batchSize = 15;
   onProgress?.(0, unanswered.length, `Đang xử lý ${unanswered.length} câu hỏi qua Gemini AI...`);
   for (let offset = 0; offset < unanswered.length; offset += batchSize) {
     const batch = unanswered.slice(offset, offset + batchSize);
@@ -110,7 +113,7 @@ export async function solveMissingAnswersWithAI(
       const payload = typeof result === 'string' ? JSON.parse(cleanJson(result)) : result;
       const list = Array.isArray(payload) ? payload : (payload as { solutions?: RawSolutionItem[] })?.solutions || [];
       list.forEach((item: RawSolutionItem, index: number) => {
-        const answer = String(item.correctAnswer || item.answer || item.correct_answer || item.choice || '').toUpperCase() as OptionId;
+        const answer = String(item.correctAnswer || item.answer || item.correct_answer || item.choice || item.correctAnswers?.[0] || '').toUpperCase() as OptionId;
         if (!['A', 'B', 'C', 'D'].includes(answer)) return;
         const byId = item.id && batch.find(question => question.id === item.id);
         const byOrder = batch.find(question => question.order === Number(item.order));

@@ -100,9 +100,11 @@ export function BatchActionBar() {
       setSolveElapsed(totalTime);
 
       if (solvedCount > 0) {
-        toast.success(
-          `🎉 AI đã hoàn tất giải toàn bộ ${solvedCount}/${unansweredCount} câu hỏi trong ${totalTime}s!`
-        );
+        const message = solvedCount === unansweredCount
+          ? `🎉 AI đã giải xong ${solvedCount}/${unansweredCount} câu hỏi trong ${totalTime}s!`
+          : `AI đã giải được ${solvedCount}/${unansweredCount} câu trong ${totalTime}s. ${failureMessage || "Các câu còn lại cần thử lại."}`;
+        if (solvedCount === unansweredCount) toast.success(message);
+        else toast.warning(message);
       } else {
         toast.warning(failureMessage || "AI không trả về đáp án hợp lệ. Vui lòng thử lại!");
       }

@@ -251,27 +251,30 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     }
 
     setIsProcessing(true, 10);
-    const { updatedQuestions, solvedCount, durationSeconds, failureMessage } = await solveMissingAnswersWithAI(
-      extractionResult.questions,
-      (current, total, message) => {
-        const progress = Math.round(10 + (current / total) * 85);
-        setIsProcessing(true, progress);
-        if (onStepProgress) {
-          onStepProgress(current, total, message);
+    try {
+      const { updatedQuestions, solvedCount, durationSeconds, failureMessage } = await solveMissingAnswersWithAI(
+        extractionResult.questions,
+        (current, total, message) => {
+          const progress = Math.round(10 + (current / total) * 85);
+          setIsProcessing(true, progress);
+          if (onStepProgress) {
+            onStepProgress(current, total, message);
+          }
         }
-      }
-    );
+      );
 
-    set({
-      extractionResult: {
-        ...extractionResult,
-        questions: updatedQuestions,
-      },
-      isProcessing: false,
-      processProgress: 100,
-    });
+      set({
+        extractionResult: {
+          ...extractionResult,
+          questions: updatedQuestions,
+        },
+        processProgress: 100,
+      });
 
-    return { solvedCount, durationSeconds, failureMessage };
+      return { solvedCount, durationSeconds, failureMessage };
+    } finally {
+      set({ isProcessing: false });
+    }
   },
 
   clearAll: () =>
