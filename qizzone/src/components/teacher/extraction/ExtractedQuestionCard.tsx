@@ -41,6 +41,11 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
           label: "Bảng đáp án cuối",
           color: "bg-blue-100 text-blue-800 border-blue-200",
         };
+      case "answer_at_end":
+        return {
+          label: "Đáp án cuối câu",
+          color: "bg-cyan-100 text-cyan-800 border-cyan-200",
+        };
       case "special_marker":
         return {
           label: "Ký hiệu tiền tố (*)",

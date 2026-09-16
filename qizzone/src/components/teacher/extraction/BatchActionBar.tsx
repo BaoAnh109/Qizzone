@@ -306,6 +306,7 @@ export function BatchActionBar() {
                 <option value="all">Tất cả ({questions.length})</option>
                 <option value="underline">Gạch chân</option>
                 <option value="answer_table">Bảng đáp án</option>
+                <option value="answer_at_end">Đáp án cuối câu</option>
                 <option value="distinct_bold">In đậm</option>
                 <option value="highlight_color">Tô màu / Chữ đỏ</option>
                 <option value="special_marker">Ký hiệu *</option>

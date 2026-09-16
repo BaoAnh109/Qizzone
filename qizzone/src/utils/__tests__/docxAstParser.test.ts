@@ -226,4 +226,44 @@ D. 5
       expect(result.questions[9].detectionStrategy).toBe("distinct_bold");
     }
   });
+
+  it("Bóc tách file mẫu có dòng 'Đáp án: A' ở cuối từng câu", async () => {
+    const fs = await import("fs");
+    const filePath =
+      process.env.QIZZONE_TEST_DOCX ||
+      "E:/Admin/Download/Ngan_hang_150_cau_Tu_tuong_Ho_Chi_Minh AI soạn dùng để test khi đọc xong giáo trình.docx";
+
+    if (!fs.existsSync(filePath)) {
+      return;
+    }
+
+    const { parseDocxDirectAst } = await import("@/utils/parsers/docxAstParser");
+    const buffer = fs.readFileSync(filePath);
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
+    const ast = await parseDocxDirectAst(arrayBuffer);
+    const result = parseRawExamText(ast.fullHtml || ast.fullText, {
+      fileName: "Ngan_hang_150_cau_Tu_tuong_Ho_Chi_Minh.docx",
+      fileType: "docx",
+    });
+
+    // File có tên 150 câu nhưng thực tế chứa 250 block câu hỏi (1-150 và
+    // phần bổ sung 51-150), nên kiểm thử theo đúng nội dung thực tế.
+    expect(result.questions).toHaveLength(250);
+    expect(result.hasAnswerKeyTable).toBe(false);
+    expect(result.questions.every((question) => question.correctAnswers.length === 1)).toBe(
+      true
+    );
+    expect(
+      result.questions.every((question) => question.detectionStrategy === "answer_at_end")
+    ).toBe(true);
+    expect(result.questions[0].correctAnswers).toEqual(["A"]);
+    expect(result.questions[1].correctAnswers).toEqual(["C"]);
+    expect(result.questions[149].correctAnswers).toEqual(["A"]);
+    expect(result.questions.every((question) =>
+      !question.options[question.options.length - 1].content.includes("Đáp án")
+    )).toBe(true);
+  });
 });

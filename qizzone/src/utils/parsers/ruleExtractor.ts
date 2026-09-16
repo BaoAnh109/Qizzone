@@ -7,6 +7,35 @@ import type {
 } from "@/types/extractor";
 
 /**
+ * Nhận diện dòng đáp án nằm ở cuối từng câu hỏi, ví dụ: "Đáp án: A".
+ *
+ * Pattern cho phép dữ liệu đến từ cả Direct OpenXML AST (HTML theo đoạn) và
+ * Mammoth fallback (text có xuống dòng), đồng thời chịu được thẻ định dạng
+ * bao quanh nhãn hoặc chữ cái đáp án.
+ */
+const TRAILING_ANSWER_PATTERN =
+  /((?:^|<p[^>]*>|<div[^>]*>|<li[^>]*>|<br\s*\/?>|\r?\n)\s*)(?:<[^>]*>\s*)*(?:Đáp\s*án|ĐA|Answer(?:\s*key)?)\s*[:：\-–—]?\s*(?:<[^>]*>\s*)*([A-D])\s*(?:[.)])?\s*(?:<\/[^>]*>\s*)*$/iu;
+
+/**
+ * Lấy đáp án từ dòng cuối câu hỏi nếu tài liệu ghi rõ "Đáp án: A".
+ */
+export function extractTrailingAnswer(rawBlock: string): OptionId | undefined {
+  const match = rawBlock.match(TRAILING_ANSWER_PATTERN);
+  const answer = match?.[2]?.toUpperCase() as OptionId | undefined;
+
+  return answer && ["A", "B", "C", "D"].includes(answer)
+    ? answer
+    : undefined;
+}
+
+/**
+ * Bỏ dòng đáp án cuối câu khỏi vùng dùng để tách nội dung các lựa chọn.
+ */
+function removeTrailingAnswer(rawBlock: string): string {
+  return rawBlock.replace(TRAILING_ANSWER_PATTERN, "$1").trim();
+}
+
+/**
  * Phân tích bảng đáp án ở cuối đề thi (Answer Key Table / Grid)
  * Chỉ kích hoạt khi có khu vực tiêu đề bảng đáp án rõ ràng (BẢNG ĐÁP ÁN, ĐÁP ÁN, HƯỚNG DẪN CHẤM,...)
  */
@@ -24,6 +53,17 @@ export function extractAnswerKeyTable(rawText: string): Record<number, OptionId>
   }
 
   const textToScan = tableSectionMatch[0];
+
+  // Một dòng "Đáp án: A" ở cuối từng câu cũng khớp tiền tố "ĐÁP ÁN:" ở
+  // trên, nhưng đó không phải bảng đáp án chung. Bỏ qua section kiểu này để
+  // parser không cắt toàn bộ đề ngay từ câu đầu tiên.
+  const firstSectionLine = cleanMathAndHtml(textToScan)
+    .split(/[\r\n]+/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  if (firstSectionLine && /^Đáp\s*án\s*[:：\-–—]\s*[A-D]$/iu.test(firstSectionLine)) {
+    return answerMap;
+  }
 
   // 1. Quét định dạng bảng HTML nếu có
   const htmlTableRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -254,6 +294,13 @@ export function parseSingleQuestionBlock(
     questionAndOptionsText = rawBlock.substring(0, explanationMatch.index).trim();
   }
 
+  // Đọc đáp án được ghi rõ ở cuối câu hỏi trước khi tách option, để dòng
+  // "Đáp án: A" không bị dính vào nội dung lựa chọn D.
+  const trailingAnswer = extractTrailingAnswer(questionAndOptionsText);
+  if (trailingAnswer) {
+    questionAndOptionsText = removeTrailingAnswer(questionAndOptionsText);
+  }
+
   // Tách câu hỏi và options
   const { questionPrompt, options } = splitOptionsFromBlock(questionAndOptionsText);
 
@@ -284,7 +331,14 @@ export function parseSingleQuestionBlock(
     confidenceScore = 0.99;
   }
 
-  // Chiến lược 2: Ký hiệu tiền tố đặc biệt (*A, ✓A, [x]) -> 98%
+  // Chiến lược 2: Dòng đáp án ở cuối câu ("Đáp án: A") -> 99%
+  if (correctAnswers.length === 0 && trailingAnswer) {
+    correctAnswers = [trailingAnswer];
+    detectionStrategy = "answer_at_end";
+    confidenceScore = 0.99;
+  }
+
+  // Chiến lược 3: Ký hiệu tiền tố đặc biệt (*A, ✓A, [x]) -> 98%
   if (correctAnswers.length === 0) {
     const markerOption = options.find((opt) => opt.hasSpecialMarker);
     if (markerOption) {
@@ -294,7 +348,7 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // Chiến lược 3: Định dạng gạch chân (Underline <u>A.</u>) -> 95%
+  // Chiến lược 4: Định dạng gạch chân (Underline <u>A.</u>) -> 95%
   if (correctAnswers.length === 0) {
     const underlineOption = options.find((opt) => opt.isUnderline);
     if (underlineOption) {
@@ -304,7 +358,7 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // Chiến lược 4: Tô màu Highlight / Chữ đỏ -> 95%
+  // Chiến lược 5: Tô màu Highlight / Chữ đỏ -> 95%
   if (correctAnswers.length === 0) {
     const highlightOption = options.find((opt) => opt.isHighlighted);
     if (highlightOption) {
@@ -314,7 +368,7 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // Chiến lược 5: In đậm duy nhất (Distinct Bold <b>A.</b>) -> 90%
+  // Chiến lược 6: In đậm duy nhất (Distinct Bold <b>A.</b>) -> 90%
   if (correctAnswers.length === 0) {
     const boldOptions = options.filter((opt) => opt.isBold);
     if (boldOptions.length === 1) {
@@ -324,7 +378,7 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // Chiến lược 6: Trích xuất từ Lời giải chi tiết ("Chọn A", "Đáp án A") -> 88%
+  // Chiến lược 7: Trích xuất từ Lời giải chi tiết ("Chọn A", "Đáp án A") -> 88%
   if (correctAnswers.length === 0 && explanation) {
     const explAnswerMatch = explanation.match(
       /(?:Chọn|Đáp\s*án(?:\s*đúng)?|Câu\s*trả\s*lời(?:\s*là)?|Suy\s*ra(?:\s*chọn)?|Do\s*đó(?:\s*chọn)?)[\s.:\->]*([A-D])\b/i
@@ -337,7 +391,7 @@ export function parseSingleQuestionBlock(
     }
   }
 
-  // Chiến lược 7: Không tìm thấy đáp án đánh dấu trong tài liệu
+  // Chiến lược 8: Không tìm thấy đáp án đánh dấu trong tài liệu
   if (correctAnswers.length === 0) {
     correctAnswers = []; // Để rỗng: KHÔNG tự ý gán bừa đáp án A
     detectionStrategy = "ai_inference";
