@@ -17,7 +17,11 @@ export interface ProfileRow {
   created_at: string;
 }
 
-export function mapProfile(p: ProfileRow, activeRole?: UserRole): User {
+function firebaseAvatarUrl(user: FirebaseUser): string | null {
+  return user.photoURL || user.providerData.find(provider => provider.photoURL)?.photoURL || null;
+}
+
+export function mapProfile(p: ProfileRow, activeRole?: UserRole, avatarFallback?: string | null): User {
   const teacherRequestStatus = p.teacher_request_status === 'none' && p.role === 'teacher'
     ? p.approval_status
     : p.teacher_request_status || (p.role === 'teacher' ? 'approved' : 'none');
@@ -32,7 +36,7 @@ export function mapProfile(p: ProfileRow, activeRole?: UserRole): User {
     teacherRequestStatus,
     teacherRequestBlocked: Boolean(p.teacher_request_blocked),
     teacherRequestedAt: p.teacher_requested_at || undefined,
-    avatarUrl: p.avatar_url || undefined,
+    avatarUrl: p.avatar_url || avatarFallback || undefined,
     createdAt: p.created_at,
   };
 }
@@ -46,7 +50,7 @@ export async function syncProfile(user: FirebaseUser, preferredFullName?: string
   const token = await user.getIdTokenResult();
   const activeRole = p.active_role || (token.claims.app_role as UserRole | undefined) || p.role;
   if (p.approval_status === 'approved' && (token.claims.role !== 'authenticated' || token.claims.app_role !== activeRole)) await user.getIdToken(true);
-  return mapProfile(p, activeRole);
+  return mapProfile(p, activeRole, firebaseAvatarUrl(user));
 }
 
 function currentFirebaseUser() {
@@ -66,19 +70,20 @@ export const firebaseAuthService = {
   logout: () => signOut(firebaseAuth()),
   resetPassword: (email: string) => sendPasswordResetEmail(firebaseAuth(), email.trim()),
   async requestTeacherAccess() {
+    const current = currentFirebaseUser();
     const profile = await edge<ProfileRow>('request-teacher-role', {}, 15_000);
-    return mapProfile(profile);
+    return mapProfile(profile, undefined, firebaseAvatarUrl(current));
   },
   async switchRole(role: Extract<UserRole, 'student' | 'teacher'>) {
     const current = currentFirebaseUser();
     const result = await edge<{ profile: ProfileRow; active_role: UserRole }>('switch-account-role', { role }, 15_000);
     await current.getIdToken(true);
-    return mapProfile({ ...result.profile, active_role: result.active_role }, result.active_role);
+    return mapProfile({ ...result.profile, active_role: result.active_role }, result.active_role, firebaseAvatarUrl(current));
   },
   async updateProfile(data: Partial<User>) {
     if (!data.fullName?.trim()) throw new Error('Vui lòng nhập họ tên.');
     const current = currentFirebaseUser();
     await updateProfile(current, { displayName: data.fullName.trim(), photoURL: data.avatarUrl || null });
-    return mapProfile(await rpc<ProfileRow>('update_my_profile', { p_name: data.fullName.trim(), p_avatar: data.avatarUrl || null }));
+    return mapProfile(await rpc<ProfileRow>('update_my_profile', { p_name: data.fullName.trim(), p_avatar: data.avatarUrl || null }), undefined, firebaseAvatarUrl(current));
   },
 };

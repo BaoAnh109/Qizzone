@@ -133,7 +133,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                   className="flex h-9 items-center gap-1.5 rounded-full p-0.5 text-blue-700 transition hover:bg-blue-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="Ảnh đại diện" className="h-8 w-8 rounded-full object-cover" />
+                    <img src={user.avatarUrl} alt="Ảnh đại diện" referrerPolicy="no-referrer" className="h-8 w-8 rounded-full object-cover" />
                   ) : (
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                       {user?.fullName?.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" />}
