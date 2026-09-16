@@ -39,10 +39,17 @@ export async function rpc<T>(name: string, args?: Record<string, unknown>): Prom
 export async function edge<T>(name: string, body: unknown, timeoutMs = 65_000): Promise<T> {
   const token = await firebaseAuth().currentUser?.getIdToken();
   if (!token) throw new Error('Vui lòng đăng nhập.');
-  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') throw error;
+    throw new Error('Không thể kết nối tới Supabase Edge Function. Vui lòng kiểm tra cấu hình CORS và trạng thái deploy.', { cause: error });
+  }
+  if (response.status === 404) throw new Error(`Supabase Edge Function "${name}" chưa được deploy.`);
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error((result as { error?: string }).error || 'Không thể kết nối dịch vụ.');
   return result as T;
@@ -58,7 +65,12 @@ export function errorMessage(error: unknown): string {
     'auth/user-disabled': 'Tài khoản đã bị vô hiệu hóa.',
     'auth/invalid-email': 'Địa chỉ email không hợp lệ.',
     'auth/operation-not-allowed': 'Đăng nhập Email/Password chưa được bật trong Firebase.',
+    'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập Google.',
+    'auth/popup-blocked': 'Trình duyệt đã chặn cửa sổ Google. Hãy cho phép popup rồi thử lại.',
+    'auth/cancelled-popup-request': 'Yêu cầu đăng nhập Google đã bị hủy. Vui lòng thử lại.',
+    'auth/account-exists-with-different-credential': 'Email này đã được đăng ký bằng phương thức đăng nhập khác.',
   };
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'Dịch vụ phản hồi quá lâu. Vui lòng thử lại.';
+  if (error instanceof Error && /failed to fetch/i.test(error.message)) return 'Không thể kết nối tới Supabase Edge Function. Vui lòng kiểm tra cấu hình CORS và trạng thái deploy.';
   return (code && messages[code]) || (error instanceof Error ? error.message : 'Không thể hoàn thành thao tác.');
 }
