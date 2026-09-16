@@ -58,6 +58,10 @@ export function errorMessage(error: unknown): string {
     'auth/user-disabled': 'Tài khoản đã bị vô hiệu hóa.',
     'auth/invalid-email': 'Địa chỉ email không hợp lệ.',
     'auth/operation-not-allowed': 'Đăng nhập Email/Password chưa được bật trong Firebase.',
+    'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập Google.',
+    'auth/popup-blocked': 'Trình duyệt đã chặn cửa sổ Google. Hãy cho phép popup rồi thử lại.',
+    'auth/cancelled-popup-request': 'Yêu cầu đăng nhập Google đã bị hủy. Vui lòng thử lại.',
+    'auth/account-exists-with-different-credential': 'Email này đã được đăng ký bằng phương thức đăng nhập khác.',
   };
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'Dịch vụ phản hồi quá lâu. Vui lòng thử lại.';
   return (code && messages[code]) || (error instanceof Error ? error.message : 'Không thể hoàn thành thao tác.');

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
+import { Mail, Lock, LogIn, AlertCircle, Globe2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -52,6 +52,7 @@ export function Login() {
   const redirect = searchParams.get("redirect");
 
   const login = useAuthStore((state) => state.login);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const resetPassword = useAuthStore((state) => state.resetPassword);
   const isLoading = useAuthStore((state) => state.isLoading);
   const configurationError = useAuthStore((state) => state.configurationError);
@@ -59,6 +60,7 @@ export function Login() {
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const {
     register,
@@ -109,6 +111,22 @@ export function Login() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setAuthError(null);
+    setIsGoogleLoading(true);
+    try {
+      const loggedUser = await loginWithGoogle();
+      toast.success(`Chào mừng ${loggedUser.fullName}.`, "Đăng nhập thành công");
+      navigate(getPostLoginRedirect(loggedUser.role, redirect), { replace: true });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Đăng nhập Google thất bại, vui lòng thử lại";
+      setAuthError(message);
+      toast.error(message, "Đăng nhập không thành công");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -133,7 +151,7 @@ export function Login() {
         <Input
           label="Email"
           type="email"
-          placeholder="teacher@qizzone.edu.vn"
+          placeholder="student@qizzone.edu.vn"
           leftIcon={<Mail className="h-4 w-4" />}
           error={errors.email?.message}
           autoComplete="email"
@@ -166,6 +184,23 @@ export function Login() {
           {isLoading ? "Đang xác thực..." : "Đăng nhập"}
         </Button>
       </form>
+
+      <div className="relative flex items-center gap-3 text-xs text-neutral-400">
+        <span className="h-px flex-1 bg-neutral-200" />
+        <span>hoặc</span>
+        <span className="h-px flex-1 bg-neutral-200" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full"
+        isLoading={isGoogleLoading}
+        onClick={() => void handleGoogleLogin()}
+        leftIcon={<Globe2 className="h-4 w-4" />}
+      >
+        {isGoogleLoading ? "Đang mở Google..." : "Tiếp tục với Google"}
+      </Button>
 
       <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
         Chưa có tài khoản?{" "}

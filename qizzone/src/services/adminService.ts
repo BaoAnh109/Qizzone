@@ -4,8 +4,12 @@ interface TeacherApprovalRow {
   firebase_uid: string;
   email: string;
   full_name: string;
-  approval_status: 'pending';
+  role: 'student' | 'teacher';
+  approval_status: 'approved' | 'pending' | 'rejected';
   approval_requested_at: string | null;
+  teacher_request_status?: 'none' | 'pending' | 'approved' | 'rejected' | null;
+  teacher_request_blocked?: boolean | null;
+  teacher_requested_at?: string | null;
   created_at: string;
 }
 
@@ -13,8 +17,10 @@ export interface TeacherApprovalRequest {
   firebaseUid: string;
   email: string;
   fullName: string;
-  status: 'pending';
+  status: 'pending' | 'blocked';
   requestedAt: string;
+  blocked: boolean;
+  requestKind: 'teacher_access' | 'legacy_teacher';
 }
 
 function mapRequest(row: TeacherApprovalRow): TeacherApprovalRequest {
@@ -22,8 +28,10 @@ function mapRequest(row: TeacherApprovalRow): TeacherApprovalRequest {
     firebaseUid: row.firebase_uid,
     email: row.email,
     fullName: row.full_name,
-    status: row.approval_status,
-    requestedAt: row.approval_requested_at || row.created_at,
+    status: row.role === 'student' && row.teacher_request_status !== 'pending' ? 'blocked' : 'pending',
+    requestedAt: row.teacher_requested_at || row.approval_requested_at || row.created_at,
+    blocked: Boolean(row.teacher_request_blocked),
+    requestKind: row.role === 'student' ? 'teacher_access' : 'legacy_teacher',
   };
 }
 
@@ -34,4 +42,5 @@ export const adminService = {
   },
   approveTeacher: (firebaseUid: string) => edge('manage-teacher-approvals', { action: 'approve', firebaseUid }, 15_000),
   rejectTeacher: (firebaseUid: string) => edge('manage-teacher-approvals', { action: 'reject', firebaseUid }, 15_000),
+  setTeacherRequestBlocked: (firebaseUid: string, blocked: boolean) => edge('manage-teacher-approvals', { action: 'set_blocked', firebaseUid, blocked }, 15_000),
 };

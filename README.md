@@ -41,7 +41,8 @@ Qizzone được xây dựng nhằm giải quyết các vấn đề đó bằng 
 
 ### Giáo viên
 
-- Đăng ký tài khoản và gửi yêu cầu phê duyệt.
+- Tài khoản bắt đầu từ vai trò học sinh và gửi yêu cầu chuyển quyền giáo viên từ menu tài khoản.
+- Sau khi quản trị viên phê duyệt, chuyển đổi giữa màn hình học sinh và giáo viên.
 - Tạo đề thi thủ công hoặc nhập câu hỏi từ tài liệu.
 - Chỉnh sửa câu hỏi, đáp án, lời giải và công thức toán học.
 - Cấu hình thời gian, điểm đạt, số lần làm và thứ tự câu hỏi.
@@ -52,14 +53,14 @@ Qizzone được xây dựng nhằm giải quyết các vấn đề đó bằng 
 ### Quản trị viên
 
 - Xem danh sách tài khoản giáo viên đang chờ duyệt.
-- Phê duyệt hoặc từ chối yêu cầu đăng ký giáo viên.
+- Phê duyệt, từ chối hoặc khóa yêu cầu chuyển quyền giáo viên.
 - Đảm bảo chỉ tài khoản hợp lệ được sử dụng chức năng quản lý đề thi.
 
 ## Chức năng chính
 
 ### Quản lý tài khoản và phân quyền
 
-Hệ thống sử dụng ba vai trò: `student`, `teacher` và `admin`. Học sinh có thể sử dụng tài khoản ngay sau khi đăng ký, trong khi giáo viên cần được quản trị viên phê duyệt. Mỗi vai trò chỉ được truy cập các màn hình và dữ liệu phù hợp.
+Hệ thống sử dụng ba vai trò: `student`, `teacher` và `admin`. Tài khoản mới và đăng nhập Google bắt đầu ở vai trò học sinh. Người dùng có thể gửi yêu cầu chuyển quyền giáo viên từ menu avatar; chỉ sau khi quản trị viên phê duyệt mới có thể chuyển sang màn hình giáo viên. Mỗi vai trò chỉ được truy cập các màn hình và dữ liệu phù hợp.
 
 ### Tạo và quản lý đề thi
 

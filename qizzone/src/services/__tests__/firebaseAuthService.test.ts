@@ -17,7 +17,11 @@ describe('mapProfile', () => {
       fullName: 'Nguyễn An',
       name: 'Nguyễn An',
       role: 'student',
+      baseRole: 'student',
       approvalStatus: 'approved',
+      teacherRequestStatus: 'none',
+      teacherRequestBlocked: false,
+      teacherRequestedAt: undefined,
       avatarUrl: 'https://example.test/avatar.png',
       createdAt: '2026-09-05T00:00:00.000Z',
     });
