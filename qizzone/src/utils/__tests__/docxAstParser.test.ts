@@ -252,6 +252,10 @@ D. 5
     // File có tên 150 câu nhưng thực tế chứa 250 block câu hỏi (1-150 và
     // phần bổ sung 51-150), nên kiểm thử theo đúng nội dung thực tế.
     expect(result.questions).toHaveLength(250);
+    expect(result.questions.map((question) => question.order)).toEqual(
+      Array.from({ length: 250 }, (_, index) => index + 1)
+    );
+    expect(new Set(result.questions.map((question) => question.id)).size).toBe(250);
     expect(result.hasAnswerKeyTable).toBe(false);
     expect(result.questions.every((question) => question.correctAnswers.length === 1)).toBe(
       true

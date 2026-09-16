@@ -457,7 +457,7 @@ export function parseRawExamText(
   interface Boundary {
     startIndex: number;
     headerLength: number;
-    order: number;
+    sourceOrder: number;
   }
 
   const boundaries: Boundary[] = [];
@@ -467,14 +467,16 @@ export function parseRawExamText(
     const rawNum =
       headerMatch[1] || headerMatch[2] || headerMatch[3] || headerMatch[4];
     const explicitOrder = parseInt(rawNum, 10);
-    const order = !isNaN(explicitOrder) ? explicitOrder : boundaries.length + 1;
+    const sourceOrder = !isNaN(explicitOrder)
+      ? explicitOrder
+      : boundaries.length + 1;
 
     // Bỏ qua nếu là số thứ tự không hợp lý (ví dụ số năm 2024 hoặc quá lớn)
-    if (order > 0 && order <= 300) {
+    if (sourceOrder > 0 && sourceOrder <= 300) {
       boundaries.push({
         startIndex: headerMatch.index,
         headerLength: headerMatch[0].length,
-        order,
+        sourceOrder,
       });
     }
   }
@@ -494,10 +496,14 @@ export function parseRawExamText(
 
       const blockBody = contentToScan.substring(blockStart, blockEnd).trim();
       if (blockBody.length >= 2) {
+        // Số hiển thị luôn theo vị trí xuất hiện. Điều này giữ lại toàn bộ
+        // câu hỏi khi file lặp header (ví dụ Câu 51 đến Câu 150 lần hai),
+        // đồng thời đổi chúng thành Câu 151 đến Câu 250.
+        const normalizedOrder = i + 1;
         const parsed = parseSingleQuestionBlock(
           blockBody,
-          current.order,
-          globalAnswerKey[current.order]
+          normalizedOrder,
+          globalAnswerKey[current.sourceOrder]
         );
         if (parsed) {
           extractedQuestions.push(parsed);
