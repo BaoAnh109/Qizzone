@@ -95,53 +95,61 @@ export function StudentDashboard() {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Header */}
-      <div className="border-b border-neutral-200 pb-5">
-        <p className="text-sm font-medium text-blue-700">Cổng học sinh</p>
-        <h1 className="page-heading mt-1">
-          Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
-        </h1>
-        <p className="page-description">
-          Nhập mã phòng do thầy cô cung cấp để tham gia thi hoặc xem lại kết quả các bài đã làm.
-        </p>
-      </div>
-
-      {/* Hero: Room Code Input Center Focus (Kích thước nhỏ gọn, vừa vặn) */}
-      <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/40 p-4 sm:p-5 shadow-xs text-center">
-        <div className="mx-auto max-w-md space-y-2.5">
-          <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs shadow-indigo-200">
-            <KeyRound className="h-4 w-4" />
+      {/* Top Section: Greeting on Left + Room Code Card on Right with diagonal blue gradient */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b border-neutral-200">
+        {/* Left: Chào User */}
+        <div className="space-y-1.5 max-w-xl">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60">
+            <span>Cổng học sinh</span>
           </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-500">
+            Nhập mã phòng do thầy cô cung cấp để tham gia thi hoặc xem lại kết quả các bài đã làm.
+          </p>
+        </div>
 
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight">
-              Tham gia phòng thi
-            </h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Nhập mã phòng thi 6 ký tự được giáo viên chia sẻ để bắt đầu làm bài.
-            </p>
+        {/* Right: Card Tham gia phòng thi gradient chéo xanh */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-sky-600 p-4 sm:p-5 text-white shadow-md shadow-indigo-600/15 border border-blue-400/30 shrink-0 lg:max-w-md w-full lg:w-auto">
+          {/* Subtle Decorative Glow */}
+          <div className="pointer-events-none absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-white/15 blur-xl" />
+          <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-sky-400/20 blur-lg" />
+
+          <div className="relative z-10 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 backdrop-blur-xs text-white shadow-2xs">
+                <KeyRound className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight leading-none">
+                  Tham gia phòng thi
+                </h2>
+                <p className="text-[11px] text-blue-100/90 mt-0.5">
+                  Nhập mã phòng thi 6 ký tự để vào làm bài
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleJoinByCode} className="pt-0.5 flex flex-col sm:flex-row gap-2 items-center">
+              <input
+                id="room-code"
+                type="text"
+                placeholder="VD: QZ9821"
+                maxLength={10}
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                className="h-9.5 w-full sm:w-44 rounded-xl border border-white/20 bg-white px-3 text-center font-mono text-sm font-bold uppercase tracking-wider text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-white/50 shadow-xs"
+              />
+              <button
+                type="submit"
+                className="h-9.5 w-full sm:w-auto px-4 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
+              >
+                <LogIn className="h-3.5 w-3.5 text-indigo-600" />
+                <span>Vào phòng thi</span>
+              </button>
+            </form>
           </div>
-
-          <form onSubmit={handleJoinByCode} className="pt-1 flex flex-col sm:flex-row gap-2.5 items-center justify-center">
-            <input
-              id="room-code"
-              type="text"
-              placeholder="VD: QZ9821"
-              maxLength={10}
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              className="h-10 w-full sm:w-48 rounded-xl border border-indigo-200 bg-white px-3 text-center font-mono text-sm font-bold uppercase tracking-wider text-indigo-950 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:border-indigo-600 focus:outline-hidden focus:ring-2 focus:ring-indigo-100 shadow-2xs"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              className="w-full sm:w-auto h-10 px-4 text-xs font-bold shadow-xs bg-indigo-600 hover:bg-indigo-700"
-              leftIcon={<LogIn className="h-4 w-4" />}
-            >
-              Vào phòng thi
-            </Button>
-          </form>
         </div>
       </div>
 
