@@ -200,12 +200,16 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
           // still finalize the answers that were saved before time expired.
           if (!(error instanceof Error) || !/hết giờ/i.test(error.message)) throw error;
         }
-        const result = await rpc<ExamResult>('submit_attempt', { p_id: session.id });
+        const rawResult = await rpc<ExamResult>('submit_attempt', { p_id: session.id });
+        const result: ExamResult = {
+          ...rawResult,
+          flaggedQuestionIds: session.flaggedQuestionIds || [],
+        };
         set(state => {
           const current = state.activeSessions[quiz.id] || session;
           return {
             results: [result, ...state.results.filter(item => item.id !== result.id)],
-            activeSessions: { ...state.activeSessions, [quiz.id]: { ...current, isSubmitted: true } },
+            activeSessions: { ...state.activeSessions, [quiz.id]: { ...current, isSubmitted: true, flaggedQuestionIds: session.flaggedQuestionIds || [] } },
             saveStatus: { ...state.saveStatus, [quiz.id]: 'saved' },
             isSubmitting: false,
           };

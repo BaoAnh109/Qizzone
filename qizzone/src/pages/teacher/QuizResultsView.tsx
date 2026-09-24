@@ -77,16 +77,16 @@ export function QuizResultsView() {
   const totalSubmissions = rawResults.length;
   const averageScore =
     totalSubmissions > 0
-      ? (rawResults.reduce((sum, r) => sum + r.score, 0) / totalSubmissions).toFixed(1)
-      : "0.0";
+      ? (rawResults.reduce((sum, r) => sum + r.score, 0) / totalSubmissions).toFixed(2)
+      : "0.00";
   const maxScore =
     totalSubmissions > 0
-      ? Math.max(...rawResults.map((r) => r.score)).toFixed(1)
-      : "0.0";
+      ? Math.max(...rawResults.map((r) => r.score)).toFixed(2)
+      : "0.00";
   const minScore =
     totalSubmissions > 0
-      ? Math.min(...rawResults.map((r) => r.score)).toFixed(1)
-      : "0.0";
+      ? Math.min(...rawResults.map((r) => r.score)).toFixed(2)
+      : "0.00";
   const passedCount = rawResults.filter((r) => r.isPassed).length;
   const passRate =
     totalSubmissions > 0
@@ -322,7 +322,7 @@ export function QuizResultsView() {
                       {item.studentClass || "12A1"}
                     </td>
                     <td className="py-3 px-4 text-center font-black font-mono text-sm text-indigo-700">
-                      {item.score.toFixed(1)}
+                      {item.score.toFixed(2)}
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-semibold text-neutral-800">
                       {item.correctCount} / {item.totalQuestions}
@@ -385,7 +385,7 @@ export function QuizResultsView() {
           isOpen={!!selectedResult}
           onClose={() => setSelectedResult(null)}
           title={`Bài làm của thí sinh: ${selectedResult.studentName}`}
-          description={`Điểm số: ${selectedResult.score.toFixed(1)} / 10 · Đúng ${selectedResult.correctCount}/${selectedResult.totalQuestions} câu · Nộp lúc: ${new Date(selectedResult.submittedAt).toLocaleString("vi-VN")}`}
+          description={`Điểm số: ${selectedResult.score.toFixed(2)} / 10 · Đúng ${selectedResult.correctCount}/${selectedResult.totalQuestions} câu · Nộp lúc: ${new Date(selectedResult.submittedAt).toLocaleString("vi-VN")}`}
           footer={
             <Button variant="outline" onClick={() => setSelectedResult(null)}>
               Đóng cửa sổ

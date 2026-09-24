@@ -11,6 +11,8 @@ import {
   Search,
   Sparkles,
   Clock,
+  Settings,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,8 +21,8 @@ import { useQuizStore } from "@/store/quizStore";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
 import { QuickAnswerKeyModal } from "./QuickAnswerKeyModal";
+import { mapExtractedQuestionsToQuizQuestions } from "@/utils/extractedQuestionMapper";
 import type { DetectionStrategy } from "@/types/extractor";
-import type { Question } from "@/types/quiz";
 
 export function BatchActionBar() {
   const navigate = useNavigate();
@@ -119,34 +121,39 @@ export function BatchActionBar() {
     }
   };
 
-  const handleFinalizeQuiz = async () => {
+  const handleConfigureQuiz = () => {
     if (questions.length === 0) {
-      toast.error("Đề thi chưa có câu hỏi nào để xuất bản");
+      toast.error("Đề thi chưa có câu hỏi nào để cấu hình");
+      return;
+    }
+    const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
+    navigate("/teacher/create-quiz", {
+      state: {
+        initialQuestions: formattedQuestions,
+        initialTitle: extractionResult?.title || "Đề thi bóc tách từ tài liệu",
+        initialSubject: extractionResult?.subject || "Toán học 12",
+        initialDescription: `Bóc tách tự động từ file ${extractionResult?.fileName || "tài liệu"}.`,
+        initialStep: 3,
+      },
+    });
+  };
+
+  const handleFinalizeQuiz = async (status: "draft" | "published" = "published") => {
+    if (questions.length === 0) {
+      toast.error("Đề thi chưa có câu hỏi nào để lưu");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const formattedQuestions: Question[] = questions.map((q, idx) => ({
-        id: `q-ext-${Date.now().toString(36)}-${idx}`,
-        order: idx + 1,
-        content: q.content,
-        type: "single_choice",
-        options: q.options.map((opt) => ({
-          id: opt.id,
-          content: opt.content,
-        })),
-        correctAnswers: q.correctAnswers,
-        explanation: q.explanation,
-        points: q.points,
-      }));
+      const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
 
       const newQuiz = await createQuiz({
         title: extractionResult?.title || "Đề thi bóc tách từ tài liệu",
-        subject: extractionResult?.subject || "Toán học",
+        subject: extractionResult?.subject || "Toán học 12",
         description: `Bóc tách tự động từ file ${extractionResult?.fileName || "tài liệu"}.`,
-        status: "published",
+        status,
         teacherId: user?.id || "teacher-1",
         teacherName: user?.name || user?.fullName || "Thầy Cô",
         settings: {
@@ -161,12 +168,22 @@ export function BatchActionBar() {
       });
 
       toast.success(
-        `Đã xuất bản đề thi thành công! Mã phòng thi: ${newQuiz.code}`
+        status === "published"
+          ? `Đã xuất bản đề thi thành công! Mã phòng thi: ${newQuiz.code}`
+          : "Đã lưu bản nháp đề thi thành công!"
       );
       clearAll();
-      navigate(`/teacher/quiz/${newQuiz.id}/review`);
+      if (status === "published") {
+        navigate(`/teacher/quiz/${newQuiz.id}/review`);
+      } else {
+        navigate("/teacher/quizzes");
+      }
     } catch {
-      toast.error("Không thể xuất bản đề thi. Vui lòng thử lại!");
+      toast.error(
+        status === "published"
+          ? "Không thể xuất bản đề thi. Vui lòng thử lại!"
+          : "Không thể lưu bản nháp đề thi. Vui lòng thử lại!"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -206,7 +223,7 @@ export function BatchActionBar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -217,9 +234,30 @@ export function BatchActionBar() {
             </Button>
 
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleFinalizeQuiz("draft")}
+              disabled={isSubmitting || questions.length === 0}
+              leftIcon={<Save className="h-3.5 w-3.5 text-neutral-600" />}
+            >
+              Lưu bản nháp
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleConfigureQuiz}
+              disabled={questions.length === 0}
+              leftIcon={<Settings className="h-3.5 w-3.5 text-indigo-600" />}
+              className="font-medium text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+            >
+              Cấu hình đề thi
+            </Button>
+
+            <Button
               variant="primary"
               size="sm"
-              onClick={handleFinalizeQuiz}
+              onClick={() => handleFinalizeQuiz("published")}
               disabled={isSubmitting || questions.length === 0}
               leftIcon={<CheckCircle2 className="h-4 w-4" />}
               className="font-bold bg-indigo-600 hover:bg-indigo-700 shadow-sm"

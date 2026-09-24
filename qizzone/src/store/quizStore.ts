@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Quiz } from '@/types/quiz';
 import { quizService, type QuizInput } from '@/services/quizService';
 import { errorMessage } from '@/lib/cloud';
+import { useAuthStore } from '@/store/authStore';
 
 let loadVersion = 0;
 interface QuizState {
@@ -51,14 +52,32 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   updateQuiz: async (id, data) => {
     const existing = get().getQuizById(id);
     if (!existing) throw new Error('Không tìm thấy đề.');
+    const user = useAuthStore.getState().user;
+    if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
+      throw new Error('Bạn không có quyền chỉnh sửa đề thi của giáo viên khác.');
+    }
     await quizService.save({ ...existing, ...data }, id);
     await get().load();
     return get().getQuizById(id)!;
   },
-  deleteQuiz: async id => { await quizService.delete(id); await get().load(); },
+  deleteQuiz: async id => {
+    const existing = get().getQuizById(id);
+    if (existing) {
+      const user = useAuthStore.getState().user;
+      if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
+        throw new Error('Bạn không có quyền xóa đề thi của giáo viên khác.');
+      }
+    }
+    await quizService.delete(id);
+    await get().load();
+  },
   togglePublishStatus: async id => {
     const existing = get().getQuizById(id);
     if (!existing) throw new Error('Không tìm thấy đề.');
+    const user = useAuthStore.getState().user;
+    if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
+      throw new Error('Bạn không có quyền thay đổi trạng thái đề thi của giáo viên khác.');
+    }
     const status = existing.status === 'published' ? 'closed' : 'published';
     await quizService.setStatus(id, status);
     await get().load();
