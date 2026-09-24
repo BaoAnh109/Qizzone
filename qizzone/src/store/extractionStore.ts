@@ -190,7 +190,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     set((state) => {
       if (!state.extractionResult) return state;
       const total = state.extractionResult.questions.length || 1;
-      const pointsEach = Math.round((totalPoints / total) * 100) / 100;
+      const pointsEach = total > 0 ? totalPoints / total : 1;
       const updated = state.extractionResult.questions.map((q) => ({
         ...q,
         points: pointsEach,

@@ -374,8 +374,8 @@ export function Result() {
                           </Badge>
                           <span className="text-xs font-semibold text-neutral-600">
                             {item.isCorrect
-                              ? `+${item.pointsEarned} điểm`
-                              : `0 / ${item.maxPoints} điểm`}
+                              ? `+${Number(item.pointsEarned.toFixed(2))} điểm`
+                              : `0 / ${Number(item.maxPoints.toFixed(2))} điểm`}
                           </span>
                           {/* Task 2.4: Flag indicator on question */}
                           {isFlagged && (

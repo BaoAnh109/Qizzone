@@ -288,7 +288,7 @@ export function QuizRoom() {
                       Câu {currentIndex + 1} / {questions.length}
                     </Badge>
                     <span className="text-xs text-neutral-400">
-                      ({currentQuestion.points || 1} điểm)
+                      ({Number((currentQuestion.points || 1).toFixed(2))} điểm)
                     </span>
                   </div>
 

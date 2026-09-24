@@ -2,16 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  ArrowRight,
   PlusCircle,
   KeyRound,
   Calculator,
   Upload,
-  CheckCircle2,
   Filter,
   Search,
   Sparkles,
   Clock,
-  Settings,
   Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -213,7 +212,7 @@ export function BatchActionBar() {
               </h2>
               <p className="text-xs text-neutral-500">
                 Tổng số: <strong>{questions.length} câu</strong> · Tổng điểm:{" "}
-                <strong className="font-mono text-indigo-700">{totalPoints.toFixed(1)}đ</strong>
+                <strong className="font-mono text-indigo-700">{Math.round(totalPoints * 100) / 100}đ</strong>
                 {totalWarnings > 0 && (
                   <span className="text-amber-700 font-semibold ml-2">
                     · ⚠️ {totalWarnings} cảnh báo cần xem
@@ -244,25 +243,14 @@ export function BatchActionBar() {
             </Button>
 
             <Button
-              variant="outline"
+              variant="primary"
               size="sm"
               onClick={handleConfigureQuiz}
               disabled={questions.length === 0}
-              leftIcon={<Settings className="h-3.5 w-3.5 text-indigo-600" />}
-              className="font-medium text-indigo-700 border-indigo-200 hover:bg-indigo-50"
-            >
-              Cấu hình đề thi
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleFinalizeQuiz("published")}
-              disabled={isSubmitting || questions.length === 0}
-              leftIcon={<CheckCircle2 className="h-4 w-4" />}
+              rightIcon={<ArrowRight className="h-4 w-4" />}
               className="font-bold bg-indigo-600 hover:bg-indigo-700 shadow-sm"
             >
-              Xuất bản đề thi ({questions.length} câu)
+              Chuyển sang cấu hình đề ({questions.length} câu)
             </Button>
           </div>
         </div>
@@ -303,7 +291,7 @@ export function BatchActionBar() {
               leftIcon={<Calculator className="h-3.5 w-3.5 text-indigo-600" />}
               className="text-xs font-semibold"
             >
-              Chia đều 10 điểm ({questions.length > 0 ? (10 / questions.length).toFixed(2) : 0}đ/câu)
+              Chia đều 10 điểm ({questions.length > 0 ? Number((10 / questions.length).toFixed(3)) : 0}đ/câu)
             </Button>
 
             <Button

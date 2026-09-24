@@ -344,7 +344,7 @@ export function CreateQuiz() {
         settings,
         questions,
         totalQuestions: questions.length,
-        totalPoints: questions.reduce((sum, q) => sum + (q.points || 1), 0),
+        totalPoints: Math.round(questions.reduce((sum, q) => sum + (q.points || 1), 0) * 100) / 100,
         });
 
         toast.success(
@@ -509,7 +509,7 @@ export function CreateQuiz() {
                       Câu {qIdx + 1}
                     </Badge>
                     <span className="text-xs text-neutral-400">
-                      (Điểm: {question.points || 1} đ)
+                      (Điểm: {Number((question.points || 1).toFixed(2))} đ)
                     </span>
                   </div>
 
