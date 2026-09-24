@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { adminService, type UserAccount } from "@/services/adminService";
 import { useQuizStore } from "@/store/quizStore";
+import { useExamSessionStore } from "@/store/examSessionStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -26,6 +27,7 @@ export function AccountManagement() {
   const navigate = useNavigate();
   const toast = useToast();
   const quizzes = useQuizStore((state) => state.quizzes);
+  const examResults = useExamSessionStore((state) => state.results);
 
   const [activeTab, setActiveTab] = useState<"teacher" | "student">("teacher");
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,7 +65,7 @@ export function AccountManagement() {
 
     setProcessingId(account.id);
     try {
-      await adminService.toggleBlockUser(account.id, nextBlocked);
+      await adminService.toggleBlockUser(account.id, nextBlocked, account.role);
       setAccounts((prev) =>
         prev.map((acc) =>
           acc.id === account.id ? { ...acc, isBlocked: nextBlocked } : acc
@@ -222,6 +224,15 @@ export function AccountManagement() {
                         ).length || account.quizCount || 0
                       : 0;
 
+                  const studentSubmissionsCount =
+                    account.role === "student"
+                      ? examResults.filter(
+                          (r) =>
+                            r.studentId === account.id ||
+                            r.studentId === account.firebaseUid
+                        ).length || account.submissionCount || 0
+                      : 0;
+
                   return (
                     <tr
                       key={account.id}
@@ -254,7 +265,7 @@ export function AccountManagement() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs text-emerald-700">
-                            {account.submissionCount ?? 0} bài
+                            {studentSubmissionsCount} bài
                           </span>
                         )}
                       </td>

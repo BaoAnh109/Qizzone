@@ -1,4 +1,4 @@
-import { edge } from '@/lib/cloud';
+import { edge, supabase } from '@/lib/cloud';
 
 interface TeacherApprovalRow {
   firebase_uid: string;
@@ -23,7 +23,8 @@ export interface AccountRow {
   email: string;
   full_name: string;
   role: 'teacher' | 'student';
-  is_blocked: boolean;
+  approval_status?: string;
+  is_blocked?: boolean;
   created_at: string;
   quiz_count?: number;
   submission_count?: number;
@@ -58,72 +59,12 @@ function mapAccount(row: AccountRow): UserAccount {
     email: row.email,
     fullName: row.full_name,
     role: row.role,
-    isBlocked: !!row.is_blocked,
+    isBlocked: row.is_blocked ?? (row.approval_status === 'rejected' || row.approval_status === 'blocked'),
     createdAt: row.created_at,
     quizCount: row.quiz_count ?? 0,
     submissionCount: row.submission_count ?? 0,
   };
 }
-
-const DEFAULT_MOCK_ACCOUNTS: UserAccount[] = [
-  {
-    id: 'user-tea-001',
-    firebaseUid: 'user-tea-001',
-    email: 'teacher@example.com',
-    fullName: 'Nguyễn Văn Thầy',
-    role: 'teacher',
-    isBlocked: false,
-    createdAt: '2026-09-01T08:00:00.000Z',
-    quizCount: 4,
-    submissionCount: 0,
-  },
-  {
-    id: 'user-tea-002',
-    firebaseUid: 'user-tea-002',
-    email: 'teacher2@example.com',
-    fullName: 'Trần Thị Cô',
-    role: 'teacher',
-    isBlocked: false,
-    createdAt: '2026-09-05T09:30:00.000Z',
-    quizCount: 2,
-    submissionCount: 0,
-  },
-  {
-    id: 'user-stu-001',
-    firebaseUid: 'user-stu-001',
-    email: 'student@example.com',
-    fullName: 'Lê Văn Trò',
-    role: 'student',
-    isBlocked: false,
-    createdAt: '2026-09-02T10:15:00.000Z',
-    quizCount: 0,
-    submissionCount: 5,
-  },
-  {
-    id: 'user-stu-002',
-    firebaseUid: 'user-stu-002',
-    email: 'student2@example.com',
-    fullName: 'Phạm Thị Học',
-    role: 'student',
-    isBlocked: false,
-    createdAt: '2026-09-03T14:20:00.000Z',
-    quizCount: 0,
-    submissionCount: 3,
-  },
-  {
-    id: 'user-stu-003',
-    firebaseUid: 'user-stu-003',
-    email: 'student3@example.com',
-    fullName: 'Hoàng Minh Đức',
-    role: 'student',
-    isBlocked: true,
-    createdAt: '2026-09-08T11:00:00.000Z',
-    quizCount: 0,
-    submissionCount: 1,
-  },
-];
-
-let localMockAccounts: UserAccount[] = [...DEFAULT_MOCK_ACCOUNTS];
 
 export const adminService = {
   async listTeacherApprovals(): Promise<TeacherApprovalRequest[]> {
@@ -134,6 +75,7 @@ export const adminService = {
   rejectTeacher: (firebaseUid: string) => edge('manage-teacher-approvals', { action: 'reject', firebaseUid }, 15_000),
 
   async listAccounts(role?: 'teacher' | 'student'): Promise<UserAccount[]> {
+    // 1. Try edge function manage-user-accounts if deployed or mocked in tests
     try {
       const result = await edge<{ accounts: AccountRow[] }>(
         'manage-user-accounts',
@@ -144,31 +86,77 @@ export const adminService = {
         return result.accounts.map(mapAccount);
       }
     } catch {
-      // Fallback for local development or when edge is mocked/unavailable
+      // In live application, edge manage-user-accounts may not be present,
+      // fallback to querying real profiles table directly from database
     }
 
-    let accounts = [...localMockAccounts];
-    if (role) {
-      accounts = accounts.filter((acc) => acc.role === role);
+    // 2. Fetch real user accounts from Supabase profiles table
+    try {
+      const client = supabase();
+      let query = client
+        .from('profiles')
+        .select('firebase_uid, email, full_name, role, approval_status, created_at')
+        .order('created_at', { ascending: false });
+
+      if (role) {
+        query = query.eq('role', role);
+      }
+
+      const { data, error } = await query;
+      if (!error && Array.isArray(data)) {
+        return data
+          .filter((row: AccountRow) => row.role === 'teacher' || row.role === 'student')
+          .map(mapAccount);
+      }
+    } catch (err) {
+      console.warn('Cannot fetch real profiles from database:', err);
     }
-    return accounts;
+
+    return [];
   },
 
-  async toggleBlockUser(userId: string, isBlocked: boolean): Promise<void> {
+  async toggleBlockUser(userId: string, isBlocked: boolean, role?: 'teacher' | 'student'): Promise<void> {
+    // 1. Try edge function manage-user-accounts first (tested & supported)
     try {
       await edge(
         'manage-user-accounts',
         { action: 'toggle_block', userId, isBlocked },
         15_000
       );
+      return;
     } catch {
-      // Fallback update
+      // Edge function manage-user-accounts not available, handle with real teacher approval or db update
     }
 
-    localMockAccounts = localMockAccounts.map((acc) =>
-      acc.id === userId || acc.firebaseUid === userId
-        ? { ...acc, isBlocked }
-        : acc
-    );
+    // 2. If target is a teacher, use the live manage-teacher-approvals edge function
+    if (role === 'teacher') {
+      try {
+        if (isBlocked) {
+          await adminService.rejectTeacher(userId);
+          return;
+        } else {
+          await adminService.approveTeacher(userId);
+          return;
+        }
+      } catch (err) {
+        console.warn('Teacher approval action failed:', err);
+      }
+    }
+
+    // 3. Update real user profile in database
+    try {
+      const now = new Date().toISOString();
+      const nextStatus = isBlocked ? 'rejected' : 'approved';
+      const client = supabase();
+      await (client.from('profiles') as any)
+        .update({
+          approval_status: nextStatus,
+          reviewed_at: now,
+          updated_at: now,
+        })
+        .eq('firebase_uid', userId);
+    } catch (err) {
+      console.warn('Direct database profile update failed:', err);
+    }
   },
 };

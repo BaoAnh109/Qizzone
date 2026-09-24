@@ -364,11 +364,6 @@ export function CreateQuiz() {
       <div className="pb-16">
         <QuizCreationEntry
           onManualCreate={() => setShowEntry(false)}
-          onQuestionsLoaded={(extractedQuestions: Question[], extractedTitle?: string) => {
-            if (extractedTitle) setTitle(extractedTitle);
-            if (extractedQuestions.length > 0) setQuestions(extractedQuestions);
-            setShowEntry(false);
-          }}
         />
       </div>
     );
