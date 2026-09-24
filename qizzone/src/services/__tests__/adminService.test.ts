@@ -38,4 +38,51 @@ describe('admin teacher approval service', () => {
     expect(mocks.edge).toHaveBeenNthCalledWith(1, 'manage-teacher-approvals', { action: 'set_blocked', firebaseUid: 'student-1', blocked: true }, 15_000);
     expect(mocks.edge).toHaveBeenNthCalledWith(2, 'manage-teacher-approvals', { action: 'set_blocked', firebaseUid: 'student-1', blocked: false }, 15_000);
   });
+
+  it('lists accounts and maps returned rows correctly', async () => {
+    mocks.edge.mockResolvedValue({
+      accounts: [
+        {
+          id: 'acc-1',
+          firebase_uid: 'uid-1',
+          email: 'teacher@test.com',
+          full_name: 'Giáo viên A',
+          role: 'teacher',
+          is_blocked: false,
+          created_at: '2026-09-01T00:00:00.000Z',
+          quiz_count: 5,
+        },
+      ],
+    });
+
+    const accounts = await adminService.listAccounts('teacher');
+    expect(accounts).toEqual([
+      {
+        id: 'acc-1',
+        firebaseUid: 'uid-1',
+        email: 'teacher@test.com',
+        fullName: 'Giáo viên A',
+        role: 'teacher',
+        isBlocked: false,
+        createdAt: '2026-09-01T00:00:00.000Z',
+        quizCount: 5,
+        submissionCount: 0,
+      },
+    ]);
+    expect(mocks.edge).toHaveBeenCalledWith(
+      'manage-user-accounts',
+      { action: 'list', role: 'teacher' },
+      15_000
+    );
+  });
+
+  it('calls edge function to toggle user blocked state', async () => {
+    mocks.edge.mockResolvedValue({});
+    await adminService.toggleBlockUser('user-1', true);
+    expect(mocks.edge).toHaveBeenCalledWith(
+      'manage-user-accounts',
+      { action: 'toggle_block', userId: 'user-1', isBlocked: true },
+      15_000
+    );
+  });
 });

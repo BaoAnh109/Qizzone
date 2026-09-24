@@ -21,6 +21,8 @@ const ExamEntry = lazy(() => import("@/pages/student/ExamEntry"));
 const QuizRoom = lazy(() => import("@/pages/student/QuizRoom"));
 const Result = lazy(() => import("@/pages/student/Result"));
 const TeacherApprovals = lazy(() => import("@/pages/admin/TeacherApprovals"));
+const AccountManagement = lazy(() => import("@/pages/admin/AccountManagement"));
+const JoinByLink = lazy(() => import("@/pages/student/JoinByLink"));
 
 function RootRedirect() {
   const { user, isAuthenticated, isInitialized } = useAuthStore();
@@ -79,7 +81,13 @@ export function AppRoutes() {
         <Route element={<ProtectedRoute allowedRole="admin" />}>
           <Route element={<DashboardLayout />}>
             <Route path="/admin/teacher-approvals" element={<TeacherApprovals />} />
+            <Route path="/admin/accounts" element={<AccountManagement />} />
           </Route>
+        </Route>
+
+        {/* Direct Join Link Route */}
+        <Route element={<ProtectedRoute allowedRoles={["student", "teacher", "admin"]} />}>
+          <Route path="/join/:code" element={<JoinByLink />} />
         </Route>
 
         {/* Student Routes */}

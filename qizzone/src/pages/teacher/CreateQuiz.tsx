@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   PlusCircle,
   ClipboardList,
@@ -31,7 +31,16 @@ import { Badge } from "@/components/ui/Badge";
 import { MathEditorPreview } from "@/components/common/MathEditorPreview";
 import { MathRenderer } from "@/components/common/MathRenderer";
 import { useToast } from "@/hooks/useToast";
+import { QuizCreationEntry } from "@/components/teacher/QuizCreationEntry";
 import type { OptionId, Question, QuizSettings } from "@/types/quiz";
+
+interface CreateQuizLocationState {
+  initialQuestions?: Question[];
+  initialTitle?: string;
+  initialSubject?: string;
+  initialDescription?: string;
+  initialStep?: 1 | 2 | 3;
+}
 
 const POPULAR_SUBJECTS = [
   "Toán học 12",
@@ -57,6 +66,8 @@ const POPULAR_SUBJECTS = [
 
 export function CreateQuiz() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as CreateQuizLocationState | undefined;
   const { quizId } = useParams();
   const user = useAuthStore((state) => state.user);
   const { createQuiz, updateQuiz, getQuizById } = useQuizStore();
@@ -65,12 +76,30 @@ export function CreateQuiz() {
   const isEditing = !!quizId;
   const existingQuiz = quizId ? getQuizById(quizId) : undefined;
 
+  const [showEntry, setShowEntry] = useState<boolean>(() => {
+    if (isEditing) return false;
+    if (locationState?.initialQuestions && locationState.initialQuestions.length > 0) return false;
+    return true;
+  });
+
+  // Permission check for editing
+  useEffect(() => {
+    if (isEditing && existingQuiz && user) {
+      if (user.role !== "admin" && existingQuiz.teacherId && existingQuiz.teacherId !== user.id) {
+        toast.error("Bạn không có quyền chỉnh sửa đề thi của giáo viên khác!");
+        navigate("/teacher/quizzes", { replace: true });
+      }
+    }
+  }, [isEditing, existingQuiz, user, navigate, toast]);
+
   // 3-Step Wizard: 1. Soạn câu hỏi -> 2. Xem trước -> 3. Cấu hình phòng thi
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(() => {
+    return locationState?.initialStep || 1;
+  });
 
   // Form State
   const [title, setTitle] = useState(
-    existingQuiz?.title || "Đề kiểm tra trắc nghiệm"
+    locationState?.initialTitle || existingQuiz?.title || "Đề kiểm tra trắc nghiệm"
   );
   const [subjectPreset, setSubjectPreset] = useState<string>(() => {
     if (!existingQuiz) return "Toán học 12";
@@ -103,26 +132,29 @@ export function CreateQuiz() {
     }
   );
 
-  const [questions, setQuestions] = useState<Question[]>(
-    existingQuiz?.questions || [
-      {
-        id: "q-init-1",
-        order: 1,
-        content: "Cho hàm số $f(x) = x^2 - 4x + 3$. Tọa độ đỉnh của parabol là:",
-        type: "single_choice",
-        options: [
-          { id: "A", content: "$I(2; -1)$" },
-          { id: "B", content: "$I(-2; 1)$" },
-          { id: "C", content: "$I(1; 0)$" },
-          { id: "D", content: "$I(3; 0)$" },
-        ],
-        correctAnswers: ["A"],
-        explanation:
-          "Hoành độ đỉnh $x_I = -\\frac{b}{2a} = 2$. Tung độ đỉnh $y_I = 2^2 - 4(2) + 3 = -1$. Suy ra đỉnh $I(2; -1)$.",
-        points: 1,
-      },
-    ]
-  );
+  const [questions, setQuestions] = useState<Question[]>(() => {
+    return (
+      locationState?.initialQuestions ||
+      existingQuiz?.questions || [
+        {
+          id: "q-init-1",
+          order: 1,
+          content: "Cho hàm số $f(x) = x^2 - 4x + 3$. Tọa độ đỉnh của parabol là:",
+          type: "single_choice",
+          options: [
+            { id: "A", content: "$I(2; -1)$" },
+            { id: "B", content: "$I(-2; 1)$" },
+            { id: "C", content: "$I(1; 0)$" },
+            { id: "D", content: "$I(3; 0)$" },
+          ],
+          correctAnswers: ["A"],
+          explanation:
+            "Hoành độ đỉnh $x_I = -\\frac{b}{2a} = 2$. Tung độ đỉnh $y_I = 2^2 - 4(2) + 3 = -1$. Suy ra đỉnh $I(2; -1)$.",
+          points: 1,
+        },
+      ]
+    );
+  });
 
   const hydratedQuizId = useRef<string | null>(null);
   useEffect(() => {
@@ -135,6 +167,20 @@ export function CreateQuiz() {
     setSettings(existingQuiz.settings);
     setQuestions(existingQuiz.questions);
   }, [existingQuiz]);
+
+  useEffect(() => {
+    if (locationState?.initialQuestions && locationState.initialQuestions.length > 0) {
+      setQuestions(locationState.initialQuestions);
+      if (locationState.initialTitle) setTitle(locationState.initialTitle);
+      if (locationState.initialSubject) {
+        setSubjectPreset(POPULAR_SUBJECTS.includes(locationState.initialSubject) ? locationState.initialSubject : "custom");
+        setCustomSubject(POPULAR_SUBJECTS.includes(locationState.initialSubject) ? "" : locationState.initialSubject);
+      }
+      if (locationState.initialDescription) setDescription(locationState.initialDescription);
+      if (locationState.initialStep) setCurrentStep(locationState.initialStep);
+      setShowEntry(false);
+    }
+  }, [locationState]);
 
   // Question Management Handlers
   const handleAddQuestion = () => {
@@ -298,7 +344,7 @@ export function CreateQuiz() {
         settings,
         questions,
         totalQuestions: questions.length,
-        totalPoints: questions.reduce((sum, q) => sum + (q.points || 1), 0),
+        totalPoints: Math.round(questions.reduce((sum, q) => sum + (q.points || 1), 0) * 100) / 100,
         });
 
         toast.success(
@@ -312,6 +358,16 @@ export function CreateQuiz() {
       toast.error(error instanceof Error ? error.message : "Không thể lưu đề thi. Vui lòng thử lại!");
     }
   };
+
+  if (showEntry && !isEditing) {
+    return (
+      <div className="pb-16">
+        <QuizCreationEntry
+          onManualCreate={() => setShowEntry(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-16">
@@ -328,6 +384,18 @@ export function CreateQuiz() {
         </div>
 
         <div className="flex items-center gap-2">
+          {!isEditing && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowEntry(true)}
+              leftIcon={<ArrowLeft className="h-4 w-4" />}
+              className="text-neutral-600 hover:text-neutral-900"
+            >
+              Đổi cách tạo đề
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -441,7 +509,7 @@ export function CreateQuiz() {
                       Câu {qIdx + 1}
                     </Badge>
                     <span className="text-xs text-neutral-400">
-                      (Điểm: {question.points || 1} đ)
+                      (Điểm: {Number((question.points || 1).toFixed(2))} đ)
                     </span>
                   </div>
 

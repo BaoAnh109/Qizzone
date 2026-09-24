@@ -140,17 +140,17 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
             <span>Điểm:</span>
             <input
               type="number"
-              step={0.25}
+              step="any"
               min={0}
               max={10}
-              value={question.points}
+              value={question.points ? Number(question.points.toFixed(4)) : 0}
               onChange={(e) =>
                 updateQuestion(question.id, {
                   points: parseFloat(e.target.value) || 0,
                 })
               }
               onClick={(e) => e.stopPropagation()}
-              className="w-12 font-mono font-bold text-center text-neutral-900 bg-transparent focus:outline-hidden"
+              className="w-16 font-mono font-bold text-center text-neutral-900 bg-transparent focus:outline-hidden"
             />
           </div>
 

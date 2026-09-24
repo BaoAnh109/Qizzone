@@ -13,9 +13,11 @@ import {
   ToggleRight,
   FileUp,
   BarChart2,
+  Link2,
 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -26,6 +28,7 @@ import type { Quiz, QuizStatus } from "@/types/quiz";
 
 export function QuizList() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const { quizzes, deleteQuiz, duplicateQuiz, togglePublishStatus } =
     useQuizStore();
   const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
@@ -35,9 +38,14 @@ export function QuizList() {
   const [statusFilter, setStatusFilter] = useState<QuizStatus | "all">("all");
   const [deleteTarget, setDeleteTarget] = useState<Quiz | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedLinkCode, setCopiedLinkCode] = useState<string | null>(null);
 
-  // Filtered list
-  const filteredQuizzes = quizzes.filter((quiz) => {
+  // Filtered list by role and search
+  const roleFilteredQuizzes = user?.role === "admin"
+    ? quizzes
+    : quizzes.filter((q) => q.teacherId === user?.id);
+
+  const filteredQuizzes = roleFilteredQuizzes.filter((quiz) => {
     const matchesSearch =
       quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quiz.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -54,6 +62,14 @@ export function QuizList() {
     setCopiedCode(code);
     toast.success(`Đã sao chép mã phòng: ${code}`);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleCopyLink = (code: string) => {
+    const joinUrl = `${window.location.origin}/join/${code}`;
+    navigator.clipboard.writeText(joinUrl);
+    setCopiedLinkCode(code);
+    toast.success(`Đã sao chép link làm bài: ${joinUrl}`);
+    setTimeout(() => setCopiedLinkCode(null), 2000);
   };
 
   const handleDuplicate = async (id: string) => {
@@ -202,21 +218,41 @@ export function QuizList() {
                         </p>
                       </div>
 
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2.5 text-xs bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-100"
-                        onClick={() => handleCopyCode(quiz.code)}
-                        leftIcon={
-                          copiedCode === quiz.code ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )
-                        }
-                      >
-                        {copiedCode === quiz.code ? "Đã copy" : "Copy"}
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-xs bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-100"
+                          onClick={() => handleCopyCode(quiz.code)}
+                          title="Sao chép mã phòng"
+                          leftIcon={
+                            copiedCode === quiz.code ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5" />
+                            )
+                          }
+                        >
+                          {copiedCode === quiz.code ? "Đã copy" : "Mã"}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-xs bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-100"
+                          onClick={() => handleCopyLink(quiz.code)}
+                          title="Sao chép link làm bài trực tiếp"
+                          leftIcon={
+                            copiedLinkCode === quiz.code ? (
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            ) : (
+                              <Link2 className="h-3.5 w-3.5" />
+                            )
+                          }
+                        >
+                          {copiedLinkCode === quiz.code ? "Đã copy" : "Link"}
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Summary Details */}

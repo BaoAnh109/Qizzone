@@ -524,10 +524,10 @@ export function parseRawExamText(
     }
   }
 
-  // Cân bằng điểm số đều cho các câu (Tổng 10 điểm)
+  // Cân bằng điểm số đều cho các câu (Tổng 10 điểm, độ chính xác cao tránh sai số làm tròn)
   const totalPoints = 10;
   const count = extractedQuestions.length || 1;
-  const pointsPerQuestion = Math.round((totalPoints / count) * 100) / 100;
+  const pointsPerQuestion = count > 0 ? totalPoints / count : 1;
 
   extractedQuestions.forEach((q) => {
     q.points = pointsPerQuestion;

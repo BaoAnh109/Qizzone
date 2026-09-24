@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen,
   Clock,
@@ -28,6 +28,9 @@ function cleanStudentName(rawName?: string): string {
 
 export function ExamEntry() {
   const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
+  const retryMode = searchParams.get("mode");
+  const sourceResultId = searchParams.get("sourceResultId");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
@@ -103,7 +106,11 @@ export function ExamEntry() {
         studentName: studentName.trim(),
       });
       toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
-      navigate(`/student/quiz/${quiz.id}`);
+      const targetUrl =
+        retryMode === "retry_incorrect" && sourceResultId
+          ? `/student/quiz/${quiz.id}?mode=retry_incorrect&sourceResultId=${sourceResultId}`
+          : `/student/quiz/${quiz.id}`;
+      navigate(targetUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể bắt đầu bài thi.");
     }
@@ -132,6 +139,11 @@ export function ExamEntry() {
               <Badge variant="success" size="sm" dot>
                 Phòng thi đang mở
               </Badge>
+              {retryMode === "retry_incorrect" && (
+                <Badge variant="warning" size="sm">
+                  Chế độ làm lại câu sai
+                </Badge>
+              )}
             </div>
             <CardTitle className="text-2xl font-semibold sm:text-3xl">
               {quiz.title}
@@ -200,7 +212,7 @@ export function ExamEntry() {
                     onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
                     leftIcon={<Eye className="h-3.5 w-3.5" />}
                   >
-                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(1)}đ)
+                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(2)}đ)
                   </Button>
                 )}
               </div>

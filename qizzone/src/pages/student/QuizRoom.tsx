@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Clock,
   Send,
@@ -33,6 +33,9 @@ function cleanStudentName(rawName?: string): string {
 
 export function QuizRoom() {
   const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
+  const retryMode = searchParams.get("mode");
+  const sourceResultId = searchParams.get("sourceResultId");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
@@ -47,12 +50,19 @@ export function QuizRoom() {
   const initSession = useExamSessionStore((state) => state.initSession);
   const flushSession = useExamSessionStore((state) => state.flushSession);
   const isSubmitting = useExamSessionStore((state) => state.isSubmitting);
+  const getResultById = useExamSessionStore((state) => state.getResultById);
   const saveStatus = useExamSessionStore((state) => quizId ? state.saveStatus[quizId] || 'idle' : 'idle');
 
   const toast = useToast();
 
   const quiz = quizId ? getQuizById(quizId) : undefined;
   const session = quizId ? activeSessions[quizId] : undefined;
+
+  const sourceResult = sourceResultId ? getResultById(sourceResultId) : undefined;
+  const incorrectQuestionIds = useMemo(() => {
+    if (retryMode !== "retry_incorrect" || !sourceResult) return null;
+    return sourceResult.details.filter((d) => !d.isCorrect).map((d) => d.questionId);
+  }, [retryMode, sourceResult]);
 
   // Auto-init session on mount if not exists
   useEffect(() => {
@@ -85,18 +95,27 @@ export function QuizRoom() {
 
   const questions: Question[] = useMemo(() => {
     if (!quiz) return [];
-    const order = session?.questionOrder || quiz.questions.map(question => question.id);
-    return order.flatMap(id => {
-      const question = quiz.questions.find(item => item.id === id);
+    let baseList = quiz.questions;
+    if (incorrectQuestionIds && incorrectQuestionIds.length > 0) {
+      baseList = baseList.filter((q) => incorrectQuestionIds.includes(q.id));
+    }
+    const order = session?.questionOrder
+      ? session.questionOrder.filter((id) => baseList.some((q) => q.id === id))
+      : baseList.map((question) => question.id);
+    return order.flatMap((id) => {
+      const question = baseList.find((item) => item.id === id);
       if (!question) return [];
       const optionOrder = session?.optionOrder?.[question.id];
       if (!optionOrder) return [question];
-      return [{ ...question, options: optionOrder.flatMap(optionId => {
-        const option = question.options.find(item => item.id === optionId);
-        return option ? [option] : [];
-      }) }];
+      return [{
+        ...question,
+        options: optionOrder.flatMap((optionId) => {
+          const option = question.options.find((item) => item.id === optionId);
+          return option ? [option] : [];
+        }),
+      }];
     });
-  }, [quiz, session?.questionOrder, session?.optionOrder]);
+  }, [quiz, session?.questionOrder, session?.optionOrder, incorrectQuestionIds]);
 
   const currentQuestion: Question | undefined = questions[currentIndex];
 
@@ -179,7 +198,7 @@ export function QuizRoom() {
     <div className="flex flex-col min-h-screen bg-neutral-100/60 pb-12">
       {/* Top Fixed Exam Header Bar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
           {/* Quiz Title & Subject */}
           <div className="flex items-center gap-3 min-w-0">
             <Badge variant="secondary" size="sm" className="hidden sm:inline-flex">
@@ -250,10 +269,16 @@ export function QuizRoom() {
       </header>
 
       {/* Main Exam Body: 2 Columns (Question Area + Question Navigator) */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT: Current Question Content & Options (8 cols) */}
           <div className="lg:col-span-8 space-y-4">
+            {incorrectQuestionIds && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 px-4 text-xs text-amber-900 flex items-center justify-between font-medium shadow-2xs">
+                <span>Chế độ luyện tập: Làm lại các câu sai ({questions.length} câu)</span>
+                <Badge variant="warning" size="sm">Làm lại câu sai</Badge>
+              </div>
+            )}
             {currentQuestion ? (
               <Card className="border-neutral-200/90 shadow-sm overflow-hidden bg-white">
                 {/* Question Header */}
@@ -263,7 +288,7 @@ export function QuizRoom() {
                       Câu {currentIndex + 1} / {questions.length}
                     </Badge>
                     <span className="text-xs text-neutral-400">
-                      ({currentQuestion.points || 1} điểm)
+                      ({Number((currentQuestion.points || 1).toFixed(2))} điểm)
                     </span>
                   </div>
 
@@ -309,7 +334,7 @@ export function QuizRoom() {
 
                   {/* 4 Option Buttons */}
                   <div className="space-y-3 pt-2">
-                    {currentQuestion.options.map((opt) => {
+                    {currentQuestion.options.map((opt, index) => {
                       const isSelected = currentAnswers.includes(opt.id);
                       return (
                         <button
@@ -329,7 +354,7 @@ export function QuizRoom() {
                                 : "bg-neutral-100 text-neutral-700 border border-neutral-200"
                             }`}
                           >
-                            {opt.id}
+                            {String.fromCharCode(65 + index)}
                           </span>
 
                           <div className="flex-1 pt-0.5 text-sm sm:text-base font-normal text-neutral-900">
@@ -412,40 +437,42 @@ export function QuizRoom() {
                 </div>
 
                 {/* Grid Matrix of Question Numbers */}
-                <div className="grid grid-cols-5 gap-2">
-                  {questions.map((q, idx) => {
-                    const isAnswered = (session.answers?.[q.id] || []).length > 0;
-                    const isFlagged = (
-                      session.flaggedQuestionIds || []
-                    ).includes(q.id);
-                    const isCurrent = idx === currentIndex;
+                <div className="max-h-[404px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-5 gap-2">
+                    {questions.map((q, idx) => {
+                      const isAnswered = (session.answers?.[q.id] || []).length > 0;
+                      const isFlagged = (
+                        session.flaggedQuestionIds || []
+                      ).includes(q.id);
+                      const isCurrent = idx === currentIndex;
 
-                    let bgClass = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
-                    if (isAnswered) {
-                      bgClass = "bg-emerald-500 text-white font-bold";
-                    }
-                    if (isFlagged) {
-                      bgClass = "bg-amber-400 text-amber-950 font-bold ring-1 ring-amber-500";
-                    }
+                      let bgClass = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
+                      if (isAnswered) {
+                        bgClass = "bg-emerald-500 text-white font-bold";
+                      }
+                      if (isFlagged) {
+                        bgClass = "bg-amber-400 text-amber-950 font-bold ring-1 ring-amber-500";
+                      }
 
-                    return (
-                      <button
-                        key={q.id || idx}
-                        type="button"
-                        onClick={() => setQuestionIndex(quiz.id, idx)}
-                        className={`h-10 w-full rounded-xl text-xs flex items-center justify-center font-mono transition cursor-pointer relative ${bgClass} ${
-                          isCurrent
-                            ? "ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-xs z-10"
-                            : ""
-                        }`}
-                      >
-                        {idx + 1}
-                        {isFlagged && (
-                          <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
-                        )}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={q.id || idx}
+                          type="button"
+                          onClick={() => setQuestionIndex(quiz.id, idx)}
+                          className={`h-10 w-full rounded-xl text-xs flex items-center justify-center font-mono transition cursor-pointer relative ${bgClass} ${
+                            isCurrent
+                              ? "ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-xs z-10"
+                              : ""
+                          }`}
+                        >
+                          {idx + 1}
+                          {isFlagged && (
+                            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Submit CTA in Sidebar */}

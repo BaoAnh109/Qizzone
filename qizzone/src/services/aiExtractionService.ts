@@ -46,7 +46,7 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
       options,
       correctAnswers: answers,
       explanation: question.explanation,
-      points: Math.round((10 / payload.questions!.length) * 100) / 100,
+      points: payload.questions?.length ? 10 / payload.questions.length : 1,
       confidenceScore: typeof question.confidenceScore === 'number' ? question.confidenceScore : 0.9,
       detectionStrategy: (question.detectionStrategy || 'ai_inference') as DetectionStrategy,
       rawTextSegment: question.content || '',
