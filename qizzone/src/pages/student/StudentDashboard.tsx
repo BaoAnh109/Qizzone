@@ -110,28 +110,28 @@ export function StudentDashboard() {
           </p>
         </div>
 
-        {/* Right: Card Tham gia phòng thi gradient chéo xanh */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-sky-600 p-4 sm:p-5 text-white shadow-md shadow-indigo-600/15 border border-blue-400/30 shrink-0 lg:max-w-md w-full lg:w-auto">
+        {/* Right: Card Tham gia phòng thi gradient chéo xanh (Kích thước to hơn, thoáng đãng) */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-sky-600 p-5 sm:p-6 text-white shadow-lg shadow-indigo-600/20 border border-blue-400/40 shrink-0 lg:max-w-lg w-full lg:w-auto">
           {/* Subtle Decorative Glow */}
-          <div className="pointer-events-none absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-white/15 blur-xl" />
-          <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-sky-400/20 blur-lg" />
+          <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-28 rounded-full bg-white/20 blur-xl" />
+          <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-sky-400/25 blur-lg" />
 
-          <div className="relative z-10 space-y-2.5">
-            <div className="flex items-center gap-2">
-              <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 backdrop-blur-xs text-white shadow-2xs">
-                <KeyRound className="h-3.5 w-3.5" />
+          <div className="relative z-10 space-y-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs text-white shadow-2xs">
+                <KeyRound className="h-4.5 w-4.5" />
               </div>
               <div>
-                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight leading-none">
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
                   Tham gia phòng thi
                 </h2>
-                <p className="text-[11px] text-blue-100/90 mt-0.5">
+                <p className="text-xs text-blue-100 mt-0.5">
                   Nhập mã phòng thi 6 ký tự để vào làm bài
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleJoinByCode} className="pt-0.5 flex flex-col sm:flex-row gap-2 items-center">
+            <form onSubmit={handleJoinByCode} className="pt-1 flex flex-col sm:flex-row gap-2.5 items-center">
               <input
                 id="room-code"
                 type="text"
@@ -139,13 +139,13 @@ export function StudentDashboard() {
                 maxLength={10}
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                className="h-9.5 w-full sm:w-44 rounded-xl border border-white/20 bg-white px-3 text-center font-mono text-sm font-bold uppercase tracking-wider text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-white/50 shadow-xs"
+                className="h-11 w-full sm:w-52 rounded-xl border border-white/25 bg-white px-3.5 text-center font-mono text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-white/60 shadow-xs"
               />
               <button
                 type="submit"
-                className="h-9.5 w-full sm:w-auto px-4 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
+                className="h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
               >
-                <LogIn className="h-3.5 w-3.5 text-indigo-600" />
+                <LogIn className="h-4 w-4 text-indigo-600" />
                 <span>Vào phòng thi</span>
               </button>
             </form>
