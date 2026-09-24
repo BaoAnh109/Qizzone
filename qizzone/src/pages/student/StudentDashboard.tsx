@@ -106,23 +106,23 @@ export function StudentDashboard() {
         </p>
       </div>
 
-      {/* Hero: Room Code Input Center Focus */}
-      <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/50 p-6 sm:p-10 shadow-xs text-center">
-        <div className="mx-auto max-w-xl space-y-4">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-200">
-            <KeyRound className="h-6 w-6" />
+      {/* Hero: Room Code Input Center Focus (Kích thước nhỏ gọn, vừa vặn) */}
+      <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/40 p-4 sm:p-5 shadow-xs text-center">
+        <div className="mx-auto max-w-md space-y-2.5">
+          <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-xs shadow-indigo-200">
+            <KeyRound className="h-4 w-4" />
           </div>
 
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-neutral-900 tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight">
               Tham gia phòng thi
             </h2>
-            <p className="text-sm text-neutral-600 mt-1">
+            <p className="text-xs text-neutral-500 mt-0.5">
               Nhập mã phòng thi 6 ký tự được giáo viên chia sẻ để bắt đầu làm bài.
             </p>
           </div>
 
-          <form onSubmit={handleJoinByCode} className="mt-4 flex flex-col sm:flex-row gap-3 items-center justify-center">
+          <form onSubmit={handleJoinByCode} className="pt-1 flex flex-col sm:flex-row gap-2.5 items-center justify-center">
             <input
               id="room-code"
               type="text"
@@ -130,14 +130,14 @@ export function StudentDashboard() {
               maxLength={10}
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              className="h-12 w-full sm:w-64 rounded-xl border-2 border-indigo-200 bg-white px-4 text-center font-mono text-lg font-bold uppercase tracking-widest text-indigo-950 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-100 shadow-xs"
+              className="h-10 w-full sm:w-48 rounded-xl border border-indigo-200 bg-white px-3 text-center font-mono text-sm font-bold uppercase tracking-wider text-indigo-950 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:border-indigo-600 focus:outline-hidden focus:ring-2 focus:ring-indigo-100 shadow-2xs"
             />
             <Button
               type="submit"
               variant="primary"
-              size="lg"
-              className="w-full sm:w-auto h-12 px-6 font-bold shadow-md shadow-indigo-600/20 bg-indigo-600 hover:bg-indigo-700"
-              leftIcon={<LogIn className="h-5 w-5" />}
+              size="md"
+              className="w-full sm:w-auto h-10 px-4 text-xs font-bold shadow-xs bg-indigo-600 hover:bg-indigo-700"
+              leftIcon={<LogIn className="h-4 w-4" />}
             >
               Vào phòng thi
             </Button>
