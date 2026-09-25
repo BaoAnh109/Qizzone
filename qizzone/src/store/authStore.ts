@@ -93,7 +93,12 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
             set({ user: profile, isAuthenticated: true, isLoading: false, isInitialized: true });
           } catch (error) {
             if (eventVersion !== authEventVersion) return;
-            set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, configurationError: errorMessage(error) });
+            const currentUser = get().user;
+            if (currentUser && /fetch|network|timeout|connection/i.test(errorMessage(error))) {
+              set({ isLoading: false, isInitialized: true });
+            } else {
+              set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, configurationError: errorMessage(error) });
+            }
           }
         },
         error => {

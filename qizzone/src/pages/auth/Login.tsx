@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,6 +51,9 @@ export function Login() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect");
 
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const login = useAuthStore((state) => state.login);
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const resetPassword = useAuthStore((state) => state.resetPassword);
@@ -61,6 +64,13 @@ export function Login() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (isInitialized && isAuthenticated && user) {
+      const destination = getPostLoginRedirect(user.role, redirect);
+      navigate(destination, { replace: true });
+    }
+  }, [isInitialized, isAuthenticated, user, redirect, navigate]);
 
   const {
     register,
@@ -205,7 +215,7 @@ export function Login() {
       <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
         Chưa có tài khoản?{" "}
         <Link
-          to="/register"
+          to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"}
           className="font-semibold text-blue-700 hover:text-blue-800"
         >
           Tạo tài khoản

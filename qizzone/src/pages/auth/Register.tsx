@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -17,11 +17,24 @@ import { registerSchema, type RegisterFormData } from "@/lib/validations/auth";
 
 export function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
+
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const registerUser = useAuthStore((state) => state.register);
   const isLoading = useAuthStore((state) => state.isLoading);
   const toast = useToast();
 
   const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isInitialized && isAuthenticated && user) {
+      const home = user.role === "admin" ? "/admin/teacher-approvals" : user.role === "student" ? "/student" : "/teacher";
+      navigate(redirect || home, { replace: true });
+    }
+  }, [isInitialized, isAuthenticated, user, redirect, navigate]);
 
   const {
     register,
@@ -45,7 +58,7 @@ export function Register() {
         `Chúc mừng ${newUser.fullName} đã đăng ký tài khoản thành công!`,
         "Đăng ký thành công"
       );
-      navigate("/student", {
+      navigate(redirect || "/student", {
         replace: true,
       });
     } catch (err: unknown) {
@@ -131,7 +144,7 @@ export function Register() {
       <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
         Đã có tài khoản?{" "}
         <Link
-          to="/login"
+          to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
           className="font-semibold text-blue-700 hover:text-blue-800"
         >
           Đăng nhập ngay

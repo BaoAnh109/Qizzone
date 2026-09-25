@@ -1,8 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd qizzone && npm install",
-  "buildCommand": "cd qizzone && npm run build",
-  "outputDirectory": "qizzone/dist",
   "rewrites": [
     {
       "source": "/(.*)",
