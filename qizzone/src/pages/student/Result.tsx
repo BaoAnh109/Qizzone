@@ -59,7 +59,7 @@ export function Result() {
 
       return true;
     });
-  }, [result?.details, filterTab, searchQuery, flaggedSet]);
+  }, [result, filterTab, searchQuery, flaggedSet]);
 
   if (!result) {
     return (

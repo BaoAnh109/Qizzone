@@ -102,23 +102,21 @@ export function CreateQuiz() {
     locationState?.initialTitle || existingQuiz?.title || "Đề kiểm tra trắc nghiệm"
   );
   const [subjectPreset, setSubjectPreset] = useState<string>(() => {
-    if (!existingQuiz) return "Toán học 12";
-    return POPULAR_SUBJECTS.includes(existingQuiz.subject)
-      ? existingQuiz.subject
-      : "custom";
+    const rawSubject = locationState?.initialSubject || existingQuiz?.subject;
+    if (!rawSubject) return "Toán học 12";
+    return POPULAR_SUBJECTS.includes(rawSubject) ? rawSubject : "custom";
   });
   const [customSubject, setCustomSubject] = useState<string>(() => {
-    if (!existingQuiz) return "";
-    return POPULAR_SUBJECTS.includes(existingQuiz.subject)
-      ? ""
-      : existingQuiz.subject;
+    const rawSubject = locationState?.initialSubject || existingQuiz?.subject;
+    if (!rawSubject) return "";
+    return POPULAR_SUBJECTS.includes(rawSubject) ? "" : rawSubject;
   });
 
   const resolvedSubject =
     subjectPreset === "custom" ? customSubject.trim() : subjectPreset;
 
   const [description, setDescription] = useState(
-    existingQuiz?.description || ""
+    locationState?.initialDescription || existingQuiz?.description || ""
   );
 
   const [settings, setSettings] = useState<QuizSettings>(
@@ -167,20 +165,6 @@ export function CreateQuiz() {
     setSettings(existingQuiz.settings);
     setQuestions(existingQuiz.questions);
   }, [existingQuiz]);
-
-  useEffect(() => {
-    if (locationState?.initialQuestions && locationState.initialQuestions.length > 0) {
-      setQuestions(locationState.initialQuestions);
-      if (locationState.initialTitle) setTitle(locationState.initialTitle);
-      if (locationState.initialSubject) {
-        setSubjectPreset(POPULAR_SUBJECTS.includes(locationState.initialSubject) ? locationState.initialSubject : "custom");
-        setCustomSubject(POPULAR_SUBJECTS.includes(locationState.initialSubject) ? "" : locationState.initialSubject);
-      }
-      if (locationState.initialDescription) setDescription(locationState.initialDescription);
-      if (locationState.initialStep) setCurrentStep(locationState.initialStep);
-      setShowEntry(false);
-    }
-  }, [locationState]);
 
   // Question Management Handlers
   const handleAddQuestion = () => {

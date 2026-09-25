@@ -52,8 +52,25 @@ export function AccountManagement() {
   }, [toast]);
 
   useEffect(() => {
-    void loadAccounts();
-  }, [loadAccounts]);
+    let isMounted = true;
+    adminService
+      .listAccounts()
+      .then((data) => {
+        if (isMounted) {
+          setAccounts(data);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          toast.error("Không thể tải danh sách tài khoản.");
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [toast]);
 
   const handleToggleBlock = async (account: UserAccount) => {
     const nextBlocked = !account.isBlocked;

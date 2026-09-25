@@ -115,7 +115,7 @@ export function QuizRoom() {
         }),
       }];
     });
-  }, [quiz, session?.questionOrder, session?.optionOrder, incorrectQuestionIds]);
+  }, [quiz, session, incorrectQuestionIds]);
 
   const currentQuestion: Question | undefined = questions[currentIndex];
 

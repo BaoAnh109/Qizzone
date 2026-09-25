@@ -157,7 +157,10 @@ export const adminService = {
       const now = new Date().toISOString();
       const nextStatus = isBlocked ? 'rejected' : 'approved';
       const client = supabase();
-      await (client.from('profiles') as any)
+      const profileTable = client.from('profiles') as unknown as {
+        update: (data: Record<string, unknown>) => { eq: (col: string, val: unknown) => Promise<unknown> };
+      };
+      await profileTable
         .update({
           approval_status: nextStatus,
           reviewed_at: now,
