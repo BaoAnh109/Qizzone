@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({
   firebaseAuth: vi.fn(() => ({ currentUser: null })),
   syncProfile: vi.fn(),
   login: vi.fn(),
+  loginWithGoogle: vi.fn(),
   register: vi.fn(),
+  requestTeacherAccess: vi.fn(),
+  switchRole: vi.fn(),
   logout: vi.fn(),
   resetPassword: vi.fn(),
   updateProfile: vi.fn(),
@@ -23,7 +26,10 @@ vi.mock('@/services/firebaseAuthService', () => ({
   syncProfile: mocks.syncProfile,
   firebaseAuthService: {
     login: mocks.login,
+    loginWithGoogle: mocks.loginWithGoogle,
     register: mocks.register,
+    requestTeacherAccess: mocks.requestTeacherAccess,
+    switchRole: mocks.switchRole,
     logout: mocks.logout,
     resetPassword: mocks.resetPassword,
     updateProfile: mocks.updateProfile,
@@ -128,8 +134,8 @@ describe('Firebase auth store', () => {
       fullName: 'New Teacher', email: 'teacher@example.test', password: '123456', role: 'teacher',
     });
 
-    expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ role: 'teacher' }));
-    expect(mocks.syncProfile).toHaveBeenCalledWith(firebaseUser, 'New Teacher', 'teacher');
+    expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({ role: 'student' }));
+    expect(mocks.syncProfile).toHaveBeenCalledWith(firebaseUser, 'New Teacher', 'student');
     expect(mocks.logout).toHaveBeenCalledOnce();
     expect(result.approvalStatus).toBe('pending');
     expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false });
@@ -148,8 +154,8 @@ describe('Firebase auth store', () => {
       fullName: 'Concurrent Teacher', email: 'teacher@example.test', password: '123456', role: 'teacher',
     });
 
-    expect(mocks.syncProfile).toHaveBeenNthCalledWith(1, firebaseUser, 'Concurrent Teacher', 'teacher');
-    expect(mocks.syncProfile).toHaveBeenNthCalledWith(2, firebaseUser, 'Concurrent Teacher', 'teacher');
+    expect(mocks.syncProfile).toHaveBeenNthCalledWith(1, firebaseUser, 'Concurrent Teacher', 'student');
+    expect(mocks.syncProfile).toHaveBeenNthCalledWith(2, firebaseUser, 'Concurrent Teacher', 'student');
     expect(mocks.logout).toHaveBeenCalledOnce();
   });
 
@@ -163,6 +169,28 @@ describe('Firebase auth store', () => {
 
     expect(mocks.logout).toHaveBeenCalledOnce();
     expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false });
+  });
+
+  it('logs in a Google account through the same student profile bootstrap', async () => {
+    mocks.loginWithGoogle.mockResolvedValue({ user: firebaseUser });
+    await expect(useAuthStore.getState().loginWithGoogle()).resolves.toEqual(profile);
+    expect(mocks.syncProfile).toHaveBeenCalledWith(firebaseUser);
+    expect(useAuthStore.getState()).toMatchObject({ user: profile, isAuthenticated: true });
+  });
+
+  it('keeps the student session while sending a teacher access request', async () => {
+    const pendingStudent = { ...profile, teacherRequestStatus: 'pending' as const };
+    mocks.requestTeacherAccess.mockResolvedValue(pendingStudent);
+    await expect(useAuthStore.getState().requestTeacherAccess()).resolves.toEqual(pendingStudent);
+    expect(useAuthStore.getState()).toMatchObject({ user: pendingStudent, isAuthenticated: true });
+  });
+
+  it('updates the active role only after the role switch service succeeds', async () => {
+    const teacher = { ...profile, role: 'teacher' as const, baseRole: 'student' as const, teacherRequestStatus: 'approved' as const };
+    mocks.switchRole.mockResolvedValue(teacher);
+    await expect(useAuthStore.getState().switchRole('teacher')).resolves.toEqual(teacher);
+    expect(mocks.switchRole).toHaveBeenCalledWith('teacher');
+    expect(useAuthStore.getState()).toMatchObject({ user: teacher, isAuthenticated: true });
   });
 
   it('delegates logout to Firebase and removes local UI state', async () => {

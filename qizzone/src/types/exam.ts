@@ -60,5 +60,6 @@ export interface ExamResult {
   academicRank: AcademicRank;
   timeSpentSeconds: number;
   details: QuestionGradingDetail[];
+  flaggedQuestionIds?: string[];
   submittedAt: string;
 }

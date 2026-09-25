@@ -25,6 +25,8 @@ export interface QuizSettings {
   allowReview: boolean; // Allow students to review answers after submit
   maxAttempts: number; // Maximum attempts allowed (default 1)
   passPercentage: number; // Passing score percentage (default 50%)
+  assignedClasses?: string[]; // Target classes (e.g. ["12A1", "12A2"])
+  assignedEmails?: string[]; // Target student emails (e.g. ["student1@gmail.com"])
 }
 
 export type QuizStatus = "draft" | "published" | "closed";

@@ -1,6 +1,7 @@
 export type UserRole = "teacher" | "student" | "admin";
 export type Role = UserRole;
 export type ApprovalStatus = "approved" | "pending" | "rejected";
+export type TeacherRequestStatus = "none" | "pending" | "approved" | "rejected";
 
 export interface User {
   id: string;
@@ -8,8 +9,13 @@ export interface User {
   fullName: string;
   name?: string;
   role: UserRole;
+  baseRole?: UserRole;
   approvalStatus: ApprovalStatus;
+  teacherRequestStatus?: TeacherRequestStatus;
+  teacherRequestBlocked?: boolean;
+  teacherRequestedAt?: string;
   avatarUrl?: string;
+  studentClass?: string;
   createdAt: string;
 }
 

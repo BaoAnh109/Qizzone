@@ -48,6 +48,8 @@ export const quizSettingsSchema = z.object({
     .min(0, "Số lần làm bài tối thiểu là 0 (0 = Vô hạn)")
     .default(0),
   passPercentage: z.number().min(0).max(100).default(50),
+  assignedClasses: z.array(z.string()).optional().default([]),
+  assignedEmails: z.array(z.string()).optional().default([]),
 });
 
 export const quizSchema = z.object({

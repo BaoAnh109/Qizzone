@@ -2,6 +2,7 @@ import type { OptionId } from "./quiz";
 
 export type DetectionStrategy =
   | "answer_table"     // Bảng đáp án cuối đề (1.A 2.B 3.C)
+  | "answer_at_end"    // Dòng cuối mỗi câu: "Đáp án: A"
   | "special_marker"   // Ký hiệu tiền tố (*A, ✓A, [x])
   | "underline"        // Gạch chân <u>A.</u> hoặc <w:u>
   | "highlight_color"  // Tô màu highlight hoặc chữ màu đỏ

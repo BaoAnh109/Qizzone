@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useParams } from "react-router-dom";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { ExamLayout } from "@/layouts/ExamLayout";
@@ -21,6 +21,8 @@ const ExamEntry = lazy(() => import("@/pages/student/ExamEntry"));
 const QuizRoom = lazy(() => import("@/pages/student/QuizRoom"));
 const Result = lazy(() => import("@/pages/student/Result"));
 const TeacherApprovals = lazy(() => import("@/pages/admin/TeacherApprovals"));
+const AccountManagement = lazy(() => import("@/pages/admin/AccountManagement"));
+const JoinByLink = lazy(() => import("@/pages/student/JoinByLink"));
 
 function RootRedirect() {
   const { user, isAuthenticated, isInitialized } = useAuthStore();
@@ -30,6 +32,11 @@ function RootRedirect() {
   }
   const home = user.role === "admin" ? "/admin/teacher-approvals" : user.role === "student" ? "/student" : "/teacher";
   return <Navigate to={home} replace />;
+}
+
+function QuizRedirect() {
+  const { quizId } = useParams();
+  return <Navigate to={`/student/quiz/${quizId}/lobby`} replace />;
 }
 
 function AuthLoading() {
@@ -79,20 +86,29 @@ export function AppRoutes() {
         <Route element={<ProtectedRoute allowedRole="admin" />}>
           <Route element={<DashboardLayout />}>
             <Route path="/admin/teacher-approvals" element={<TeacherApprovals />} />
+            <Route path="/admin/accounts" element={<AccountManagement />} />
           </Route>
         </Route>
 
-        {/* Student Routes */}
+        {/* Direct Join Link & Quiz Aliases */}
+        <Route path="/join" element={<JoinByLink />} />
+        <Route path="/join/:code" element={<JoinByLink />} />
+        <Route path="/quiz/:quizId" element={<QuizRedirect />} />
+        <Route path="/exam/:quizId" element={<QuizRedirect />} />
+
+        {/* Student Dashboard Route (Only Students) */}
         <Route element={<ProtectedRoute allowedRole="student" />}>
           <Route element={<DashboardLayout />}>
             <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/quiz/:quizId/lobby" element={<ExamEntry />} />
-            <Route path="/student/result/:resultId" element={<Result />} />
           </Route>
         </Route>
 
-        {/* Exam Taking Room (Distraction-free ExamLayout) */}
-        <Route element={<ProtectedRoute allowedRole="student" />}>
+        {/* Exam Taking & Lobby (Accessible by student, teacher previewing/testing room, and admin) */}
+        <Route element={<ProtectedRoute allowedRoles={["student", "teacher", "admin"]} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/student/quiz/:quizId/lobby" element={<ExamEntry />} />
+            <Route path="/student/result/:resultId" element={<Result />} />
+          </Route>
           <Route element={<ExamLayout />}>
             <Route path="/student/quiz/:quizId" element={<QuizRoom />} />
           </Route>

@@ -1,6 +1,6 @@
 import type { ExtractionResult, ExtractedQuestion, DetectionStrategy } from '@/types/extractor';
 import type { OptionId } from '@/types/quiz';
-import { edge } from '@/lib/cloud';
+import { edge, errorMessage } from '@/lib/cloud';
 import { parseRawExamText } from '@/utils/parsers/ruleExtractor';
 
 export interface AIExtractParams {
@@ -12,6 +12,7 @@ export interface AIExtractParams {
 interface RawSolutionItem {
   id?: string; order?: number | string; index?: number | string;
   correctAnswer?: string; answer?: string; correct_answer?: string; choice?: string;
+  correctAnswers?: string[];
   explanation?: string; explain?: string; reason?: string;
 }
 
@@ -45,7 +46,7 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
       options,
       correctAnswers: answers,
       explanation: question.explanation,
-      points: Math.round((10 / payload.questions!.length) * 100) / 100,
+      points: payload.questions?.length ? 10 / payload.questions.length : 1,
       confidenceScore: typeof question.confidenceScore === 'number' ? question.confidenceScore : 0.9,
       detectionStrategy: (question.detectionStrategy || 'ai_inference') as DetectionStrategy,
       rawTextSegment: question.content || '',
@@ -65,7 +66,7 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
 async function requestAI(prompt: string, imageBase64?: string): Promise<unknown> {
   const response = await edge<{ result: unknown }>('extract-quiz-with-gemini', {
     prompt, imageBase64,
-  });
+  }, 90_000);
   return response.result;
 }
 
@@ -95,11 +96,14 @@ ${questions}`;
 export async function solveMissingAnswersWithAI(
   questions: ExtractedQuestion[],
   onProgress?: (current: number, total: number, message?: string) => void,
-): Promise<{ updatedQuestions: ExtractedQuestion[]; solvedCount: number; durationSeconds: number }> {
+): Promise<{ updatedQuestions: ExtractedQuestion[]; solvedCount: number; durationSeconds: number; failureMessage?: string }> {
   const start = performance.now();
   const unanswered = questions.filter(question => !question.correctAnswers?.length);
   if (unanswered.length === 0) return { updatedQuestions: questions, solvedCount: 0, durationSeconds: 0 };
   const solutions = new Map<string, { answer: OptionId; explanation: string }>();
+  let failureMessage: string | undefined;
+  // Gemini 3.6 can solve a complete normal exam in one request. Only split
+  // unusually large exams to stay within the existing request-size guard.
   const batchSize = unanswered.length <= 60 ? unanswered.length : 45;
   onProgress?.(0, unanswered.length, `Đang xử lý ${unanswered.length} câu hỏi qua Gemini AI...`);
   for (let offset = 0; offset < unanswered.length; offset += batchSize) {
@@ -109,15 +113,16 @@ export async function solveMissingAnswersWithAI(
       const payload = typeof result === 'string' ? JSON.parse(cleanJson(result)) : result;
       const list = Array.isArray(payload) ? payload : (payload as { solutions?: RawSolutionItem[] })?.solutions || [];
       list.forEach((item: RawSolutionItem, index: number) => {
-        const answer = String(item.correctAnswer || item.answer || item.correct_answer || item.choice || '').toUpperCase() as OptionId;
+        const answer = String(item.correctAnswer || item.answer || item.correct_answer || item.choice || item.correctAnswers?.[0] || '').toUpperCase() as OptionId;
         if (!['A', 'B', 'C', 'D'].includes(answer)) return;
         const byId = item.id && batch.find(question => question.id === item.id);
         const byOrder = batch.find(question => question.order === Number(item.order));
         const target = byId || byOrder || batch[index];
         if (target) solutions.set(target.id, { answer, explanation: item.explanation || item.explain || item.reason || 'AI phân tích đáp án.' });
       });
-    } catch {
+    } catch (error) {
       // Keep unanswered questions visible for manual review when AI is unavailable.
+      failureMessage ??= errorMessage(error);
     }
     onProgress?.(Math.min(offset + batch.length, unanswered.length), unanswered.length, `Đã xử lý ${Math.min(offset + batch.length, unanswered.length)}/${unanswered.length} câu...`);
   }
@@ -130,5 +135,5 @@ export async function solveMissingAnswersWithAI(
   });
   const durationSeconds = Math.round((performance.now() - start) / 100) / 10;
   onProgress?.(unanswered.length, unanswered.length, `Hoàn thành giải ${solvedCount}/${unanswered.length} câu trong ${durationSeconds}s`);
-  return { updatedQuestions, solvedCount, durationSeconds };
+  return { updatedQuestions, solvedCount, durationSeconds, failureMessage };
 }

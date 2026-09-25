@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { onIdTokenChanged, type Unsubscribe } from 'firebase/auth';
-import type { User, LoginCredentials, RegisterData } from '@/types/auth';
+import type { User, LoginCredentials, RegisterData, UserRole } from '@/types/auth';
 import { errorMessage } from '@/lib/cloud';
 import { firebaseAuthService, syncProfile } from '@/services/firebaseAuthService';
 import { firebaseAuth } from '@/lib/cloud';
@@ -13,7 +13,10 @@ interface AuthStoreState {
   configurationError: string | null;
   initialize: () => Promise<Unsubscribe | undefined>;
   login: (credentials: LoginCredentials) => Promise<User>;
+  loginWithGoogle: () => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
+  requestTeacherAccess: () => Promise<User>;
+  switchRole: (role: Extract<UserRole, 'student' | 'teacher'>) => Promise<User>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<User>;
@@ -23,12 +26,14 @@ interface AuthStoreState {
 let unsubscribe: Unsubscribe | undefined;
 let initializationTimer: ReturnType<typeof setTimeout> | undefined;
 let authEventVersion = 0;
-let registrationContext: { fullName: string; role: 'student' | 'teacher' } | null = null;
+let registrationContext: { fullName: string; role: 'student' } | null = null;
 const AUTH_STATE_TIMEOUT_MS = 10_000;
 
 function approvalMessage(user: User): string | null {
-  if (user.approvalStatus === 'pending') return 'Tài khoản giáo viên đang chờ quản trị viên xét duyệt.';
-  if (user.approvalStatus === 'rejected') return 'Yêu cầu tài khoản giáo viên đã bị từ chối. Vui lòng liên hệ quản trị viên.';
+  // New teacher access requests never block the student's login. These checks
+  // only keep legacy teacher registrations fail-closed until an admin reviews them.
+  if (user.role === 'teacher' && user.approvalStatus === 'pending') return 'Tài khoản giáo viên đang chờ quản trị viên xét duyệt.';
+  if (user.role === 'teacher' && user.approvalStatus === 'rejected') return 'Yêu cầu tài khoản giáo viên đã bị từ chối. Vui lòng liên hệ quản trị viên.';
   return null;
 }
 
@@ -88,7 +93,12 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
             set({ user: profile, isAuthenticated: true, isLoading: false, isInitialized: true });
           } catch (error) {
             if (eventVersion !== authEventVersion) return;
-            set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, configurationError: errorMessage(error) });
+            const currentUser = get().user;
+            if (currentUser && /fetch|network|timeout|connection/i.test(errorMessage(error))) {
+              set({ isLoading: false, isInitialized: true });
+            } else {
+              set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, configurationError: errorMessage(error) });
+            }
           }
         },
         error => {
@@ -130,12 +140,31 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     }
   },
 
+  loginWithGoogle: async () => {
+    set({ isLoading: true, configurationError: null });
+    try {
+      const result = await firebaseAuthService.loginWithGoogle();
+      const user = await syncProfile(result.user);
+      const blockedMessage = approvalMessage(user);
+      if (blockedMessage) {
+        await firebaseAuthService.logout().catch(() => undefined);
+        set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, configurationError: blockedMessage });
+        throw new Error(blockedMessage);
+      }
+      set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
+      return user;
+    } catch (error) {
+      set({ isLoading: false });
+      throw new Error(errorMessage(error), { cause: error });
+    }
+  },
+
   register: async data => {
     set({ isLoading: true, configurationError: null });
-    const requestedRole = data.role === 'teacher' ? 'teacher' : 'student';
+    const requestedRole = 'student' as const;
     registrationContext = { fullName: data.fullName, role: requestedRole };
     try {
-      // Public registration can request teacher, but the server keeps it pending until an admin approves it.
+      // Every public registration starts as a student. Teacher access is requested from the profile menu.
       const result = await firebaseAuthService.register({ ...data, role: requestedRole });
       const user = await syncProfile(result.user, data.fullName, requestedRole);
       const blockedMessage = approvalMessage(user);
@@ -151,6 +180,30 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       throw new Error(errorMessage(error), { cause: error });
     } finally {
       registrationContext = null;
+    }
+  },
+
+  requestTeacherAccess: async () => {
+    set({ isLoading: true, configurationError: null });
+    try {
+      const user = await firebaseAuthService.requestTeacherAccess();
+      set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
+      return user;
+    } catch (error) {
+      set({ isLoading: false });
+      throw new Error(errorMessage(error), { cause: error });
+    }
+  },
+
+  switchRole: async role => {
+    set({ isLoading: true, configurationError: null });
+    try {
+      const user = await firebaseAuthService.switchRole(role);
+      set({ user, isAuthenticated: true, isLoading: false, isInitialized: true });
+      return user;
+    } catch (error) {
+      set({ isLoading: false });
+      throw new Error(errorMessage(error), { cause: error });
     }
   },
 

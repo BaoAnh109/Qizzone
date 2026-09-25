@@ -2,15 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  ArrowRight,
   PlusCircle,
   KeyRound,
   Calculator,
   Upload,
-  CheckCircle2,
   Filter,
   Search,
   Sparkles,
   Clock,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,8 +20,8 @@ import { useQuizStore } from "@/store/quizStore";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
 import { QuickAnswerKeyModal } from "./QuickAnswerKeyModal";
+import { mapExtractedQuestionsToQuizQuestions } from "@/utils/extractedQuestionMapper";
 import type { DetectionStrategy } from "@/types/extractor";
-import type { Question } from "@/types/quiz";
 
 export function BatchActionBar() {
   const navigate = useNavigate();
@@ -83,7 +84,7 @@ export function BatchActionBar() {
     toast.info(`🤖 AI đang bắt đầu giải tự động ${unansweredCount} câu hỏi...`);
 
     try {
-      const { solvedCount, durationSeconds } = await solveUnansweredWithAI(
+      const { solvedCount, durationSeconds, failureMessage } = await solveUnansweredWithAI(
         (_current, _total, message) => {
           if (message) {
             setSolveStatusMessage(message);
@@ -100,14 +101,16 @@ export function BatchActionBar() {
       setSolveElapsed(totalTime);
 
       if (solvedCount > 0) {
-        toast.success(
-          `🎉 AI đã hoàn tất giải toàn bộ ${solvedCount}/${unansweredCount} câu hỏi trong ${totalTime}s!`
-        );
+        const message = solvedCount === unansweredCount
+          ? `🎉 AI đã giải xong ${solvedCount}/${unansweredCount} câu hỏi trong ${totalTime}s!`
+          : `AI đã giải được ${solvedCount}/${unansweredCount} câu trong ${totalTime}s. ${failureMessage || "Các câu còn lại cần thử lại."}`;
+        if (solvedCount === unansweredCount) toast.success(message);
+        else toast.warning(message);
       } else {
-        toast.warning("Không thể kết nối AI. Vui lòng kiểm tra lại kết nối mạng!");
+        toast.warning(failureMessage || "AI không trả về đáp án hợp lệ. Vui lòng thử lại!");
       }
-    } catch {
-      toast.error("Quá trình AI giải câu hỏi gặp sự cố.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Quá trình AI giải câu hỏi gặp sự cố.");
     } finally {
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -117,34 +120,39 @@ export function BatchActionBar() {
     }
   };
 
-  const handleFinalizeQuiz = async () => {
+  const handleConfigureQuiz = () => {
     if (questions.length === 0) {
-      toast.error("Đề thi chưa có câu hỏi nào để xuất bản");
+      toast.error("Đề thi chưa có câu hỏi nào để cấu hình");
+      return;
+    }
+    const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
+    navigate("/teacher/create-quiz", {
+      state: {
+        initialQuestions: formattedQuestions,
+        initialTitle: extractionResult?.title || "Đề thi bóc tách từ tài liệu",
+        initialSubject: extractionResult?.subject || "Toán học 12",
+        initialDescription: `Bóc tách tự động từ file ${extractionResult?.fileName || "tài liệu"}.`,
+        initialStep: 3,
+      },
+    });
+  };
+
+  const handleFinalizeQuiz = async (status: "draft" | "published" = "published") => {
+    if (questions.length === 0) {
+      toast.error("Đề thi chưa có câu hỏi nào để lưu");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const formattedQuestions: Question[] = questions.map((q, idx) => ({
-        id: `q-ext-${Date.now().toString(36)}-${idx}`,
-        order: idx + 1,
-        content: q.content,
-        type: "single_choice",
-        options: q.options.map((opt) => ({
-          id: opt.id,
-          content: opt.content,
-        })),
-        correctAnswers: q.correctAnswers,
-        explanation: q.explanation,
-        points: q.points,
-      }));
+      const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
 
       const newQuiz = await createQuiz({
         title: extractionResult?.title || "Đề thi bóc tách từ tài liệu",
-        subject: extractionResult?.subject || "Toán học",
+        subject: extractionResult?.subject || "Toán học 12",
         description: `Bóc tách tự động từ file ${extractionResult?.fileName || "tài liệu"}.`,
-        status: "published",
+        status,
         teacherId: user?.id || "teacher-1",
         teacherName: user?.name || user?.fullName || "Thầy Cô",
         settings: {
@@ -159,12 +167,22 @@ export function BatchActionBar() {
       });
 
       toast.success(
-        `Đã xuất bản đề thi thành công! Mã phòng thi: ${newQuiz.code}`
+        status === "published"
+          ? `Đã xuất bản đề thi thành công! Mã phòng thi: ${newQuiz.code}`
+          : "Đã lưu bản nháp đề thi thành công!"
       );
       clearAll();
-      navigate(`/teacher/quiz/${newQuiz.id}/review`);
+      if (status === "published") {
+        navigate(`/teacher/quiz/${newQuiz.id}/review`);
+      } else {
+        navigate("/teacher/quizzes");
+      }
     } catch {
-      toast.error("Không thể xuất bản đề thi. Vui lòng thử lại!");
+      toast.error(
+        status === "published"
+          ? "Không thể xuất bản đề thi. Vui lòng thử lại!"
+          : "Không thể lưu bản nháp đề thi. Vui lòng thử lại!"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -194,7 +212,7 @@ export function BatchActionBar() {
               </h2>
               <p className="text-xs text-neutral-500">
                 Tổng số: <strong>{questions.length} câu</strong> · Tổng điểm:{" "}
-                <strong className="font-mono text-indigo-700">{totalPoints.toFixed(1)}đ</strong>
+                <strong className="font-mono text-indigo-700">{Math.round(totalPoints * 100) / 100}đ</strong>
                 {totalWarnings > 0 && (
                   <span className="text-amber-700 font-semibold ml-2">
                     · ⚠️ {totalWarnings} cảnh báo cần xem
@@ -204,7 +222,7 @@ export function BatchActionBar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -215,14 +233,24 @@ export function BatchActionBar() {
             </Button>
 
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleFinalizeQuiz("draft")}
+              disabled={isSubmitting || questions.length === 0}
+              leftIcon={<Save className="h-3.5 w-3.5 text-neutral-600" />}
+            >
+              Lưu bản nháp
+            </Button>
+
+            <Button
               variant="primary"
               size="sm"
-              onClick={handleFinalizeQuiz}
-              disabled={isSubmitting || questions.length === 0}
-              leftIcon={<CheckCircle2 className="h-4 w-4" />}
+              onClick={handleConfigureQuiz}
+              disabled={questions.length === 0}
+              rightIcon={<ArrowRight className="h-4 w-4" />}
               className="font-bold bg-indigo-600 hover:bg-indigo-700 shadow-sm"
             >
-              Xuất bản đề thi ({questions.length} câu)
+              Chuyển sang cấu hình đề ({questions.length} câu)
             </Button>
           </div>
         </div>
@@ -263,7 +291,7 @@ export function BatchActionBar() {
               leftIcon={<Calculator className="h-3.5 w-3.5 text-indigo-600" />}
               className="text-xs font-semibold"
             >
-              Chia đều 10 điểm ({questions.length > 0 ? (10 / questions.length).toFixed(2) : 0}đ/câu)
+              Chia đều 10 điểm ({questions.length > 0 ? Number((10 / questions.length).toFixed(3)) : 0}đ/câu)
             </Button>
 
             <Button
@@ -304,6 +332,7 @@ export function BatchActionBar() {
                 <option value="all">Tất cả ({questions.length})</option>
                 <option value="underline">Gạch chân</option>
                 <option value="answer_table">Bảng đáp án</option>
+                <option value="answer_at_end">Đáp án cuối câu</option>
                 <option value="distinct_bold">In đậm</option>
                 <option value="highlight_color">Tô màu / Chữ đỏ</option>
                 <option value="special_marker">Ký hiệu *</option>

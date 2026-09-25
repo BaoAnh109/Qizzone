@@ -69,6 +69,18 @@ export function failure(req: Request, error: unknown) {
     TOO_LARGE: [413, 'Tệp hoặc văn bản quá lớn (tối đa 8 MB).'],
     RATE_LIMIT: [429, 'Quá nhiều yêu cầu AI. Vui lòng chờ một phút.'],
     NOT_CONFIGURED: [503, 'Quản trị viên chưa cấu hình Gemini trên server.'],
+    GEMINI_AUTH: [502, 'Gemini API key không hợp lệ hoặc chưa được cấp quyền sử dụng API.'],
+    GEMINI_MODEL_UNAVAILABLE: [502, 'Mô hình Gemini đã cấu hình không khả dụng cho project này.'],
+    GEMINI_BAD_REQUEST: [502, 'Gemini từ chối nội dung yêu cầu. Vui lòng thử với đề nhỏ hơn.'],
+    GEMINI_TIMEOUT: [504, 'Gemini 3.6 phản hồi quá lâu. Vui lòng thử lại sau ít phút.'],
+    GEMINI_UNAVAILABLE: [503, 'Gemini 3.6 đang quá tải. Hệ thống đã tự thử lại nhưng chưa thành công; vui lòng thử lại sau ít phút.'],
+    GEMINI_EMPTY_RESPONSE: [502, 'Gemini không trả về nội dung đáp án. Vui lòng thử lại.'],
+    GEMINI_INVALID_RESPONSE: [502, 'Gemini trả về dữ liệu đáp án không hợp lệ. Vui lòng thử lại.'],
+    UPSTREAM_ERROR: [502, 'Không thể kết nối tới Gemini. Vui lòng thử lại sau ít phút.'],
+    TEACHER_REQUEST_BLOCKED: [403, 'Bạn không thể đổi tài khoản giáo viên ở tài khoản này. Vui lòng liên hệ hỗ trợ!'],
+    TEACHER_REQUEST_PENDING: [409, 'Yêu cầu cấp tài khoản giáo viên của bạn đang chờ quản trị viên duyệt.'],
+    TEACHER_ACCESS_NOT_APPROVED: [403, 'Tài khoản của bạn chưa được duyệt quyền giáo viên.'],
+    ROLE_SWITCH_INVALID: [400, 'Vai trò chuyển đổi không hợp lệ.'],
   };
   const [status, message] = messages[code] || [502, 'Dịch vụ đang gặp lỗi. Vui lòng thử lại hoặc liên hệ quản trị viên.'];
   return respond(req, { error: message }, status);
