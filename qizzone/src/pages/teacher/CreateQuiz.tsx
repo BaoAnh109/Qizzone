@@ -1220,11 +1220,11 @@ export function CreateQuiz() {
                   <div>
                     {(!settings.assignedClasses?.length && !settings.assignedEmails?.length) ? (
                       <p>
-                        <strong className="text-neutral-800">Đề thi mở công khai:</strong> Tất cả học sinh đều thấy đề này trong mục "Đề thi đang mở" trên trang chủ hoặc có thể vào bằng mã phòng / link chia sẻ.
+                        <strong className="text-neutral-800">Mặc định:</strong> Đề thi sẽ <strong>không hiển thị sẵn trên màn hình trang chủ học sinh</strong>. Học sinh vẫn có thể tham gia bình thường bằng cách <strong>nhập mã phòng</strong> hoặc <strong>nhấn vào link chia sẻ</strong>.
                       </p>
                     ) : (
                       <p>
-                        <strong className="text-indigo-800">Đề thi đã phân phối:</strong> Chỉ các học sinh thuộc lớp <strong className="text-indigo-900">{settings.assignedClasses?.join(", ") || "(không có)"}</strong> hoặc có email trong danh sách mới tự động thấy đề trên trang chủ. Những học sinh khác vẫn có thể vào qua mã phòng nếu được cấp.
+                        <strong className="text-indigo-800">Đã phân phối:</strong> Đề thi sẽ <strong>tự động xuất hiện trên trang chủ</strong> của học sinh thuộc lớp <strong className="text-indigo-900">{settings.assignedClasses?.join(", ") || "(chưa chọn)"}</strong> hoặc có email trong danh sách giao bài (không cần nhập mã).
                       </p>
                     )}
                   </div>

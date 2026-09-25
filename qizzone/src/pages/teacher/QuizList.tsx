@@ -19,6 +19,7 @@ import {
   Mail,
   Plus,
   X,
+  KeyRound,
 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
@@ -358,8 +359,8 @@ export function QuizList() {
                       )}
                       {(!quiz.settings.assignedClasses?.length && !quiz.settings.assignedEmails?.length) && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-medium">
-                          <Users className="h-3 w-3" />
-                          <span>Mở công khai (Toàn bộ)</span>
+                          <KeyRound className="h-3 w-3" />
+                          <span>Vào bằng mã / link</span>
                         </span>
                       )}
                     </div>
@@ -643,11 +644,11 @@ export function QuizList() {
             <div className="rounded-lg bg-neutral-50 p-3 border border-neutral-200 text-xs text-neutral-600">
               {assignClasses.length === 0 && assignEmails.length === 0 ? (
                 <span>
-                  🌐 <strong>Đang mở công khai:</strong> Tất cả học sinh sẽ thấy đề này trên trang chủ.
+                  🔒 <strong>Mặc định:</strong> Đề thi không hiển thị sẵn trên màn hình trang chủ học sinh (học sinh tham gia qua mã phòng hoặc link chia sẻ).
                 </span>
               ) : (
                 <span>
-                  🎯 <strong>Đang giới hạn:</strong> Chỉ học sinh thuộc các lớp hoặc email trên mới thấy đề này trên trang chủ.
+                  🎯 <strong>Đã phân phối:</strong> Hiển thị trực tiếp trên trang chủ của học sinh thuộc các lớp hoặc email được giao.
                 </span>
               )}
             </div>

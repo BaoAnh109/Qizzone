@@ -15,6 +15,7 @@ export interface User {
   teacherRequestBlocked?: boolean;
   teacherRequestedAt?: string;
   avatarUrl?: string;
+  studentClass?: string;
   createdAt: string;
 }
 

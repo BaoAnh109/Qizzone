@@ -58,8 +58,8 @@ describe('Router & Room Join Routing Logic', () => {
       const hasClassRestriction = assignedClasses.length > 0;
       const hasEmailRestriction = assignedEmails.length > 0;
 
-      // Public quiz
-      if (!hasClassRestriction && !hasEmailRestriction) return true;
+      // Default: Quizzes without assigned classes or emails do NOT show on student home screen
+      if (!hasClassRestriction && !hasEmailRestriction) return false;
 
       // Matched by email
       if (hasEmailRestriction && studentEmail && assignedEmails.includes(studentEmail.trim().toLowerCase())) {
@@ -74,18 +74,18 @@ describe('Router & Room Join Routing Logic', () => {
       return false;
     }
 
-    // Public quiz: open to everyone
-    expect(isQuizAvailableForStudent({}, '12A1', 'student@school.edu.vn')).toBe(true);
-    expect(isQuizAvailableForStudent({ assignedClasses: [], assignedEmails: [] }, '', '')).toBe(true);
+    // Default unassigned quiz: NOT shown on student home screen (join by code/link instead)
+    expect(isQuizAvailableForStudent({}, '12A1', 'student@school.edu.vn')).toBe(false);
+    expect(isQuizAvailableForStudent({ assignedClasses: [], assignedEmails: [] }, '', '')).toBe(false);
 
-    // Class restricted quiz
+    // Class restricted quiz: shown only if student's class matches
     const classQuiz = { assignedClasses: ['12A1', '12A2'], assignedEmails: [] };
     expect(isQuizAvailableForStudent(classQuiz, '12A1', 'other@gmail.com')).toBe(true);
     expect(isQuizAvailableForStudent(classQuiz, '12a1', 'other@gmail.com')).toBe(true);
     expect(isQuizAvailableForStudent(classQuiz, '10B', 'other@gmail.com')).toBe(false);
     expect(isQuizAvailableForStudent(classQuiz, '', 'other@gmail.com')).toBe(false);
 
-    // Email restricted quiz
+    // Email restricted quiz: shown only if student's email matches
     const emailQuiz = { assignedClasses: [], assignedEmails: ['student1@gmail.com', 'vip@school.edu.vn'] };
     expect(isQuizAvailableForStudent(emailQuiz, '12A1', 'student1@gmail.com')).toBe(true);
     expect(isQuizAvailableForStudent(emailQuiz, '12A1', 'STUDENT1@GMAIL.COM')).toBe(true);

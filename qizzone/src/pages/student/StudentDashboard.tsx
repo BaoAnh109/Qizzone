@@ -11,14 +11,11 @@ import {
   KeyRound,
   GraduationCap,
   Mail,
-  Users,
   Sparkles,
   BookOpen,
   Clock,
   Award,
-  Edit3,
   RefreshCw,
-  Check,
   Eye,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
@@ -28,7 +25,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import type { Quiz } from "@/types/quiz";
 
@@ -46,19 +42,6 @@ export function StudentDashboard() {
   const [roomCode, setRoomCode] = useState("");
   const [historySearchTerm, setHistorySearchTerm] = useState("");
   const [availableSearchTerm, setAvailableSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "assigned" | "public">("all");
-
-  // Student Class Management
-  const classStorageKey = user ? `qizzone_student_class_${user.id}` : "qizzone_student_class";
-  const [studentClass, setStudentClass] = useState<string>(() => {
-    try {
-      return localStorage.getItem(classStorageKey) || "";
-    } catch {
-      return "";
-    }
-  });
-  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
-  const [classModalInput, setClassModalInput] = useState("");
 
   const studentResults = user ? getResultsByStudent(user.id) : [];
   const publishedQuizzes = quizzes.filter((q) => q.status === "published");
@@ -73,44 +56,50 @@ export function StudentDashboard() {
     void checkAndAutoSubmitExpired();
   }, [checkAndAutoSubmitExpired]);
 
-  const handleSaveStudentClass = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const trimmed = classModalInput.trim().toUpperCase();
-    setStudentClass(trimmed);
-    try {
-      if (trimmed) {
-        localStorage.setItem(classStorageKey, trimmed);
-      } else {
-        localStorage.removeItem(classStorageKey);
-      }
-    } catch {
-      // Storage unavailable
-    }
-    setIsClassModalOpen(false);
-    toast.success(
-      trimmed
-        ? `Đã cập nhật lớp học của bạn: ${trimmed}`
-        : "Đã xóa thông tin lớp học"
-    );
-  };
-
   // In-progress active sessions count (only valid within time)
   const inProgressQuizzes = publishedQuizzes.filter((q) => {
     const s = activeSessions[q.id];
     return isSessionInProgress(s);
   });
 
-  // Match available quizzes for this student based on Class, Email, or Public
+  // Match available quizzes for this student based on Class or Email
+  // MẶC ĐỊNH: Đề public không gán lớp hoặc email sẽ KHÔNG hiển thị trên trang chủ
+  // Chỉ khi được gán Email hoặc Lớp thì học sinh phù hợp mới thấy trên trang chủ
   const userEmail = (user?.email || "").trim().toLowerCase();
-  const userClassNorm = (studentClass || "").trim().toLowerCase();
+  const userClassNorm = (user?.studentClass || "").trim().toLowerCase();
 
-  const getQuizAudienceType = (quiz: Quiz): "class" | "email" | "public" => {
+  const getQuizAudienceBadge = (quiz: Quiz) => {
     const assignedClasses = (quiz.settings.assignedClasses || []).map((c) => c.trim().toLowerCase());
     const assignedEmails = (quiz.settings.assignedEmails || []).map((e) => e.trim().toLowerCase());
 
-    if (userEmail && assignedEmails.includes(userEmail)) return "email";
-    if (userClassNorm && assignedClasses.includes(userClassNorm)) return "class";
-    return "public";
+    if (userEmail && assignedEmails.includes(userEmail)) {
+      return (
+        <Badge variant="primary" size="sm" className="font-bold flex items-center gap-1">
+          <Mail className="h-3 w-3" />
+          <span>Giao đích danh</span>
+        </Badge>
+      );
+    }
+
+    if (userClassNorm && assignedClasses.includes(userClassNorm)) {
+      return (
+        <Badge variant="success" size="sm" className="font-bold flex items-center gap-1">
+          <GraduationCap className="h-3 w-3" />
+          <span>Lớp {user?.studentClass}</span>
+        </Badge>
+      );
+    }
+
+    if (quiz.settings.assignedClasses && quiz.settings.assignedClasses.length > 0) {
+      return (
+        <Badge variant="success" size="sm" className="font-bold flex items-center gap-1">
+          <GraduationCap className="h-3 w-3" />
+          <span>Lớp {quiz.settings.assignedClasses.join(", ")}</span>
+        </Badge>
+      );
+    }
+
+    return null;
   };
 
   const matchedQuizzes = publishedQuizzes.filter((quiz) => {
@@ -120,33 +109,35 @@ export function StudentDashboard() {
     const hasClassRestriction = assignedClasses.length > 0;
     const hasEmailRestriction = assignedEmails.length > 0;
 
-    // 1. If public (no class and no email restrictions) -> accessible to all students
-    if (!hasClassRestriction && !hasEmailRestriction) return true;
+    // 1. Mặc định: đề không giao cho lớp hay email nào sẽ KHÔNG hiển thị sẵn trên màn hình
+    if (!hasClassRestriction && !hasEmailRestriction) {
+      return false;
+    }
 
-    // 2. If student email is explicitly assigned
-    if (hasEmailRestriction && userEmail && assignedEmails.includes(userEmail)) return true;
+    // 2. Học sinh có email khớp với email được giao
+    if (hasEmailRestriction && userEmail && assignedEmails.includes(userEmail)) {
+      return true;
+    }
 
-    // 3. If student class matches assigned classes
-    if (hasClassRestriction && userClassNorm && assignedClasses.includes(userClassNorm)) return true;
+    // 3. Học sinh có lớp khớp với lớp được giao
+    if (hasClassRestriction && userClassNorm && assignedClasses.includes(userClassNorm)) {
+      return true;
+    }
 
     return false;
   });
 
-  const filteredAvailableQuizzes = matchedQuizzes.filter((quiz) => {
-    const audienceType = getQuizAudienceType(quiz);
-
-    if (activeTab === "assigned" && audienceType === "public") return false;
-    if (activeTab === "public" && audienceType !== "public") return false;
-
-    if (!availableSearchTerm) return true;
-    const term = availableSearchTerm.toLowerCase();
-    return (
-      quiz.title.toLowerCase().includes(term) ||
-      quiz.subject.toLowerCase().includes(term) ||
-      quiz.code.toLowerCase().includes(term) ||
-      (quiz.teacherName || "").toLowerCase().includes(term)
-    );
-  });
+  const filteredAvailableQuizzes = !availableSearchTerm
+    ? matchedQuizzes
+    : matchedQuizzes.filter((quiz) => {
+        const term = availableSearchTerm.toLowerCase();
+        return (
+          quiz.title.toLowerCase().includes(term) ||
+          quiz.subject.toLowerCase().includes(term) ||
+          quiz.code.toLowerCase().includes(term) ||
+          (quiz.teacherName || "").toLowerCase().includes(term)
+        );
+      });
 
   const filteredHistory = studentResults.filter((result) => {
     return (
@@ -196,9 +187,9 @@ export function StudentDashboard() {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Top Section: Greeting on Left + Room Code Card on Right with diagonal blue gradient */}
+      {/* Top Section: Greeting on Left + Room Code Card on Right */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b border-neutral-200">
-        {/* Left: Chào User & Quản lý lớp học */}
+        {/* Left: Chào User */}
         <div className="space-y-2 max-w-xl">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60">
             <span>Cổng học sinh</span>
@@ -206,39 +197,9 @@ export function StudentDashboard() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
             Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500">
-            Các đề thi được thầy cô giao cho bạn sẽ tự động hiển thị bên dưới. Bạn có thể vào thi ngay mà không cần nhập mã.
+          <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed">
+            Các đề thi được thầy cô giao trực tiếp cho bạn qua Email hoặc Lớp sẽ tự động xuất hiện ở mục bên dưới. Bạn cũng có thể nhập mã phòng hoặc nhấn vào liên kết chia sẻ để vào thi.
           </p>
-
-          {/* Student Class Badge & Quick Action */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs font-medium text-neutral-600 flex items-center gap-1">
-              <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
-              <span>Lớp của bạn:</span>
-            </span>
-
-            {studentClass ? (
-              <Badge variant="primary" className="font-bold font-mono text-xs px-2.5 py-0.5 shadow-2xs">
-                {studentClass}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 text-xs">
-                Chưa thiết lập lớp
-              </Badge>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                setClassModalInput(studentClass);
-                setIsClassModalOpen(true);
-              }}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 underline underline-offset-2 flex items-center gap-1 transition cursor-pointer"
-            >
-              <Edit3 className="h-3 w-3" />
-              <span>{studentClass ? "Đổi lớp" : "Cập nhật lớp"}</span>
-            </button>
-          </div>
         </div>
 
         {/* Right: Card Tham gia phòng thi qua mã phòng 6 ký tự */}
@@ -257,7 +218,7 @@ export function StudentDashboard() {
                   Tham gia bằng mã phòng
                 </h2>
                 <p className="text-xs text-blue-100 mt-0.5">
-                  Nếu đề thi không hiện bên dưới, nhập mã 6 ký tự tại đây
+                  Nhập mã 6 ký tự do thầy cô cung cấp để vào thi
                 </p>
               </div>
             </div>
@@ -381,54 +342,24 @@ export function StudentDashboard() {
         </Card>
       </div>
 
-      {/* SECTION: ĐỀ THI ĐANG MỞ DÀNH CHO BẠN (Hiện thẳng lên đề đang mở, không cần nhập mã) */}
+      {/* SECTION: ĐỀ THI ĐƯỢC GIAO CHO BẠN (Hiện thẳng lên đề đang mở, không cần nhập mã) */}
       <div className="space-y-4 pt-2">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-indigo-600" />
               <h2 className="text-xl font-bold text-neutral-900">
-                Đề thi đang mở dành cho bạn ({matchedQuizzes.length})
+                Đề thi được giao cho bạn ({matchedQuizzes.length})
               </h2>
             </div>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Đề thi được giáo viên giao trực tiếp cho lớp hoặc email của bạn. Nhấn vào bài để làm ngay!
+              Đề thi được thầy cô giao trực tiếp cho bạn qua Lớp hoặc Email. Nhấn vào bài để làm ngay!
             </p>
           </div>
 
-          {/* Filter Tabs & Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <div className="inline-flex rounded-lg bg-neutral-100 p-1 text-xs font-medium">
-              <button
-                type="button"
-                onClick={() => setActiveTab("all")}
-                className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                  activeTab === "all" ? "bg-white font-bold text-neutral-900 shadow-2xs" : "text-neutral-600 hover:text-neutral-900"
-                }`}
-              >
-                Tất cả ({matchedQuizzes.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("assigned")}
-                className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                  activeTab === "assigned" ? "bg-white font-bold text-indigo-700 shadow-2xs" : "text-neutral-600 hover:text-neutral-900"
-                }`}
-              >
-                Giao riêng
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("public")}
-                className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                  activeTab === "public" ? "bg-white font-bold text-neutral-900 shadow-2xs" : "text-neutral-600 hover:text-neutral-900"
-                }`}
-              >
-                Đề chung
-              </button>
-            </div>
-
-            <div className="w-full sm:w-48">
+          {/* Search & Refresh */}
+          <div className="flex items-center gap-2">
+            <div className="w-full sm:w-56">
               <Input
                 placeholder="Tìm đề thi..."
                 value={availableSearchTerm}
@@ -456,7 +387,7 @@ export function StudentDashboard() {
         {filteredAvailableQuizzes.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredAvailableQuizzes.map((quiz) => {
-              const audienceType = getQuizAudienceType(quiz);
+              const audienceBadge = getQuizAudienceBadge(quiz);
               const pastSubmissions = studentResults.filter((r) => r.quizId === quiz.id);
               const attemptsMade = pastSubmissions.length;
               const maxAttempts = quiz.settings.maxAttempts || 0;
@@ -474,26 +405,7 @@ export function StudentDashboard() {
                       <Badge variant="secondary" size="sm" className="font-semibold">
                         {quiz.subject}
                       </Badge>
-
-                      {/* Audience Badge */}
-                      {audienceType === "class" && (
-                        <Badge variant="success" size="sm" className="font-bold flex items-center gap-1">
-                          <GraduationCap className="h-3 w-3" />
-                          <span>Lớp {studentClass}</span>
-                        </Badge>
-                      )}
-                      {audienceType === "email" && (
-                        <Badge variant="primary" size="sm" className="font-bold flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          <span>Giao đích danh</span>
-                        </Badge>
-                      )}
-                      {audienceType === "public" && (
-                        <Badge variant="outline" size="sm" className="text-neutral-600 bg-neutral-100 border-neutral-200">
-                          <Users className="h-3 w-3 mr-0.5" />
-                          <span>Đề chung</span>
-                        </Badge>
-                      )}
+                      {audienceBadge}
                     </div>
 
                     <CardTitle className="text-base font-bold text-neutral-900 line-clamp-2 leading-snug">
@@ -582,15 +494,13 @@ export function StudentDashboard() {
             })}
           </div>
         ) : (
-          <Card className="text-center p-8 border-dashed border-indigo-100 bg-indigo-50/20">
-            <BookOpen className="h-10 w-10 text-indigo-300 mx-auto mb-2" />
+          <Card className="text-center p-8 border-dashed border-neutral-200 bg-neutral-50/50">
+            <BookOpen className="h-10 w-10 text-neutral-300 mx-auto mb-2" />
             <h3 className="text-base font-bold text-neutral-900">
-              Chưa có đề thi nào trong danh sách
+              Chưa có đề thi nào được giao trực tiếp cho bạn
             </h3>
-            <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">
-              {!studentClass
-                ? "Bạn chưa thiết lập lớp học. Hãy bấm 'Cập nhật lớp' bên trên để tự động nhận các bài thi được giao cho lớp bạn!"
-                : `Hiện tại chưa có đề thi mới nào được mở cho lớp ${studentClass} hoặc email của bạn. Hãy liên hệ thầy cô hoặc nhập mã phòng nếu có.`}
+            <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto leading-relaxed">
+              Nếu thầy cô cung cấp mã phòng thi hoặc liên kết chia sẻ, bạn hãy nhập mã ở khung bên trên hoặc mở link để tham gia làm bài như bình thường.
             </p>
             <div className="pt-3">
               <Button
@@ -629,7 +539,7 @@ export function StudentDashboard() {
         {studentResults.length === 0 ? (
           <Card className="text-center p-8 border-dashed">
             <p className="text-sm text-neutral-500">
-              Bạn chưa hoàn thành bài thi nào. Chọn một đề thi đang mở bên trên hoặc nhập mã phòng để bắt đầu làm bài!
+              Bạn chưa hoàn thành bài thi nào. Nhập mã phòng hoặc chọn bài thi được giao bên trên để bắt đầu làm bài!
             </p>
           </Card>
         ) : filteredHistory.length > 0 ? (
@@ -689,50 +599,6 @@ export function StudentDashboard() {
           </Card>
         )}
       </div>
-
-      {/* Student Class Modal */}
-      {isClassModalOpen && (
-        <Modal
-          isOpen={isClassModalOpen}
-          onClose={() => setIsClassModalOpen(false)}
-          title={
-            <div className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-indigo-600" />
-              <span>Thiết lập lớp học của bạn</span>
-            </div>
-          }
-          description="Nhập tên lớp học của bạn (VD: 12A1, 10 Chuyên Tin). Hệ thống sẽ tự động hiển thị các đề thi được thầy cô giao cho lớp bạn trên trang chủ."
-          size="sm"
-          footer={
-            <>
-              <Button variant="outline" onClick={() => setIsClassModalOpen(false)}>
-                Hủy bỏ
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => handleSaveStudentClass()}
-                leftIcon={<Check className="h-4 w-4" />}
-              >
-                Lưu lớp học
-              </Button>
-            </>
-          }
-        >
-          <form onSubmit={handleSaveStudentClass} className="space-y-4 py-1">
-            <Input
-              label="Tên lớp học"
-              placeholder="VD: 12A1, 11B2..."
-              value={classModalInput}
-              onChange={(e) => setClassModalInput(e.target.value.toUpperCase())}
-              autoFocus
-              className="font-mono font-bold tracking-wider uppercase"
-            />
-            <p className="text-xs text-neutral-500">
-              Lưu ý: Viết đúng tên lớp giống như thầy cô đặt (ví dụ: <span className="font-mono font-bold text-neutral-700">12A1</span>).
-            </p>
-          </form>
-        </Modal>
-      )}
     </div>
   );
 }
