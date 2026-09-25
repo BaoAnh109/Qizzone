@@ -99,11 +99,13 @@ export function ExamEntry() {
     }
 
     // Initialize or resume session
+    const savedClass = user ? localStorage.getItem(`qizzone_student_class_${user.id}`) || "" : "";
     try {
       await initSession({
         quiz,
         studentId: user?.id || "guest-student",
         studentName: studentName.trim(),
+        studentClass: savedClass || undefined,
       });
       toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
       const targetUrl =

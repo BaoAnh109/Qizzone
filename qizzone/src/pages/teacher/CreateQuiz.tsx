@@ -14,6 +14,11 @@ import {
   BookOpen,
   FileQuestion,
   Clock,
+  Users,
+  GraduationCap,
+  Mail,
+  Plus,
+  X,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
@@ -127,8 +132,60 @@ export function CreateQuiz() {
       allowReview: true,
       maxAttempts: 0,
       passPercentage: 50,
+      assignedClasses: [],
+      assignedEmails: [],
     }
   );
+
+  const [classInput, setClassInput] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+
+  const handleAddClass = (clsToAdd?: string) => {
+    const val = (clsToAdd ?? classInput).trim();
+    if (!val) return;
+    const current = settings.assignedClasses || [];
+    if (!current.some((c) => c.toLowerCase() === val.toLowerCase())) {
+      setSettings((prev) => ({
+        ...prev,
+        assignedClasses: [...current, val],
+      }));
+    }
+    setClassInput("");
+  };
+
+  const handleRemoveClass = (index: number) => {
+    setSettings((prev) => ({
+      ...prev,
+      assignedClasses: (prev.assignedClasses || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddEmails = (rawEmails?: string) => {
+    const text = (rawEmails ?? emailInput).trim();
+    if (!text) return;
+    const splitEmails = text
+      .split(/[\s,;]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e.length > 3 && e.includes("@"));
+    if (splitEmails.length === 0) {
+      toast.error("Vui lòng nhập đúng định dạng email (VD: emA@school.edu.vn)");
+      return;
+    }
+    const current = settings.assignedEmails || [];
+    const newEmails = splitEmails.filter((e) => !current.includes(e));
+    setSettings((prev) => ({
+      ...prev,
+      assignedEmails: [...current, ...newEmails],
+    }));
+    setEmailInput("");
+  };
+
+  const handleRemoveEmail = (index: number) => {
+    setSettings((prev) => ({
+      ...prev,
+      assignedEmails: (prev.assignedEmails || []).filter((_, i) => i !== index),
+    }));
+  };
 
   const [questions, setQuestions] = useState<Question[]>(() => {
     return (
@@ -1013,6 +1070,163 @@ export function CreateQuiz() {
                         }}
                       />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Phân phối đề thi & Giới hạn đối tượng */}
+              <div className="rounded-xl border border-indigo-100 bg-white p-6 shadow-xs space-y-6">
+                <div className="border-b border-neutral-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-neutral-900">
+                        Phân phối đề thi (Giao cho Lớp hoặc Email học sinh)
+                      </h3>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        Học sinh thuộc lớp hoặc có email được giao sẽ thấy ngay đề thi trên trang chủ mà không cần nhập mã.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1. Giao theo Lớp */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-neutral-800 flex items-center gap-1.5">
+                      <GraduationCap className="h-4 w-4 text-indigo-600" />
+                      <span>Chỉ định theo Lớp học</span>
+                    </label>
+                    <span className="text-xs text-neutral-400">
+                      {(settings.assignedClasses || []).length} lớp đã chọn
+                    </span>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nhập tên lớp (VD: 12A1, 10 Chuyên Toán) rồi nhấn Thêm..."
+                      value={classInput}
+                      onChange={(e) => setClassInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddClass();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleAddClass()}
+                      leftIcon={<Plus className="h-4 w-4" />}
+                    >
+                      Thêm lớp
+                    </Button>
+                  </div>
+
+                  {/* List of assigned classes */}
+                  {(settings.assignedClasses || []).length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {settings.assignedClasses!.map((cls, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200"
+                        >
+                          <span>{cls}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveClass(idx)}
+                            className="text-indigo-400 hover:text-rose-600 transition cursor-pointer"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-neutral-400 italic">
+                      Chưa gán cho lớp cụ thể nào.
+                    </p>
+                  )}
+                </div>
+
+                {/* 2. Giao theo Email học sinh */}
+                <div className="space-y-3 pt-4 border-t border-neutral-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-neutral-800 flex items-center gap-1.5">
+                      <Mail className="h-4 w-4 text-indigo-600" />
+                      <span>Chỉ định theo Email học sinh</span>
+                    </label>
+                    <span className="text-xs text-neutral-400">
+                      {(settings.assignedEmails || []).length} email đã thêm
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nhập email học sinh (VD: emA@school.edu.vn, có thể dán nhiều email cách nhau dấu phẩy)..."
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddEmails();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleAddEmails()}
+                      leftIcon={<Plus className="h-4 w-4" />}
+                    >
+                      Thêm email
+                    </Button>
+                  </div>
+
+                  {/* List of assigned emails */}
+                  {(settings.assignedEmails || []).length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-1 max-h-40 overflow-y-auto">
+                      {settings.assignedEmails!.map((email, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-sky-50 text-sky-800 border border-sky-200"
+                        >
+                          <span>{email}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEmail(idx)}
+                            className="text-sky-400 hover:text-rose-600 transition cursor-pointer"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-neutral-400 italic">
+                      Chưa gán email đích danh nào.
+                    </p>
+                  )}
+                </div>
+
+                {/* Scope Note */}
+                <div className="rounded-lg bg-neutral-50 p-3.5 border border-neutral-200/70 text-xs text-neutral-600 flex items-start gap-2.5">
+                  <div className="mt-0.5 text-base">ℹ️</div>
+                  <div>
+                    {(!settings.assignedClasses?.length && !settings.assignedEmails?.length) ? (
+                      <p>
+                        <strong className="text-neutral-800">Đề thi mở công khai:</strong> Tất cả học sinh đều thấy đề này trong mục "Đề thi đang mở" trên trang chủ hoặc có thể vào bằng mã phòng / link chia sẻ.
+                      </p>
+                    ) : (
+                      <p>
+                        <strong className="text-indigo-800">Đề thi đã phân phối:</strong> Chỉ các học sinh thuộc lớp <strong className="text-indigo-900">{settings.assignedClasses?.join(", ") || "(không có)"}</strong> hoặc có email trong danh sách mới tự động thấy đề trên trang chủ. Những học sinh khác vẫn có thể vào qua mã phòng nếu được cấp.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

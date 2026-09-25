@@ -15,7 +15,7 @@ export function JoinByLink() {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isInitialized = useAuthStore((state) => state.isInitialized);
-  const { quizzes, getQuizByCode, load, isLoading, togglePublishStatus } = useQuizStore();
+  const { getQuizByCode, load, isLoading, togglePublishStatus } = useQuizStore();
   const activeSessions = useExamSessionStore((state) => state.activeSessions);
   const toast = useToast();
 
@@ -28,26 +28,31 @@ export function JoinByLink() {
   const fetchLatestQuizzes = useCallback(async () => {
     setChecking(true);
     try {
-      await load();
+      if (isAuthenticated) {
+        await load();
+      }
     } catch {
       // Handled by store
     } finally {
       setChecking(false);
     }
-  }, [load]);
+  }, [load, isAuthenticated]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function initialCheck() {
-      // If code is provided and not found in current store, always fetch from server
+      // If auth is not ready yet, keep waiting
+      if (!isInitialized) return;
+
+      // If user is not logged in, we cannot fetch quizzes from server
+      if (!isAuthenticated || !user) {
+        if (isMounted) setChecking(false);
+        return;
+      }
+
+      // If user is logged in and code is provided, load if not in store
       if (cleanCode && !getQuizByCode(cleanCode)) {
-        try {
-          await load();
-        } catch {
-          // Handled by store
-        }
-      } else if (quizzes.length === 0) {
         try {
           await load();
         } catch {
@@ -64,7 +69,7 @@ export function JoinByLink() {
     return () => {
       isMounted = false;
     };
-  }, [cleanCode, getQuizByCode, load, quizzes.length]);
+  }, [cleanCode, getQuizByCode, load, isInitialized, isAuthenticated, user]);
 
   const quiz = cleanCode ? getQuizByCode(cleanCode) : undefined;
 
@@ -152,8 +157,8 @@ export function JoinByLink() {
     );
   }
 
-  // State 2: Checking or loading
-  if (checking || isLoading || !isInitialized) {
+  // State 2: Checking or loading auth/quiz data
+  if (!isInitialized || checking || (isAuthenticated && isLoading)) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-3">
         <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
@@ -164,7 +169,55 @@ export function JoinByLink() {
     );
   }
 
-  // State 3: Quiz not found
+  // State 3: Unauthenticated user visiting a join link
+  if (!isAuthenticated || !user) {
+    const returnUrl = `/join/${cleanCode}`;
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full text-center border-indigo-200 shadow-xl bg-white">
+          <CardContent className="pt-8 pb-6 px-6 space-y-5">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <Play className="h-7 w-7 fill-current ml-0.5" />
+            </div>
+            <div>
+              <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-indigo-100 text-indigo-800 mb-2 font-mono">
+                Mã phòng: {cleanCode}
+              </span>
+              <h2 className="text-xl font-bold text-neutral-900">
+                {quiz ? quiz.title : "Tham gia phòng thi"}
+              </h2>
+              {quiz ? (
+                <p className="text-xs text-neutral-500 mt-1">
+                  Môn: {quiz.subject} • {quiz.totalQuestions} câu hỏi • {quiz.settings.durationMinutes === 0 ? "Không giới hạn" : `${quiz.settings.durationMinutes} phút`}
+                </p>
+              ) : (
+                <p className="text-xs text-neutral-500 mt-1">
+                  Đang chuẩn bị vào phòng thi trực tuyến Qizzone
+                </p>
+              )}
+            </div>
+            <p className="text-sm text-neutral-600 bg-neutral-50 rounded-lg p-3 border border-neutral-100">
+              Vui lòng đăng nhập hoặc tạo tài khoản để làm bài thi này. Bạn sẽ tự động được đưa vào phòng thi ngay sau khi đăng nhập.
+            </p>
+            <div className="space-y-2 pt-1">
+              <Link to={`/login?redirect=${encodeURIComponent(returnUrl)}`} className="block">
+                <Button variant="primary" className="w-full" leftIcon={<LogIn className="h-4 w-4" />}>
+                  Đăng nhập để vào thi
+                </Button>
+              </Link>
+              <Link to={`/register?redirect=${encodeURIComponent(returnUrl)}`} className="block">
+                <Button variant="outline" className="w-full" leftIcon={<UserPlus className="h-4 w-4" />}>
+                  Đăng ký tài khoản mới
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // State 4: Authenticated user but quiz not found
   if (!quiz) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
@@ -198,48 +251,6 @@ export function JoinByLink() {
               >
                 Quay về trang chủ
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // State 4: Unauthenticated user visiting a valid quiz
-  if (!isAuthenticated || !user) {
-    const returnUrl = `/join/${cleanCode}`;
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center border-indigo-200 shadow-xl bg-white">
-          <CardContent className="pt-8 pb-6 px-6 space-y-5">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-              <Play className="h-7 w-7 fill-current ml-0.5" />
-            </div>
-            <div>
-              <span className="inline-block px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider rounded-full bg-indigo-100 text-indigo-800 mb-2 font-mono">
-                Mã phòng: {quiz.code}
-              </span>
-              <h2 className="text-xl font-bold text-neutral-900">
-                {quiz.title}
-              </h2>
-              <p className="text-xs text-neutral-500 mt-1">
-                Môn: {quiz.subject} • {quiz.totalQuestions} câu hỏi • {quiz.settings.durationMinutes === 0 ? "Không giới hạn" : `${quiz.settings.durationMinutes} phút`}
-              </p>
-            </div>
-            <p className="text-sm text-neutral-600 bg-neutral-50 rounded-lg p-3 border border-neutral-100">
-              Vui lòng đăng nhập hoặc tạo tài khoản để làm bài thi này.
-            </p>
-            <div className="space-y-2 pt-1">
-              <Link to={`/login?redirect=${encodeURIComponent(returnUrl)}`} className="block">
-                <Button variant="primary" className="w-full" leftIcon={<LogIn className="h-4 w-4" />}>
-                  Đăng nhập để vào thi
-                </Button>
-              </Link>
-              <Link to={`/register?redirect=${encodeURIComponent(returnUrl)}`} className="block">
-                <Button variant="outline" className="w-full" leftIcon={<UserPlus className="h-4 w-4" />}>
-                  Đăng ký tài khoản mới
-                </Button>
-              </Link>
             </div>
           </CardContent>
         </Card>

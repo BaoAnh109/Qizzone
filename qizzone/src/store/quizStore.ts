@@ -41,7 +41,7 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   },
   retry: () => get().load(),
   getQuizById: id => get().quizzes.find(q => q.id === id),
-  getQuizByCode: code => get().quizzes.find(q => q.code.toUpperCase() === code.trim().toUpperCase()),
+  getQuizByCode: code => get().quizzes.find(q => q.code.toUpperCase() === code.trim().toUpperCase() || q.id.toLowerCase() === code.trim().toLowerCase()),
   createQuiz: async data => {
     const id = await quizService.save(data);
     await get().load();

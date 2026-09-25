@@ -45,4 +45,56 @@ describe('Router & Room Join Routing Logic', () => {
     expect(getNotFoundHome(true, 'teacher')).toBe('/teacher');
     expect(getNotFoundHome(true, 'admin')).toBe('/admin/teacher-approvals');
   });
+
+  it('correctly matches assigned quiz audience by class, email, or public availability', () => {
+    function isQuizAvailableForStudent(
+      quizSettings: { assignedClasses?: string[]; assignedEmails?: string[] },
+      studentClass?: string,
+      studentEmail?: string
+    ): boolean {
+      const assignedClasses = (quizSettings.assignedClasses || []).map(c => c.trim().toLowerCase());
+      const assignedEmails = (quizSettings.assignedEmails || []).map(e => e.trim().toLowerCase());
+
+      const hasClassRestriction = assignedClasses.length > 0;
+      const hasEmailRestriction = assignedEmails.length > 0;
+
+      // Public quiz
+      if (!hasClassRestriction && !hasEmailRestriction) return true;
+
+      // Matched by email
+      if (hasEmailRestriction && studentEmail && assignedEmails.includes(studentEmail.trim().toLowerCase())) {
+        return true;
+      }
+
+      // Matched by class
+      if (hasClassRestriction && studentClass && assignedClasses.includes(studentClass.trim().toLowerCase())) {
+        return true;
+      }
+
+      return false;
+    }
+
+    // Public quiz: open to everyone
+    expect(isQuizAvailableForStudent({}, '12A1', 'student@school.edu.vn')).toBe(true);
+    expect(isQuizAvailableForStudent({ assignedClasses: [], assignedEmails: [] }, '', '')).toBe(true);
+
+    // Class restricted quiz
+    const classQuiz = { assignedClasses: ['12A1', '12A2'], assignedEmails: [] };
+    expect(isQuizAvailableForStudent(classQuiz, '12A1', 'other@gmail.com')).toBe(true);
+    expect(isQuizAvailableForStudent(classQuiz, '12a1', 'other@gmail.com')).toBe(true);
+    expect(isQuizAvailableForStudent(classQuiz, '10B', 'other@gmail.com')).toBe(false);
+    expect(isQuizAvailableForStudent(classQuiz, '', 'other@gmail.com')).toBe(false);
+
+    // Email restricted quiz
+    const emailQuiz = { assignedClasses: [], assignedEmails: ['student1@gmail.com', 'vip@school.edu.vn'] };
+    expect(isQuizAvailableForStudent(emailQuiz, '12A1', 'student1@gmail.com')).toBe(true);
+    expect(isQuizAvailableForStudent(emailQuiz, '12A1', 'STUDENT1@GMAIL.COM')).toBe(true);
+    expect(isQuizAvailableForStudent(emailQuiz, '12A1', 'hacker@gmail.com')).toBe(false);
+
+    // Both class and email assigned (either matches)
+    const hybridQuiz = { assignedClasses: ['12A1'], assignedEmails: ['student_external@gmail.com'] };
+    expect(isQuizAvailableForStudent(hybridQuiz, '12A1', 'any@gmail.com')).toBe(true);
+    expect(isQuizAvailableForStudent(hybridQuiz, '10B', 'student_external@gmail.com')).toBe(true);
+    expect(isQuizAvailableForStudent(hybridQuiz, '10B', 'other@gmail.com')).toBe(false);
+  });
 });
