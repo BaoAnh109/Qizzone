@@ -35,7 +35,7 @@ import type { Quiz, QuizStatus } from "@/types/quiz";
 export function QuizList() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const { quizzes, updateQuiz, deleteQuiz, duplicateQuiz, togglePublishStatus } =
+  const { quizzes, updateQuizAssignments, deleteQuiz, duplicateQuiz, togglePublishStatus } =
     useQuizStore();
   const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
   const toast = useToast();
@@ -97,13 +97,7 @@ export function QuizList() {
     if (!assignTarget) return;
     setIsSavingAssign(true);
     try {
-      await updateQuiz(assignTarget.id, {
-        settings: {
-          ...assignTarget.settings,
-          assignedClasses: assignClasses,
-          assignedEmails: assignEmails,
-        },
-      });
+      await updateQuizAssignments(assignTarget.id, assignClasses, assignEmails);
       toast.success(`Đã cập nhật đối tượng giao bài cho "${assignTarget.title}"`);
       setAssignTarget(null);
     } catch (err) {

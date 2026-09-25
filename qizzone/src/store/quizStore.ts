@@ -16,6 +16,7 @@ interface QuizState {
   getQuizByCode: (code: string) => Quiz | undefined;
   createQuiz: (data: QuizInput) => Promise<Quiz>;
   updateQuiz: (id: string, data: Partial<Quiz>) => Promise<Quiz>;
+  updateQuizAssignments: (id: string, assignedClasses: string[], assignedEmails: string[]) => Promise<Quiz>;
   deleteQuiz: (id: string) => Promise<void>;
   togglePublishStatus: (id: string) => Promise<Quiz>;
   duplicateQuiz: (id: string) => Promise<Quiz>;
@@ -57,6 +58,17 @@ export const useQuizStore = create<QuizState>((set, get) => ({
       throw new Error('Bạn không có quyền chỉnh sửa đề thi của giáo viên khác.');
     }
     await quizService.save({ ...existing, ...data }, id);
+    await get().load();
+    return get().getQuizById(id)!;
+  },
+  updateQuizAssignments: async (id, assignedClasses, assignedEmails) => {
+    const existing = get().getQuizById(id);
+    if (!existing) throw new Error('Không tìm thấy đề.');
+    const user = useAuthStore.getState().user;
+    if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
+      throw new Error('Bạn không có quyền giao đề thi của giáo viên khác.');
+    }
+    await quizService.setAssignments(id, assignedClasses, assignedEmails);
     await get().load();
     return get().getQuizById(id)!;
   },
