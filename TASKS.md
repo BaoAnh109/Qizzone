@@ -111,7 +111,7 @@ Tài liệu này hệ thống toàn bộ 14 yêu cầu theo **6 luồng logic đ
 ---
 
 ### Luồng 7: Tối ưu hóa đăng nhập & Router điều hướng mượt mà
-> **Branch**: `perf/login-and-router-optimization` | **Chi tiết**: [`docs/LOGIN_ROUTER_OPTIMIZATION.md`](docs/LOGIN_ROUTER_OPTIMIZATION.md)
+> **Branch**: `refactor/optimize-login-router` | **Chi tiết**: [`LOGIN_ROUTER_OPTIMIZATION.md`](LOGIN_ROUTER_OPTIMIZATION.md) | [`docs/tasks/LOGIN_ROUTER_OPTIMIZATION.md`](docs/tasks/LOGIN_ROUTER_OPTIMIZATION.md)
 
 - [x] **Task 7.1 (Đăng nhập siêu tốc - Fast Path & Deduplication)**:
   - File: `src/services/firebaseAuthService.ts`, `src/store/authStore.ts`.
