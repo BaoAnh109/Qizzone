@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +26,20 @@ export function Register() {
   const toast = useToast();
 
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // Pre-warm student dashboard chunk in idle time for instant navigation
+  useEffect(() => {
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(() => {
+        preloadDashboardForRole("student");
+      });
+    } else {
+      const timer = setTimeout(() => {
+        preloadDashboardForRole("student");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const {
     register,
