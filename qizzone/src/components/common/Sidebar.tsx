@@ -7,6 +7,7 @@ import {
   X,
   BookOpen,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,11 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
   ];
 
   const adminMenuItems = [
+    {
+      label: "Quản lý tài khoản",
+      path: "/admin/accounts",
+      icon: Users,
+    },
     {
       label: "Duyệt giáo viên",
       path: "/admin/teacher-approvals",

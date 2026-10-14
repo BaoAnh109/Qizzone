@@ -11,3 +11,7 @@ verify_jwt = false
 verify_jwt = false
 [functions.manage-teacher-approvals]
 verify_jwt = false
+[functions.request-teacher-role]
+verify_jwt = false
+[functions.switch-account-role]
+verify_jwt = false

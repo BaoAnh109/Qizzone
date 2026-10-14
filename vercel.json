@@ -3,7 +3,6 @@
   "installCommand": "cd qizzone && npm install",
   "buildCommand": "cd qizzone && npm run build",
   "outputDirectory": "qizzone/dist",
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/(.*)",

@@ -8,8 +8,8 @@ export function ExamLayout() {
   return (
     <div className="flex min-h-screen select-none flex-col bg-[#f6f7f9]">
       {/* Exam Header */}
-      <header className="sticky top-0 z-30 h-14 border-b border-neutral-200 bg-white px-4 sm:px-8">
-        <div className="mx-auto flex h-full max-w-6xl items-center justify-between">
+      <header className="sticky top-0 z-30 h-14 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
+        <div className="flex h-full w-full items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white">
               <GraduationCap className="h-5 w-5" />
@@ -41,8 +41,8 @@ export function ExamLayout() {
       </header>
 
       {/* Main Exam Area */}
-      <main className="flex-1 p-3 sm:p-6">
-        <div className="mx-auto max-w-5xl">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <div className="w-full">
           <Outlet />
         </div>
       </main>

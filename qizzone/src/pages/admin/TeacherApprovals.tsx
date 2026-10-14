@@ -42,11 +42,32 @@ export function TeacherApprovals() {
       else await adminService.rejectTeacher(request.firebaseUid);
       setRequests(current => current.filter(item => item.firebaseUid !== request.firebaseUid));
       toast.success(
-        action === "approve" ? "Giáo viên đã được duyệt và có thể đăng nhập lại." : "Yêu cầu giáo viên đã bị từ chối.",
+        action === "approve" ? "Đã duyệt quyền giáo viên. Người dùng có thể chuyển sang màn hình giáo viên." : "Yêu cầu giáo viên đã bị từ chối.",
         action === "approve" ? "Đã xét duyệt" : "Đã từ chối",
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Không thể cập nhật yêu cầu.");
+    } finally {
+      setProcessingUid(null);
+    }
+  };
+
+  const toggleBlocked = async (request: TeacherApprovalRequest) => {
+    setProcessingUid(request.firebaseUid);
+    try {
+      await adminService.setTeacherRequestBlocked(request.firebaseUid, !request.blocked);
+      const nextBlocked = !request.blocked;
+      setRequests(current => current.flatMap(item => {
+        if (item.firebaseUid !== request.firebaseUid) return [item];
+        if (!nextBlocked && item.status === "blocked") return [];
+        return [{ ...item, blocked: nextBlocked, status: nextBlocked && item.status !== "pending" ? "blocked" as const : item.status }];
+      }));
+      toast.success(
+        request.blocked ? "Đã cho phép gửi lại yêu cầu giáo viên." : "Đã khóa quyền gửi yêu cầu giáo viên.",
+        request.blocked ? "Đã mở khóa" : "Đã khóa tài khoản",
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể cập nhật trạng thái khóa.");
     } finally {
       setProcessingUid(null);
     }
@@ -60,7 +81,7 @@ export function TeacherApprovals() {
             <ShieldCheck className="h-3.5 w-3.5" /> Quản trị hệ thống
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-neutral-950">Duyệt tài khoản giáo viên</h1>
-          <p className="mt-1 text-sm text-neutral-500">Chỉ tài khoản được duyệt mới nhận quyền giáo viên và đăng nhập vào hệ thống.</p>
+          <p className="mt-1 text-sm text-neutral-500">Tài khoản học sinh chỉ được chuyển sang màn hình giáo viên sau khi admin duyệt yêu cầu.</p>
         </div>
         <Button variant="outline" onClick={() => void load()} isLoading={isLoading} leftIcon={<RefreshCw className="h-4 w-4" />}>
           Làm mới
@@ -93,7 +114,9 @@ export function TeacherApprovals() {
                   <CardTitle className="text-base">{request.fullName}</CardTitle>
                   <CardDescription className="mt-1">{request.email}</CardDescription>
                 </div>
-                <Badge variant="warning" dot>Chờ xét duyệt</Badge>
+                <Badge variant={request.status === "blocked" ? "destructive" : "warning"} dot>
+                  {request.status === "blocked" ? "Đã khóa gửi yêu cầu" : "Chờ xét duyệt"}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent className="flex flex-col justify-between gap-4 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center">
@@ -101,13 +124,33 @@ export function TeacherApprovals() {
                 <Clock3 className="h-4 w-4" />
                 Gửi lúc {new Date(request.requestedAt).toLocaleString("vi-VN")}
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="destructive" disabled={processingUid !== null} onClick={() => void review(request, "reject")} leftIcon={<X className="h-4 w-4" />}>
-                  Từ chối
-                </Button>
-                <Button size="sm" disabled={processingUid !== null} isLoading={processingUid === request.firebaseUid} onClick={() => void review(request, "approve")} leftIcon={<Check className="h-4 w-4" />}>
-                  Phê duyệt
-                </Button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {request.requestKind === "teacher_access" && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={request.blocked}
+                    aria-label={request.blocked ? "Cho phép tài khoản gửi yêu cầu giáo viên" : "Không cho tài khoản gửi yêu cầu giáo viên"}
+                    disabled={processingUid !== null}
+                    onClick={() => void toggleBlocked(request)}
+                    className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"}`}
+                  >
+                    <span className={`relative h-4 w-7 rounded-full transition-colors ${request.blocked ? "bg-rose-500" : "bg-neutral-300"}`}>
+                      <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                    </span>
+                    {request.blocked ? "Đã khóa gửi yêu cầu" : "Cho phép gửi yêu cầu"}
+                  </button>
+                )}
+                {request.status === "pending" && (
+                  <>
+                    <Button size="sm" variant="destructive" disabled={processingUid !== null} onClick={() => void review(request, "reject")} leftIcon={<X className="h-4 w-4" />}>
+                      Từ chối
+                    </Button>
+                    <Button size="sm" disabled={processingUid !== null} isLoading={processingUid === request.firebaseUid} onClick={() => void review(request, "approve")} leftIcon={<Check className="h-4 w-4" />}>
+                      Phê duyệt
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

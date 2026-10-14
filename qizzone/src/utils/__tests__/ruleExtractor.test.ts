@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   extractAnswerKeyTable,
+  extractTrailingAnswer,
   parseSingleQuestionBlock,
   parseRawExamText,
   cleanMathAndHtml,
@@ -121,6 +122,45 @@ D. 8
     expect(parsed?.correctAnswers).toEqual(["A"]);
     expect(parsed?.detectionStrategy).toBe("special_marker");
     expect(parsed?.confidenceScore).toBe(0.98);
+  });
+
+  it("Nhận diện đáp án ghi ở cuối câu và không dính vào lựa chọn cuối", () => {
+    const rawBlock = `
+Câu 1: Tổ chức nào lãnh đạo cách mạng Việt Nam?
+A. Đảng Cộng sản Việt Nam
+B. Nhà nước
+C. Mặt trận
+D. Chính phủ
+Đáp án: A
+`;
+
+    const parsed = parseSingleQuestionBlock(rawBlock, 1);
+
+    expect(extractTrailingAnswer(rawBlock)).toBe("A");
+    expect(parsed).not.toBeNull();
+    expect(parsed?.correctAnswers).toEqual(["A"]);
+    expect(parsed?.detectionStrategy).toBe("answer_at_end");
+    expect(parsed?.confidenceScore).toBe(0.99);
+    expect(parsed?.options[3].content).toBe("Chính phủ");
+    expect(parsed?.warningFlags).toBeUndefined();
+  });
+
+  it("Nhận diện đáp án cuối câu trong HTML theo đoạn và hỗ trợ chữ thường", () => {
+    const htmlBlock = `
+<p>Câu hỏi kiểm tra:</p>
+<p>A. Phương án A</p>
+<p>B. Phương án B</p>
+<p>C. Phương án C</p>
+<p>D. Phương án D</p>
+<p><strong>ĐÁP ÁN: c</strong></p>
+`;
+
+    const parsed = parseSingleQuestionBlock(htmlBlock, 1);
+
+    expect(extractTrailingAnswer(htmlBlock)).toBe("C");
+    expect(parsed?.correctAnswers).toEqual(["C"]);
+    expect(parsed?.detectionStrategy).toBe("answer_at_end");
+    expect(parsed?.options[3].content).toBe("Phương án D");
   });
 
   it("Chiến lược 3 (Gạch chân): Nhận diện thẻ gạch chân <u>A.</u> hoặc class is-underline", () => {
