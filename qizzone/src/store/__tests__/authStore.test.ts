@@ -43,7 +43,7 @@ const profile: User = {
   id: 'firebase-user', email: 'student@example.test', fullName: 'Student', name: 'Student',
   role: 'student', approvalStatus: 'approved', createdAt: '2026-09-05T00:00:00.000Z',
 };
-const firebaseUser = { getIdToken: vi.fn().mockResolvedValue('firebase-id-token') };
+const firebaseUser = { uid: 'firebase-user', getIdToken: vi.fn().mockResolvedValue('firebase-id-token') };
 
 describe('Firebase auth store', () => {
   beforeEach(() => {
@@ -76,6 +76,22 @@ describe('Firebase auth store', () => {
     await mocks.listener?.(null);
     expect(useAuthStore.getState()).toMatchObject({
       user: null, isAuthenticated: false, isInitialized: true,
+    });
+  });
+
+  it('does not re-invoke syncProfile or flicker isLoading when an existing session receives a background token refresh', async () => {
+    await useAuthStore.getState().initialize();
+    await mocks.listener?.(firebaseUser);
+    expect(mocks.syncProfile).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState()).toMatchObject({
+      user: profile, isAuthenticated: true, isLoading: false,
+    });
+
+    // Simulate background token refresh event
+    await mocks.listener?.(firebaseUser);
+    expect(mocks.syncProfile).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState()).toMatchObject({
+      user: profile, isAuthenticated: true, isLoading: false,
     });
   });
 

@@ -8,6 +8,7 @@ export type SessionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const saving = new Map<string, Promise<void>>();
 let generation = 0;
+let inFlightSessionLoad: Promise<void> | null = null;
 
 export function isSessionInProgress(session?: ExamSession): boolean {
   if (!session || session.isSubmitted) return false;
@@ -115,25 +116,32 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
     activeSessions: {}, results: [], saveStatus: {}, isSubmitting: false, isLoading: false, error: null,
     reset: () => {
       generation++;
+      inFlightSessionLoad = null;
       timers.forEach(timer => clearTimeout(timer)); timers.clear(); saving.clear();
       set({ activeSessions: {}, results: [], saveStatus: {}, isLoading: false, isSubmitting: false, error: null });
     },
     load: async () => {
+      if (inFlightSessionLoad) return inFlightSessionLoad;
       set({ isLoading: true, error: null });
-      try {
-        const [sessions, results] = await Promise.all([
-          rpc<unknown>('list_sessions'), rpc<unknown>('list_results'),
-        ]);
-        const records = Object.fromEntries((Array.isArray(sessions) ? sessions : []).map(item => {
-          const session = asSession(item);
-          return [session.quizId, session];
-        }));
-        const statuses = Object.fromEntries(Object.keys(records).map(quizId => [quizId, 'saved' as const]));
-        set({ activeSessions: records, results: asResults(results), saveStatus: statuses, isLoading: false, error: null });
-      } catch (error) {
-        set({ isLoading: false, error: errorMessage(error) });
-        throw error;
-      }
+      inFlightSessionLoad = (async () => {
+        try {
+          const [sessions, results] = await Promise.all([
+            rpc<unknown>('list_sessions'), rpc<unknown>('list_results'),
+          ]);
+          const records = Object.fromEntries((Array.isArray(sessions) ? sessions : []).map(item => {
+            const session = asSession(item);
+            return [session.quizId, session];
+          }));
+          const statuses = Object.fromEntries(Object.keys(records).map(quizId => [quizId, 'saved' as const]));
+          set({ activeSessions: records, results: asResults(results), saveStatus: statuses, isLoading: false, error: null });
+        } catch (error) {
+          set({ isLoading: false, error: errorMessage(error) });
+          throw error;
+        } finally {
+          inFlightSessionLoad = null;
+        }
+      })();
+      return inFlightSessionLoad;
     },
     retry: () => get().load(),
     initSession: async ({ quiz, studentClass }) => {

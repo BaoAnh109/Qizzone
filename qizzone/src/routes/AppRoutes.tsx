@@ -4,7 +4,10 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { ExamLayout } from "@/layouts/ExamLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import GuestRoute from "@/routes/GuestRoute";
 import { useAuthStore } from "@/store/authStore";
+import { getRoleHomeRoute } from "@/routes/navigation";
+import { AuthLoadingFallback, RouteLoadingFallback } from "@/components/common/RouteLoadingFallback";
 
 const Login = lazy(() => import("@/pages/auth/Login"));
 const Register = lazy(() => import("@/pages/auth/Register"));
@@ -26,12 +29,11 @@ const JoinByLink = lazy(() => import("@/pages/student/JoinByLink"));
 
 function RootRedirect() {
   const { user, isAuthenticated, isInitialized } = useAuthStore();
-  if (!isInitialized) return <AuthLoading />;
+  if (!isInitialized) return <AuthLoadingFallback />;
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
-  const home = user.role === "admin" ? "/admin/teacher-approvals" : user.role === "student" ? "/student" : "/teacher";
-  return <Navigate to={home} replace />;
+  return <Navigate to={getRoleHomeRoute(user.role)} replace />;
 }
 
 function QuizRedirect() {
@@ -39,83 +41,81 @@ function QuizRedirect() {
   return <Navigate to={`/student/quiz/${quizId}/lobby`} replace />;
 }
 
-function AuthLoading() {
-  return <div className="min-h-screen grid place-items-center text-sm text-neutral-500">Đang khôi phục phiên đăng nhập...</div>;
-}
-
 export function AppRoutes() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<AuthLoading />}>
+      <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
-        {/* Root Redirect */}
-        <Route path="/" element={<RootRedirect />} />
+          {/* Root Redirect */}
+          <Route path="/" element={<RootRedirect />} />
 
-        {/* Public Auth Routes */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-        </Route>
-
-        {/* Error Pages */}
-        <Route path="/unauthorized" element={<Unauthorized />} />
-
-        {/* Protected Teacher Routes */}
-        <Route element={<ProtectedRoute allowedRoles={["teacher", "admin"]} />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/teacher" element={<TeacherDashboard />} />
-            <Route path="/teacher/create-quiz" element={<CreateQuiz />} />
-            <Route path="/teacher/edit-quiz/:quizId" element={<CreateQuiz />} />
-            <Route path="/teacher/quizzes" element={<QuizList />} />
-            <Route
-              path="/teacher/quiz/:quizId/review"
-              element={<QuestionReview />}
-            />
-            <Route
-              path="/teacher/quiz/:quizId/results"
-              element={<QuizResultsView />}
-            />
-            <Route
-              path="/teacher/extract-quiz"
-              element={<SplitExamEditor />}
-            />
+          {/* Public Auth Routes protected by GuestRoute */}
+          <Route element={<GuestRoute />}>
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Protected Admin Routes */}
-        <Route element={<ProtectedRoute allowedRole="admin" />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/admin/teacher-approvals" element={<TeacherApprovals />} />
-            <Route path="/admin/accounts" element={<AccountManagement />} />
+          {/* Error Pages */}
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
+          {/* Protected Teacher Routes */}
+          <Route element={<ProtectedRoute allowedRoles={["teacher", "admin"]} />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/teacher" element={<TeacherDashboard />} />
+              <Route path="/teacher/create-quiz" element={<CreateQuiz />} />
+              <Route path="/teacher/edit-quiz/:quizId" element={<CreateQuiz />} />
+              <Route path="/teacher/quizzes" element={<QuizList />} />
+              <Route
+                path="/teacher/quiz/:quizId/review"
+                element={<QuestionReview />}
+              />
+              <Route
+                path="/teacher/quiz/:quizId/results"
+                element={<QuizResultsView />}
+              />
+              <Route
+                path="/teacher/extract-quiz"
+                element={<SplitExamEditor />}
+              />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Direct Join Link & Quiz Aliases */}
-        <Route path="/join" element={<JoinByLink />} />
-        <Route path="/join/:code" element={<JoinByLink />} />
-        <Route path="/quiz/:quizId" element={<QuizRedirect />} />
-        <Route path="/exam/:quizId" element={<QuizRedirect />} />
-
-        {/* Student Dashboard Route (Only Students) */}
-        <Route element={<ProtectedRoute allowedRole="student" />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/student" element={<StudentDashboard />} />
+          {/* Protected Admin Routes */}
+          <Route element={<ProtectedRoute allowedRole="admin" />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/admin/teacher-approvals" element={<TeacherApprovals />} />
+              <Route path="/admin/accounts" element={<AccountManagement />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Exam Taking & Lobby (Accessible by student, teacher previewing/testing room, and admin) */}
-        <Route element={<ProtectedRoute allowedRoles={["student", "teacher", "admin"]} />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/student/quiz/:quizId/lobby" element={<ExamEntry />} />
-            <Route path="/student/result/:resultId" element={<Result />} />
-          </Route>
-          <Route element={<ExamLayout />}>
-            <Route path="/student/quiz/:quizId" element={<QuizRoom />} />
-          </Route>
-        </Route>
+          {/* Direct Join Link & Quiz Aliases */}
+          <Route path="/join" element={<JoinByLink />} />
+          <Route path="/join/:code" element={<JoinByLink />} />
+          <Route path="/quiz/:quizId" element={<QuizRedirect />} />
+          <Route path="/exam/:quizId" element={<QuizRedirect />} />
 
-        {/* 404 Catch-all */}
-        <Route path="*" element={<NotFound />} />
+          {/* Student Dashboard Route (Only Students) */}
+          <Route element={<ProtectedRoute allowedRole="student" />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/student" element={<StudentDashboard />} />
+            </Route>
+          </Route>
+
+          {/* Exam Taking & Lobby (Accessible by student, teacher previewing/testing room, and admin) */}
+          <Route element={<ProtectedRoute allowedRoles={["student", "teacher", "admin"]} />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/student/quiz/:quizId/lobby" element={<ExamEntry />} />
+              <Route path="/student/result/:resultId" element={<Result />} />
+            </Route>
+            <Route element={<ExamLayout />}>
+              <Route path="/student/quiz/:quizId" element={<QuizRoom />} />
+            </Route>
+          </Route>
+
+          {/* 404 Catch-all */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
