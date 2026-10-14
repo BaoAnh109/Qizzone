@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { getPostLoginRedirect, getRoleHomeRoute } from '@/routes/navigation';
 
 describe('Router & Room Join Routing Logic', () => {
-  it('correctly maps post-login redirection for join links', () => {
-    function getPostLoginRedirect(role: string, redirectParam: string | null): string {
-      const home = role === 'admin' ? '/admin/teacher-approvals' : role === 'student' ? '/student' : '/teacher';
-      if (!redirectParam || redirectParam === '/login' || redirectParam === '/register' || redirectParam === '/unauthorized') {
-        return home;
-      }
-      if (redirectParam.startsWith('/admin') && role !== 'admin') return home;
-      if (redirectParam.startsWith('/teacher') && role === 'student') return '/student';
-      if (redirectParam.startsWith('/student') && role !== 'student' && !redirectParam.includes('/quiz/')) return home;
-      return redirectParam;
-    }
-
+  it('correctly maps post-login redirection for join links and role permissions', () => {
     // Direct room join URLs should be preserved regardless of role
     expect(getPostLoginRedirect('student', '/join/ABC123')).toBe('/join/ABC123');
     expect(getPostLoginRedirect('teacher', '/join/ABC123')).toBe('/join/ABC123');
@@ -22,6 +12,24 @@ describe('Router & Room Join Routing Logic', () => {
     expect(getPostLoginRedirect('student', null)).toBe('/student');
     expect(getPostLoginRedirect('teacher', null)).toBe('/teacher');
     expect(getPostLoginRedirect('admin', null)).toBe('/admin/teacher-approvals');
+
+    // Teacher & Admin allowed to view/preview quiz rooms and results
+    expect(getPostLoginRedirect('teacher', '/student/quiz/quiz-1/lobby')).toBe('/student/quiz/quiz-1/lobby');
+    expect(getPostLoginRedirect('teacher', '/student/result/res-1')).toBe('/student/result/res-1');
+    expect(getPostLoginRedirect('admin', '/student/quiz/quiz-1/lobby')).toBe('/student/quiz/quiz-1/lobby');
+
+    // Student attempting teacher or admin route redirected to /student
+    expect(getPostLoginRedirect('student', '/teacher/create-quiz')).toBe('/student');
+    expect(getPostLoginRedirect('student', '/admin/accounts')).toBe('/student');
+
+    // Teacher attempting non-quiz student portal redirected to /teacher
+    expect(getPostLoginRedirect('teacher', '/student')).toBe('/teacher');
+  });
+
+  it('provides correct home routes for each role', () => {
+    expect(getRoleHomeRoute('student')).toBe('/student');
+    expect(getRoleHomeRoute('teacher')).toBe('/teacher');
+    expect(getRoleHomeRoute('admin')).toBe('/admin/teacher-approvals');
   });
 
   it('handles room code normalization for join links', () => {

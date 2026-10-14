@@ -14,6 +14,7 @@ Tài liệu này hệ thống toàn bộ 14 yêu cầu theo **6 luồng logic đ
 | **Luồng 4** | `fix/teacher-quiz-authorization` | **Yêu cầu 11**: Phân quyền giáo viên chỉ xem và chỉnh sửa đề của chính mình | Trung bình |
 | **Luồng 5** | `feat/student-direct-code-and-link-access` | **Yêu cầu 12**: Ẩn danh mục đề công khai của HS, chỉ thấy khi nhập mã<br>**Yêu cầu 13**: Tạo link làm bài trực tiếp không cần gõ mã | Lớn |
 | **Luồng 6** | `feat/admin-account-management` | **Yêu cầu 14**: Admin quản lý tài khoản HS & GV, tìm kiếm, khóa/mở khóa, xem & sửa đề của GV | Lớn |
+| **Luồng 7** | `perf/login-and-router-optimization` | **Tối ưu đăng nhập & Router**: Fast-path PostgREST, in-flight deduplication, Top Loading Bar, Preload Chunks, GuestRoute | Lớn |
 
 ---
 
@@ -106,3 +107,22 @@ Tài liệu này hệ thống toàn bộ 14 yêu cầu theo **6 luồng logic đ
 - [x] **Task 6.3 (Yêu cầu 14)**: Xem danh sách đề thi của từng giáo viên và cho phép Admin chỉnh sửa đề.
   - File: `src/pages/admin/AccountManagement.tsx`.
   - Chi tiết: Mở modal/danh sách đề của GV được chọn, Admin có nút "Chỉnh sửa đề" (truy cập `/teacher/edit-quiz/:quizId` với toàn quyền).
+
+---
+
+### Luồng 7: Tối ưu hóa đăng nhập & Router điều hướng mượt mà
+> **Branch**: `refactor/optimize-login-router` | **Chi tiết**: [`LOGIN_ROUTER_OPTIMIZATION.md`](LOGIN_ROUTER_OPTIMIZATION.md) | [`docs/tasks/LOGIN_ROUTER_OPTIMIZATION.md`](docs/tasks/LOGIN_ROUTER_OPTIMIZATION.md)
+
+- [x] **Task 7.1 (Đăng nhập siêu tốc - Fast Path & Deduplication)**:
+  - File: `src/services/firebaseAuthService.ts`, `src/store/authStore.ts`.
+  - Chi tiết: Đọc thẳng PostgREST database (~50ms) cho tài khoản đã có claims, bỏ qua Edge Function cold start. In-flight Promise deduplication gộp các yêu cầu đồng thời. Chống loop token refresh trong `onIdTokenChanged`.
+- [x] **Task 7.2 (Khử trùng lặp nạp dữ liệu Store)**:
+  - File: `src/store/quizStore.ts`, `src/store/examSessionStore.ts`.
+  - Chi tiết: Chống trùng lặp `load()` khi cả `App.tsx` và `Dashboard` cùng mount một lúc.
+- [x] **Task 7.3 (Chuẩn hóa điều hướng & Preload)**:
+  - File: `src/routes/navigation.ts`, `src/pages/auth/Login.tsx`, `src/pages/auth/Register.tsx`.
+  - Chi tiết: Cho phép giáo viên/admin vào trực tiếp phòng thi học sinh (`/student/quiz/*`, `/student/result/*`). Preload chunks trong thời gian rảnh. Xóa bỏ double navigate.
+- [x] **Task 7.4 (Thanh tiến trình mượt mà & GuestRoute)**:
+  - File: `src/components/common/RouteLoadingFallback.tsx`, `src/routes/GuestRoute.tsx`, `src/routes/AppRoutes.tsx`, `src/index.css`.
+  - Chi tiết: Thay thế fallback toàn màn hình bằng Top Progress Bar mảnh trên cùng; thêm `GuestRoute` bảo vệ form login/register khỏi hiện tượng chớp nháy khi đã đăng nhập.
+

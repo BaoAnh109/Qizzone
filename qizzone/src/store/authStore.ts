@@ -73,11 +73,20 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         async firebaseUser => {
           clearInitializationTimer();
           const eventVersion = ++authEventVersion;
-          set({ isLoading: true, configurationError: null });
           if (!firebaseUser) {
-            set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true });
+            set({ user: null, isAuthenticated: false, isLoading: false, isInitialized: true, configurationError: null });
             return;
           }
+
+          // If the active session is already established for this user and not in registration flow,
+          // avoid redundant full re-sync and UI flickering when token refreshes in background.
+          const existingUser = get().user;
+          if (existingUser && existingUser.id === firebaseUser.uid && get().isAuthenticated && !registrationContext) {
+            set({ isLoading: false, isInitialized: true });
+            return;
+          }
+
+          set({ isLoading: true, configurationError: null });
           try {
             const context = registrationContext;
             const profile = await syncProfile(firebaseUser, context?.fullName, context?.role);

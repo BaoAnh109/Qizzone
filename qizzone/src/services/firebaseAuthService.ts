@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut, sendPasswordResetEmail, updateProfile, type User as FirebaseUser } from 'firebase/auth';
-import { edge, firebaseAuth, rpc } from '@/lib/cloud';
+import { edge, firebaseAuth, rpc, supabase } from '@/lib/cloud';
 import type { User, LoginCredentials, RegisterData, UserRole } from '@/types/auth';
 
 export interface ProfileRow {
@@ -41,16 +41,69 @@ export function mapProfile(p: ProfileRow, activeRole?: UserRole, avatarFallback?
   };
 }
 
-export async function syncProfile(user: FirebaseUser, preferredFullName?: string, requestedRole?: UserRole): Promise<User> {
-  const p = await edge<ProfileRow>('bootstrap-profile', {
-    fullName: preferredFullName || user.displayName,
-    overwriteName: Boolean(preferredFullName),
-    requestedRole: requestedRole === 'student' ? requestedRole : 'student',
-  }, 15_000);
-  const token = await user.getIdTokenResult();
-  const activeRole = p.active_role || (token.claims.app_role as UserRole | undefined) || p.role;
-  if (p.approval_status === 'approved' && (token.claims.role !== 'authenticated' || token.claims.app_role !== activeRole)) await user.getIdToken(true);
-  return mapProfile(p, activeRole, firebaseAvatarUrl(user));
+const inFlightSync = new Map<string, Promise<User>>();
+
+export function clearInFlightSync(): void {
+  inFlightSync.clear();
+}
+
+export function syncProfile(user: FirebaseUser, preferredFullName?: string, requestedRole?: UserRole): Promise<User> {
+  const syncKey = `${user.uid}:${preferredFullName || ''}:${requestedRole || ''}`;
+  const existing = inFlightSync.get(syncKey);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      // 1. Fast path: For existing authenticated users returning with valid claims,
+      // query Postgres directly via PostgREST (~50ms) instead of incurring Edge Function cold-start (~2-5s)
+      if (!preferredFullName && !requestedRole) {
+        try {
+          const token = await user.getIdTokenResult();
+          const claimedRole = token.claims.app_role as UserRole | undefined;
+          if (token.claims.role === 'authenticated' && claimedRole) {
+            const profileTable = supabase().from('profiles') as unknown as {
+              select: (cols: string) => {
+                eq: (col: string, val: unknown) => {
+                  maybeSingle: () => Promise<{ data: ProfileRow | null; error: Error | null }>;
+                };
+              };
+            };
+            const { data: p, error } = await profileTable
+              .select('*')
+              .eq('firebase_uid', user.uid)
+              .maybeSingle();
+
+            if (!error && p && p.approval_status === 'approved') {
+              const activeRole = p.active_role || claimedRole || p.role;
+              if (activeRole === claimedRole) {
+                return mapProfile(p, activeRole, firebaseAvatarUrl(user));
+              }
+            }
+          }
+        } catch {
+          // If direct query fails for any reason, continue to fallback bootstrap edge function
+        }
+      }
+
+      // 2. Fallback: Edge Function for initial profile bootstrap or claim synchronization
+      const p = await edge<ProfileRow>('bootstrap-profile', {
+        fullName: preferredFullName || user.displayName,
+        overwriteName: Boolean(preferredFullName),
+        requestedRole: requestedRole === 'student' ? requestedRole : 'student',
+      }, 15_000);
+      const token = await user.getIdTokenResult();
+      const activeRole = p.active_role || (token.claims.app_role as UserRole | undefined) || p.role;
+      if (p.approval_status === 'approved' && (token.claims.role !== 'authenticated' || token.claims.app_role !== activeRole)) {
+        await user.getIdToken(true);
+      }
+      return mapProfile(p, activeRole, firebaseAvatarUrl(user));
+    } finally {
+      inFlightSync.delete(syncKey);
+    }
+  })();
+
+  inFlightSync.set(syncKey, promise);
+  return promise;
 }
 
 function currentFirebaseUser() {

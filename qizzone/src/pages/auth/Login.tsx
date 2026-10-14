@@ -8,36 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/hooks/useToast";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
-import type { UserRole } from "@/types/auth";
-
-/**
- * Resolves destination URL after login based on user role to avoid 403 forbidden redirects
- */
-function getPostLoginRedirect(role: UserRole, redirectParam: string | null): string {
-  const home = role === "admin" ? "/admin/teacher-approvals" : role === "student" ? "/student" : "/teacher";
-  if (
-    !redirectParam ||
-    redirectParam === "/login" ||
-    redirectParam === "/register" ||
-    redirectParam === "/unauthorized"
-  ) {
-    return home;
-  }
-
-  if (redirectParam.startsWith("/admin") && role !== "admin") return home;
-
-  // If redirect is for teacher route but logged-in user is a student
-  if (redirectParam.startsWith("/teacher") && role === "student") {
-    return "/student";
-  }
-
-  // If redirect is for student route but logged-in user is a teacher
-  if (redirectParam.startsWith("/student") && role !== "student") {
-    return home;
-  }
-
-  return redirectParam;
-}
+import { getPostLoginRedirect, preloadDashboardForRole } from "@/routes/navigation";
 
 function getFriendlyAuthError(message: string): string {
   if (/failed to fetch|network request failed/i.test(message)) {
@@ -51,9 +22,6 @@ export function Login() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect");
 
-  const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
   const login = useAuthStore((state) => state.login);
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const resetPassword = useAuthStore((state) => state.resetPassword);
@@ -65,12 +33,21 @@ export function Login() {
   const [isResetting, setIsResetting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  // Pre-warm dashboard chunks in idle time for instant navigation
   useEffect(() => {
-    if (isInitialized && isAuthenticated && user) {
-      const destination = getPostLoginRedirect(user.role, redirect);
-      navigate(destination, { replace: true });
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(() => {
+        preloadDashboardForRole("student");
+        preloadDashboardForRole("teacher");
+      });
+    } else {
+      const timer = setTimeout(() => {
+        preloadDashboardForRole("student");
+        preloadDashboardForRole("teacher");
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isInitialized, isAuthenticated, user, redirect, navigate]);
+  }, []);
 
   const {
     register,
@@ -86,18 +63,18 @@ export function Login() {
   });
 
   const handleResetPassword = async () => {
-    const email = getValues('email').trim();
+    const email = getValues("email").trim();
     if (!email) {
-      setAuthError('Nhập email trước khi yêu cầu đặt lại mật khẩu.');
+      setAuthError("Nhập email trước khi yêu cầu đặt lại mật khẩu.");
       return;
     }
     setIsResetting(true);
     setAuthError(null);
     try {
       await resetPassword(email);
-      toast.success('Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.', 'Kiểm tra hộp thư');
+      toast.success("Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.", "Kiểm tra hộp thư");
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Không thể gửi email đặt lại mật khẩu.';
+      const message = error instanceof Error ? error.message : "Không thể gửi email đặt lại mật khẩu.";
       setAuthError(message);
       toast.error(message);
     } finally {
@@ -109,6 +86,7 @@ export function Login() {
     setAuthError(null);
     try {
       const loggedUser = await login(data);
+      preloadDashboardForRole(loggedUser.role);
       toast.success(`Chào mừng ${loggedUser.fullName}.`, "Đăng nhập thành công");
 
       const destination = getPostLoginRedirect(loggedUser.role, redirect);
@@ -126,8 +104,10 @@ export function Login() {
     setIsGoogleLoading(true);
     try {
       const loggedUser = await loginWithGoogle();
+      preloadDashboardForRole(loggedUser.role);
       toast.success(`Chào mừng ${loggedUser.fullName}.`, "Đăng nhập thành công");
-      navigate(getPostLoginRedirect(loggedUser.role, redirect), { replace: true });
+      const destination = getPostLoginRedirect(loggedUser.role, redirect);
+      navigate(destination, { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Đăng nhập Google thất bại, vui lòng thử lại";
       setAuthError(message);

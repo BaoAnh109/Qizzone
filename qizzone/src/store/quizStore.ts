@@ -5,6 +5,8 @@ import { errorMessage } from '@/lib/cloud';
 import { useAuthStore } from '@/store/authStore';
 
 let loadVersion = 0;
+let inFlightQuizLoad: Promise<void> | null = null;
+
 interface QuizState {
   quizzes: Quiz[];
   isLoading: boolean;
@@ -26,19 +28,28 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   quizzes: [],
   isLoading: false,
   error: null,
-  reset: () => { loadVersion += 1; set({ quizzes: [], isLoading: false, error: null }); },
+  reset: () => {
+    loadVersion += 1;
+    inFlightQuizLoad = null;
+    set({ quizzes: [], isLoading: false, error: null });
+  },
   load: async () => {
+    if (inFlightQuizLoad) return inFlightQuizLoad;
     const version = loadVersion;
     set({ isLoading: true, error: null });
-    try {
-      const quizzes = await quizService.list();
-      if (version === loadVersion) set({ quizzes, error: null });
-    } catch (error) {
-      if (version === loadVersion) set({ error: errorMessage(error) });
-      throw error;
-    } finally {
-      if (version === loadVersion) set({ isLoading: false });
-    }
+    inFlightQuizLoad = (async () => {
+      try {
+        const quizzes = await quizService.list();
+        if (version === loadVersion) set({ quizzes, error: null });
+      } catch (error) {
+        if (version === loadVersion) set({ error: errorMessage(error) });
+        throw error;
+      } finally {
+        if (version === loadVersion) set({ isLoading: false });
+        inFlightQuizLoad = null;
+      }
+    })();
+    return inFlightQuizLoad;
   },
   retry: () => get().load(),
   getQuizById: id => get().quizzes.find(q => q.id === id),
