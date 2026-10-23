@@ -70,7 +70,7 @@
 - Tiêu chí nghiệm thu (đo được): một câu trả lời chưa đồng bộ vẫn phục hồi sau reset/reload mô phỏng, chỉ đồng bộ vào đúng attempt khi có mạng, và bản nháp bị xóa sau khi server xác nhận hoặc bài nộp; xung đột revision không ghi đè dữ liệu server.
 - Test cần chạy / thêm: mô phỏng offline → thay đáp án → reload → online; mô phỏng revision conflict; `npm run lint`, `npm test`, `npm run build`.
 - Rủi ro / rollback: local storage giữ lựa chọn của chính học sinh trên thiết bị dùng chung; khóa dữ liệu theo attempt và xóa khi kết thúc. Rollback riêng cơ chế local draft, giữ autosave server hiện tại.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; `npm run lint` PASS, `npm test` PASS (19 file / 96 test), `npm run build` PASS. Test mới mô phỏng offline → reload → đồng bộ; test revision conflict xác nhận giữ local draft và không gọi RPC ghi đè.
 
 ## QZ-P1-02 — Chạy CI trên branch review và mọi pull request
 - Mức: P1 (thiếu quan trọng)
