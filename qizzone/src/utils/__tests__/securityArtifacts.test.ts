@@ -11,6 +11,18 @@ function filesRecursively(root: string): string[] {
 }
 
 describe('secret boundaries', () => {
+  it('sanitizes document preview HTML before injecting it into the DOM', () => {
+    const viewerPath = fileURLToPath(new URL('../../components/teacher/extraction/DocumentViewer.tsx', import.meta.url));
+    const source = readFileSync(viewerPath, 'utf8');
+    const sanitizerIndex = source.indexOf('DOMPurify.sanitize(document.rawHtml)');
+    const sinkIndex = source.indexOf('dangerouslySetInnerHTML={{ __html: sanitizedRawHtml }}');
+
+    expect(source).toContain('import DOMPurify from "dompurify"');
+    expect(sanitizerIndex).toBeGreaterThan(-1);
+    expect(sinkIndex).toBeGreaterThan(sanitizerIndex);
+    expect(source).not.toContain('dangerouslySetInnerHTML={{ __html: document.rawHtml }}');
+  });
+
   it('keeps server-only secret names and values out of frontend source and bundle', () => {
     const project = fileURLToPath(new URL('../../../..', import.meta.url));
     const frontendFiles = [

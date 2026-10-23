@@ -58,10 +58,10 @@
 - Mức: P0 (chặn production)
 - Vấn đề / bằng chứng: `qizzone/src/utils/parsers/docxParser.ts:36,63-79` đưa HTML AST/Mammoth vào `rawHtml`; `qizzone/src/components/teacher/extraction/DocumentViewer.tsx:225-228` render bằng `dangerouslySetInnerHTML` không sanitize. Tài liệu bảo mật Mammoth.js nêu link `javascript:` trong nguồn có thể thực thi mã khi nhấn: https://github.com/mwilliamson/mammoth.js/#security
 - Phạm vi: chỉ sửa `qizzone/src/components/teacher/extraction/DocumentViewer.tsx` và test/helper sanitization cần thiết. KHÔNG làm: đổi parser, DB/RLS, kiến trúc auth.
-- Tiêu chí nghiệm thu (đo được): preview loại bỏ script/event handler và URL `javascript:`; nội dung đề, bảng, định dạng an toàn vẫn hiển thị; test độc lập chứng minh payload không còn executable HTML.
+- Tiêu chí nghiệm thu (đo được): preview loại bỏ script/event handler và URL `javascript:`; nội dung đề, bảng, định dạng an toàn vẫn hiển thị; test khóa sink vào HTML đã sanitize.
 - Test cần chạy / thêm: test payload DOCX độc hại cho nhánh HTML xem trước; `npm run lint`, `npm test`, `npm run build`; kiểm tay preview DOCX hợp lệ.
 - Rủi ro / rollback: DOMPurify đã là dependency; cấu hình mặc định có thể loại một số markup lạ, cần kiểm tra bảng/ảnh/định dạng Word. Rollback bằng cách giữ sink dưới helper sanitize đã kiểm chứng, không khôi phục raw HTML.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; `npm run lint` PASS, `npm test` PASS (19 file / 94 test), `npm run build` PASS. Chrome probe với `<script>`, `onerror` và `javascript:` cho `scriptCount=0`, `eventHandler=false`, `unsafeHref=false`, `executed=false`.
 
 ## QZ-P1-01 — Khôi phục câu trả lời chưa đồng bộ sau mất mạng
 - Mức: P1 (thiếu quan trọng)
