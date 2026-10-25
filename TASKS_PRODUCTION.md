@@ -124,7 +124,7 @@
 - Tiêu chí nghiệm thu (đo được): store không import `rpc`/Supabase; toàn bộ thao tác phiên thi đi qua service; hành vi lưu/nộp/khôi phục giữ nguyên.
 - Test cần chạy / thêm: test store hiện có và test service RPC; `npm run lint`, `npm test`, `npm run build`.
 - Rủi ro / rollback: dễ đổi kiểu lỗi hoặc thứ tự retry; rollback chỉ service/store nếu test hành vi sai.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; store không còn gọi `rpc` hoặc import `lib/cloud` cho truy cập dữ liệu; toàn bộ 6 RPC phiên thi đi qua `examSessionService` và có test ánh xạ. `npm run lint` PASS, `npm test` PASS (22 file / 105 test), `npm run build` PASS.
 
 ## CẦN CHỦ REPO QUYẾT
 

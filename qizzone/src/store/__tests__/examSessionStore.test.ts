@@ -1,11 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/cloud', () => ({
-  rpc: vi.fn(),
-  errorMessage: (error: unknown) => error instanceof Error ? error.message : 'error',
+vi.mock('@/services/examSessionService', () => ({
+  examSessionService: {
+    listSessions: vi.fn(),
+    listResults: vi.fn(),
+    startAttempt: vi.fn(),
+    saveAttempt: vi.fn(),
+    submitAttempt: vi.fn(),
+    finalizeExpired: vi.fn(),
+  },
 }));
 
-import { rpc } from '@/lib/cloud';
+import { examSessionService } from '@/services/examSessionService';
 import { useExamSessionStore } from '@/store/examSessionStore';
 import type { Quiz } from '@/types/quiz';
 
@@ -54,8 +60,7 @@ describe('cloud exam session store', () => {
   });
 
   it('debounces answer changes and persists only the newest selection', async () => {
-    vi.mocked(rpc).mockImplementation(async (name) => {
-      if (name !== 'save_attempt') return [];
+    vi.mocked(examSessionService.saveAttempt).mockImplementation(async () => {
       return { ...session, answers: { 'question-1': ['B'] }, revision: 1, lastSavedAt: '2026-09-09T00:00:01.000Z' };
     });
 
@@ -64,28 +69,25 @@ describe('cloud exam session store', () => {
     store.selectAnswer({ quizId: quiz.id, questionId: 'question-1', optionId: 'B' });
     expect(useExamSessionStore.getState().saveStatus[quiz.id]).toBe('saving');
     await vi.advanceTimersByTimeAsync(449);
-    expect(rpc).not.toHaveBeenCalled();
+    expect(examSessionService.saveAttempt).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
-    await vi.waitFor(() => expect(rpc).toHaveBeenCalledOnce());
-    expect(rpc).toHaveBeenCalledWith('save_attempt', expect.objectContaining({
-      p_revision: 0,
-      p_answers: { 'question-1': ['B'] },
+    await vi.waitFor(() => expect(examSessionService.saveAttempt).toHaveBeenCalledOnce());
+    expect(examSessionService.saveAttempt).toHaveBeenCalledWith(expect.objectContaining({
+      revision: 0,
+      answers: { 'question-1': ['B'] },
     }));
     expect(useExamSessionStore.getState().saveStatus[quiz.id]).toBe('saved');
   });
 
   it('recovers offline edits after reload and clears the draft only after a server save', async () => {
     let saveAttempts = 0;
-    vi.mocked(rpc).mockImplementation(async (name) => {
-      if (name === 'save_attempt') {
-        saveAttempts += 1;
-        if (saveAttempts === 1) throw new Error('Failed to fetch');
-        return { ...session, answers: { 'question-1': ['B'] }, revision: 1 };
-      }
-      if (name === 'list_sessions') return [{ ...session, answers: {}, revision: 0 }];
-      if (name === 'list_results') return [];
-      return [];
+    vi.mocked(examSessionService.saveAttempt).mockImplementation(async () => {
+      saveAttempts += 1;
+      if (saveAttempts === 1) throw new Error('Failed to fetch');
+      return { ...session, answers: { 'question-1': ['B'] }, revision: 1 };
     });
+    vi.mocked(examSessionService.listSessions).mockResolvedValue([{ ...session, answers: {}, revision: 0 }]);
+    vi.mocked(examSessionService.listResults).mockResolvedValue([]);
 
     useExamSessionStore.getState().selectAnswer({ quizId: quiz.id, questionId: 'question-1', optionId: 'B' });
     await vi.advanceTimersByTimeAsync(450);
@@ -111,11 +113,10 @@ describe('cloud exam session store', () => {
       currentQuestionIndex: 0,
       updatedAt: Date.now(),
     }));
-    vi.mocked(rpc).mockImplementation(async (name) => {
-      if (name === 'list_sessions') return [{ ...session, answers: { 'question-1': ['B'] }, revision: 1 }];
-      if (name === 'list_results') return [];
-      return [];
-    });
+    vi.mocked(examSessionService.listSessions).mockResolvedValue([
+      { ...session, answers: { 'question-1': ['B'] }, revision: 1 },
+    ]);
+    vi.mocked(examSessionService.listResults).mockResolvedValue([]);
 
     await useExamSessionStore.getState().load();
     expect(useExamSessionStore.getState().activeSessions[quiz.id].answers).toEqual({ 'question-1': ['B'] });
@@ -123,22 +124,24 @@ describe('cloud exam session store', () => {
     expect(localDrafts.has(draftKey)).toBe(true);
 
     await expect(useExamSessionStore.getState().flushSession(quiz.id)).rejects.toThrow(/thiết bị khác/i);
-    expect(vi.mocked(rpc).mock.calls.some(call => call[0] === 'save_attempt')).toBe(false);
+    expect(examSessionService.saveAttempt).not.toHaveBeenCalled();
     expect(localDrafts.has(draftKey)).toBe(true);
   });
 
   it('still finalizes server-saved answers when autosave is rejected at the deadline', async () => {
-    vi.mocked(rpc).mockImplementation(async (name) => {
-      if (name === 'save_attempt') throw new Error('Hết giờ: nộp các đáp án đã lưu');
-      if (name === 'submit_attempt') return { id: 'result-1', quizId: quiz.id, score: 5 };
-      return [];
-    });
+    vi.mocked(examSessionService.saveAttempt).mockRejectedValue(
+      new Error('Hết giờ: nộp các đáp án đã lưu'),
+    );
+    vi.mocked(examSessionService.submitAttempt).mockResolvedValue({
+      id: 'result-1', quizId: quiz.id, score: 5,
+    } as never);
 
     const result = await useExamSessionStore.getState().submitExam({
       quiz, studentId: 'student-1', studentName: 'Student',
     });
     expect(result.id).toBe('result-1');
-    expect(vi.mocked(rpc).mock.calls.map(call => call[0])).toEqual(['save_attempt', 'submit_attempt']);
+    expect(examSessionService.saveAttempt).toHaveBeenCalledOnce();
+    expect(examSessionService.submitAttempt).toHaveBeenCalledWith(session.id);
     expect(useExamSessionStore.getState().activeSessions[quiz.id].isSubmitted).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { OptionId, Quiz } from '@/types/quiz';
 import type { ExamResult, ExamSession } from '@/types/exam';
-import { errorMessage, rpc } from '@/lib/cloud';
+import { examSessionService } from '@/services/examSessionService';
 
 type CloudSession = ExamSession & { id: string; revision: number; questionOrder?: string[]; optionOrder?: Record<string, string[]> };
 export type SessionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -133,6 +133,13 @@ function asResults(value: unknown): ExamResult[] {
   return Array.isArray(value) ? value as ExamResult[] : [];
 }
 
+function storeErrorMessage(error: unknown): string {
+  if (error instanceof DOMException && error.name === 'TimeoutError') {
+    return 'Dịch vụ phản hồi quá lâu. Vui lòng thử lại.';
+  }
+  return error instanceof Error ? error.message : 'Không thể tải dữ liệu phiên làm bài.';
+}
+
 interface ExamSessionState {
   activeSessions: Record<string, CloudSession>;
   results: ExamResult[];
@@ -175,12 +182,12 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
           throw new Error('Bài làm đã được cập nhật trên thiết bị khác. Bản nháp trên thiết bị này được giữ lại.');
         }
         const draftSnapshot = storeLocalDraft(session);
-        const saved = asSession(await rpc<unknown>('save_attempt', {
-          p_id: session.id,
-          p_revision: session.revision,
-          p_answers: buildAnswers(session),
-          p_flags: session.flaggedQuestionIds || [],
-          p_index: session.currentQuestionIndex,
+        const saved = asSession(await examSessionService.saveAttempt({
+          attemptId: session.id,
+          revision: session.revision,
+          answers: buildAnswers(session),
+          flaggedQuestionIds: session.flaggedQuestionIds || [],
+          currentQuestionIndex: session.currentQuestionIndex,
         }));
         if (currentGeneration !== generation) return;
         set(state => {
@@ -241,7 +248,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       inFlightSessionLoad = (async () => {
         try {
           const [sessions, results] = await Promise.all([
-            rpc<unknown>('list_sessions'), rpc<unknown>('list_results'),
+            examSessionService.listSessions(), examSessionService.listResults(),
           ]);
           revisionConflicts.clear();
           const records: Record<string, CloudSession> = {};
@@ -264,7 +271,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
           });
           recoveredQuizIds.forEach(queueSave);
         } catch (error) {
-          set({ isLoading: false, error: errorMessage(error) });
+          set({ isLoading: false, error: storeErrorMessage(error) });
           throw error;
         } finally {
           inFlightSessionLoad = null;
@@ -276,7 +283,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
     initSession: async ({ quiz, studentClass }) => {
       const existing = get().activeSessions[quiz.id];
       if (existing && !existing.isSubmitted) return existing;
-      const recovery = recoverLocalDraft(asSession(await rpc<unknown>('start_attempt', { p_quiz_id: quiz.id, p_class: studentClass || null })));
+      const recovery = recoverLocalDraft(asSession(await examSessionService.startAttempt(quiz.id, studentClass)));
       const session = recovery.session;
       set(state => ({
         activeSessions: { ...state.activeSessions, [quiz.id]: session },
@@ -343,7 +350,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
           // still finalize the answers that were saved before time expired.
           if (!(error instanceof Error) || !/hết giờ/i.test(error.message)) throw error;
         }
-        const rawResult = await rpc<ExamResult>('submit_attempt', { p_id: session.id });
+        const rawResult = await examSessionService.submitAttempt(session.id);
         clearLocalDraft(session);
         revisionConflicts.delete(quiz.id);
         const result: ExamResult = {
@@ -366,7 +373,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       }
     },
     checkAndAutoSubmitExpired: async () => {
-      await rpc<void>('finalize_expired');
+      await examSessionService.finalizeExpired();
       await get().load();
     },
     getResultById: resultId => get().results.find(result => result.id === resultId),
