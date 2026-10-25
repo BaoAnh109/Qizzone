@@ -88,7 +88,7 @@
 - Tiêu chí nghiệm thu (đo được): tệp vượt giới hạn bị từ chối trước `arrayBuffer()`/AI request; lỗi tiếng Việt cho biết giới hạn; tên đuôi DOCX/PDF không phân biệt hoa thường.
 - Test cần chạy / thêm: kiểm tra file quá giới hạn, hợp lệ, sai định dạng và phần mở rộng viết hoa; `npm run lint`, `npm test`, `npm run build`.
 - Rủi ro / rollback: giới hạn có thể từ chối tài liệu giáo viên lớn; chọn và hiển thị ngưỡng rõ ràng theo giới hạn Edge Function. Rollback bằng thay đổi hằng số, không bỏ kiểm tra MIME/đuôi.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; DOCX/PDF tối đa 25 MB; ảnh/TXT/MD và văn bản dán tối đa 5 MB, kiểm tra trước khi đọc hoặc gọi AI. `npm run lint` PASS, `npm test` PASS (20 file / 101 test), `npm run build` PASS.
 
 ## QZ-P2-02 — Thêm báo cáo hiệu quả theo từng câu hỏi
 - Mức: P2 (UX/hiệu năng)

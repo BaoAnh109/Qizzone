@@ -16,6 +16,10 @@ import { parseDocxFile } from "@/utils/parsers/docxParser";
 import { parsePdfFile } from "@/utils/parsers/pdfParser";
 import { extractQuizWithAI } from "@/services/aiExtractionService";
 import { useExtractionStore } from "@/store/extractionStore";
+import {
+  validateImportFile,
+  validatePastedTextSize,
+} from "@/utils/fileImportValidation";
 
 interface FileDropzoneProps {
   onSuccess?: () => void;
@@ -46,15 +50,16 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   };
 
   const processFile = async (file: File) => {
-    const isDocx = file.name.endsWith(".docx");
-    const isPdf = file.name.endsWith(".pdf");
-    const isImage = /\.(png|jpe?g|webp)$/i.test(file.name);
-    const isText = /\.(txt|md)$/i.test(file.name);
-
-    if (!isDocx && !isPdf && !isImage && !isText) {
-      toast.error("Vui lòng tải lên tệp định dạng .docx, .pdf, ảnh chụp hoặc .txt/.md!");
+    const validationError = validateImportFile(file);
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
+
+    const normalizedName = file.name.toLowerCase();
+    const isDocx = normalizedName.endsWith(".docx");
+    const isPdf = normalizedName.endsWith(".pdf");
+    const isImage = /\.(png|jpe?g|webp)$/.test(normalizedName);
 
     setIsProcessing(true, 20);
 
@@ -174,6 +179,12 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
       return;
     }
 
+    const validationError = validatePastedTextSize(pastedText);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setIsProcessing(true, 30);
     try {
       const result = await extractQuizWithAI({
@@ -252,7 +263,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".docx,.pdf,.png,.jpg,.jpeg,.txt,.md"
+            accept=".docx,.pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
             className="hidden"
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
@@ -271,7 +282,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
                 Kéo thả file đề thi hoặc Nhấn để tải lên
               </h3>
               <p className="text-xs text-neutral-500">
-                Hỗ trợ Word (<strong className="text-neutral-700">.docx</strong>), PDF (<strong className="text-neutral-700">.pdf</strong>), Ảnh chụp (<strong className="text-neutral-700">.png, .jpg</strong>).
+                Hỗ trợ Word (<strong className="text-neutral-700">.docx</strong>), PDF (<strong className="text-neutral-700">.pdf</strong>), ảnh và văn bản. Tối đa 25 MB cho Word/PDF, 5 MB cho ảnh/TXT/MD.
               </p>
             </div>
 
@@ -308,7 +319,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
               <ClipboardPaste className="h-4 w-4 text-indigo-600" />
               <span>Dán toàn bộ nội dung đề thi vào khung:</span>
             </div>
-            <span className="text-[11px] text-neutral-400">Hỗ trợ KaTeX $...$</span>
+            <span className="text-[11px] text-neutral-400">Hỗ trợ KaTeX $...$ · Tối đa 5 MB</span>
           </div>
 
           <textarea
