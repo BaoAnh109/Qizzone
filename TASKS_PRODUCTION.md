@@ -79,7 +79,7 @@
 - Tiêu chí nghiệm thu (đo được): push trên `review/*` chạy workflow; PR từ branch bất kỳ cũng chạy đủ lint, test và build; workflow YAML hợp lệ.
 - Test cần chạy / thêm: kiểm tra cấu hình workflow và chạy lại ba lệnh ở app; xác nhận trigger qua GitHub Actions khi có push/PR (chưa thể xác minh từ checkout local).
 - Rủi ro / rollback: chạy CI nhiều hơn trên các nhánh. Rollback bằng cách khôi phục branch filter cũ nếu vượt quota Actions của repo.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; `npm run lint` PASS, `npm test` PASS (19 file / 96 test), `npm run build` PASS; workflow đã kiểm tra bằng cấu hình source: push bao gồm `review/**`, pull request không lọc branch đích. Chạy trigger trên GitHub cần push/PR và chưa xác minh từ checkout local.
 
 ## QZ-P2-01 — Giới hạn kích thước tệp nhập đề
 - Mức: P2 (UX/hiệu năng)
