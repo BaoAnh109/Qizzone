@@ -1,9 +1,9 @@
 # Qizzone — release checklist v1
 
-Ngày lập: **2026-10-26**  
-Branch: `review/production-v1`  
-Commit code đã qua các cổng local: `561a1e8`  
-Baseline theo prompt: `develop/v1` không có trong danh sách branch đã kiểm tra; code được rà soát trên proxy sạch `refactor/optimize-login-router` từ `919dbfd`.
+- Ngày lập: **2026-10-26**
+- Branch: `review/production-v1`
+- Commit code đã qua các cổng local: `561a1e8`
+- Baseline theo prompt: `develop/v1` không có trong danh sách branch đã kiểm tra; code được rà soát trên proxy sạch `refactor/optimize-login-router` từ `919dbfd`.
 
 ## Trạng thái cổng
 
@@ -88,4 +88,3 @@ Người duyệt production: ____________________  Ngày/giờ: ________________
 - Giới hạn kích thước import: DOCX/PDF 25 MB; ảnh, TXT/MD và văn bản dán 5 MB.
 - Thêm phân tích câu hỏi và CSV tổng hợp cho giáo viên.
 - Bổ sung hướng dẫn cài đặt/vận hành, header bảo mật Vercel và service layer cho RPC phiên thi.
-
