@@ -97,7 +97,7 @@
 - Tiêu chí nghiệm thu (đo được): giáo viên xem số lượt đúng, bỏ trống và phân bố chọn phương án theo từng câu; export CSV; kết quả không chứa đáp án nếu role không sở hữu quiz.
 - Test cần chạy / thêm: test tính toán với bài làm đúng/sai/bỏ trống và CSV; `npm run lint`, `npm test`, `npm run build`.
 - Rủi ro / rollback: quiz có ít lượt làm cho tỷ lệ chưa đại diện; hiển thị mẫu số và không gắn nhãn thống kê như kết luận chắc chắn. Rollback UI/helper, giữ dữ liệu kết quả hiện tại.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; trang giáo viên có số lượt đúng/bỏ trống, tỷ lệ và phân bố lựa chọn theo câu; CSV không xuất khóa đáp án, lọc dữ liệu dựa trên `list_results`/quyền quiz hiện hành. `npm run lint` PASS, `npm test` PASS (21 file / 104 test), `npm run build` PASS.
 
 ## QZ-P2-03 — Hoàn thiện hướng dẫn setup và vận hành
 - Mức: P2 (UX/hiệu năng)
