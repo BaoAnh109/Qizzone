@@ -2,6 +2,8 @@
 
 ## Hệ thống tạo đề và thi trắc nghiệm trực tuyến
 
+> Hướng dẫn cài đặt môi trường, chạy local, deploy, backup và rollback nằm trong [SETUP.md](SETUP.md).
+
 Qizzone là đề tài xây dựng một nền tảng hỗ trợ giáo viên tổ chức thi trắc nghiệm và giúp học sinh làm bài trực tuyến trên cùng một hệ thống. Sản phẩm tập trung vào việc đơn giản hóa quá trình tạo đề, quản lý phòng thi, chấm điểm và theo dõi kết quả.
 
 Ngoài cách soạn câu hỏi thủ công, Qizzone còn hỗ trợ nhập nội dung từ các tài liệu có sẵn như PDF, DOCX và hình ảnh. Các câu hỏi sau khi trích xuất được đưa vào màn hình kiểm tra để giáo viên chỉnh sửa trước khi tạo đề chính thức.

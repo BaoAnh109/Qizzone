@@ -106,7 +106,7 @@
 - Tiêu chí nghiệm thu (đo được): người mới biết biến `VITE_*` public, biến server-only, thứ tự chạy migrations, deploy preview rồi production, rollback app và lưu ý migration không có rollback tự động; seed chỉ dùng local/dev.
 - Test cần chạy / thêm: đối chiếu từng biến với `qizzone/.env.example` và `supabase/functions/.env.example`; kiểm tra link nội bộ trong Markdown.
 - Rủi ro / rollback: hướng dẫn có thể lệch cấu hình dashboard; ghi rõ phần cần chủ hệ thống điền và ngày xác minh.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; tạo `SETUP.md`, thêm liên kết trong README, đối chiếu đủ biến môi trường và migration, kiểm tra link local. `npm run lint` PASS, `npm test` PASS (21 file / 104 test), `npm run build` PASS.
 
 ## QZ-P2-04 — Bổ sung header bảo mật cho Vercel
 - Mức: P2 (UX/hiệu năng)
