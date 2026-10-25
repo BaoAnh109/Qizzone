@@ -1,16 +1,16 @@
 # Qizzone — release checklist v1
 
-- Ngày lập: **2026-10-26**
-- Branch: `review/production-v1`
-- Commit code đã qua các cổng local: `eba0262`
-- Trạng thái push: đã đẩy `origin/review/production-v1`; PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9) nhắm vào `main`.
+- Ngày cập nhật: **2026-10-26**
+- Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
+- Commit production mới nhất đã kiểm tra: merge PR [#10](https://github.com/BaoAnh109/Qizzone/pull/10), `80854c8`.
+- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9) đã merge vào `main` tại `c1db5d5`; PR #10 đã merge tiếp sau đó.
 - Baseline theo prompt: `develop/v1` không có trong danh sách branch đã kiểm tra; code được rà soát trên proxy sạch `refactor/optimize-login-router` từ `919dbfd`.
 
 ## Trạng thái cổng
 
-- **Cổng mã nguồn: ĐẠT.** Không còn P0/P1/P2 trong danh sách task; lint, test, build, diff whitespace và secret-pattern scan đều đạt.
-- **Release candidate/staging: SẴN SÀNG để chủ repo bắt đầu xác minh.** PR #9 có Vercel Preview; chưa smoke-test vì thiếu cấu hình Firebase dev.
-- **Production: CHƯA ký duyệt/chưa triển khai.** Chưa deploy Vercel Production hoặc chạy migration/function trên Supabase remote; backup và smoke test hệ thống thật chưa xác minh.
+- **Cổng mã nguồn: ĐẠT.** Lint, test, build, diff whitespace và secret-pattern scan đã đạt trên nhánh release; CI và Vercel Preview của PR #10 cũng thành công.
+- **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
+- **Toàn hệ thống production: CHƯA ký sign-off.** Chưa xác minh quyền truy cập dashboard, migration history, secrets/logs Edge Function, backup/restore, hay luồng đăng nhập và thi bằng tài khoản test được duyệt.
 
 ## Bằng chứng từ checkout
 
@@ -24,16 +24,21 @@
 - `git diff --check` — PASS.
 - Secret-pattern scan trên diff — không phát hiện credential có vẻ thật; giá trị không được in ra.
 - Cả 9 task, gồm `QZ-P0-02`, được đánh dấu xong trong `TASKS_PRODUCTION.md`.
+- `GET https://qizzone.vercel.app/login` — HTTP 200, `text/html`; bốn header `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy` hiện diện.
+- `GET https://qizzone.vercel.app/robots.txt` — HTTP 200, `text/plain`; chặn crawl cho `/admin/`, `/student/`, `/teacher/` và `/unauthorized`.
+- Sau deploy, Lighthouse desktop và mobile đều đạt Accessibility 100, Best Practices 100, SEO 100. Không có lỗi console trong lần smoke kiểm tra giao diện công khai.
+- Các Edge Function production trả lời preflight `OPTIONS` với origin production và phương thức dự kiến. Đây chỉ xác minh endpoint/CORS; không xác nhận secrets hoặc nghiệp vụ function.
+- Chưa chạy đăng nhập, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; chưa xem được log hay cấu hình backup trong dashboard.
 
-## Trước khi deploy
+## Xác minh production còn mở
 
-- [ ] Chủ repo chỉ định branch/commit thay thế `develop/v1` hoặc xác nhận proxy `refactor/optimize-login-router` là baseline mong muốn.
+- [ ] Chủ hệ thống xác nhận Vercel project, production branch và Supabase project ref là môi trường đích dự kiến.
 - [ ] Chủ repo xác nhận `assignedClasses`/`assignedEmails` chỉ để phân phối/lọc dashboard hay phải chặn join tại RPC/RLS.
-- [ ] Xác nhận Vercel project, production branch, domain và project ref Supabase đúng với môi trường đích.
-- [ ] Đặt sáu biến `VITE_*` trong Vercel cho đúng môi trường; Preview dùng project Firebase/Supabase staging.
-- [ ] Đặt Supabase Edge Function Secrets: `FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` (nếu chọn model riêng), `ALLOWED_ORIGINS`. Không ghi giá trị vào repo hoặc checklist.
+- [ ] Người có quyền xác minh sáu biến `VITE_*` trong Vercel Production; chỉ kiểm tra tên/trạng thái, không ghi giá trị vào repo hoặc checklist.
+- [ ] Người có quyền xác minh Supabase Edge Function Secrets (`FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu dùng, `ALLOWED_ORIGINS`) và logs mà không sao chép giá trị secrets.
 - [ ] Chủ hệ thống xác nhận backup/restore point, retention và người có quyền khôi phục trên Supabase production. Repository không chứng minh backup đã bật.
-- [ ] Đọc [SETUP.md](SETUP.md), xác nhận migration list trước khi áp dụng. Không chạy seed trên production.
+- [ ] Người có quyền kiểm tra migration history và đối chiếu với [SETUP.md](SETUP.md); không chạy migration production khi chưa xác nhận backup, project và danh sách migration.
+- [ ] Có tài khoản giáo viên/học sinh test được phê duyệt để chạy smoke test các luồng đăng nhập, tạo đề, tham gia, lưu/nộp bài và phân quyền.
 
 ## Deploy staging / Preview
 
@@ -62,9 +67,10 @@ Người kiểm tra: ____________________  Ngày/giờ: ____________________  K�
 - [ ] Preview/staging smoke test PASS và không còn lỗi chặn.
 - [ ] Chủ repo xác nhận backup/restore point và cửa sổ triển khai.
 - [ ] Đúng Supabase production project ref; xem lại `supabase db push --dry-run`; không dùng `--include-seed`.
-- [ ] Deploy migrations/functions theo [SETUP.md](SETUP.md), rồi xác nhận Edge Function logs.
+- [ ] Đối chiếu migration history hiện tại với [SETUP.md](SETUP.md); xác minh secrets và logs Edge Function. Chỉ áp dụng migration còn thiếu sau dry-run, xác nhận đúng project và backup/restore point.
 - [ ] Đúng sáu biến browser `VITE_*` trong Vercel Production; không có secret server trong bundle.
-- [ ] Deploy frontend bằng Vercel production pipeline đã duyệt; smoke test tài khoản test sau deploy.
+- [x] Frontend đã được deploy qua Vercel production pipeline sau merge PR #10; domain và response công khai đã kiểm tra.
+- [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận migrations/functions và logs.
 - [ ] Ghi commit/deployment URL, người deploy, người duyệt và kết quả cuối.
 
 Người duyệt production: ____________________  Ngày/giờ: ____________________
