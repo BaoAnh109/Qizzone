@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import {
   ZoomIn,
   ZoomOut,
@@ -21,6 +22,10 @@ import { renderPdfPageToCanvas } from "@/utils/parsers/pdfParser";
 export function DocumentViewer() {
   const { document, extractionResult, selectedQuestionId } = useExtractionStore();
   const toast = useToast();
+  const sanitizedRawHtml = useMemo(
+    () => document?.rawHtml ? DOMPurify.sanitize(document.rawHtml) : "",
+    [document],
+  );
 
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
@@ -225,7 +230,7 @@ export function DocumentViewer() {
               {document?.rawHtml ? (
                 <div
                   className="prose prose-sm max-w-none [&_u]:underline [&_u]:decoration-indigo-600 [&_u]:decoration-2 [&_strong]:text-indigo-950 [&_mark]:bg-yellow-200 [&_.text-color-red]:text-rose-600 [&_table]:border-collapse [&_table]:border [&_table]:border-neutral-300 [&_td]:border [&_td]:border-neutral-300 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-300 [&_th]:p-2"
-                  dangerouslySetInnerHTML={{ __html: document.rawHtml }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedRawHtml }}
                 />
               ) : (
                 <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">

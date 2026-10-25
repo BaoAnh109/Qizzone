@@ -1,14 +1,122 @@
 import { create } from 'zustand';
 import type { OptionId, Quiz } from '@/types/quiz';
 import type { ExamResult, ExamSession } from '@/types/exam';
-import { errorMessage, rpc } from '@/lib/cloud';
+import { examSessionService } from '@/services/examSessionService';
 
 type CloudSession = ExamSession & { id: string; revision: number; questionOrder?: string[]; optionOrder?: Record<string, string[]> };
 export type SessionSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const saving = new Map<string, Promise<void>>();
+const revisionConflicts = new Set<string>();
 let generation = 0;
 let inFlightSessionLoad: Promise<void> | null = null;
+
+interface LocalExamDraft {
+  attemptId: string;
+  studentId: string;
+  revision: number;
+  answers: Record<string, OptionId[]>;
+  flaggedQuestionIds: string[];
+  currentQuestionIndex: number;
+  updatedAt: number;
+}
+
+function localDraftKey(session: CloudSession): string {
+  return `qizzone:exam-draft:${session.studentId}:${session.id}`;
+}
+
+function browserStorage(): Storage | undefined {
+  try {
+    return typeof window === 'undefined' ? undefined : window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+function storeLocalDraft(session: CloudSession): string | undefined {
+  const storage = browserStorage();
+  if (!storage) return undefined;
+  const value: LocalExamDraft = {
+    attemptId: session.id,
+    studentId: session.studentId,
+    revision: session.revision,
+    answers: session.answers || {},
+    flaggedQuestionIds: session.flaggedQuestionIds || [],
+    currentQuestionIndex: session.currentQuestionIndex,
+    updatedAt: Date.now(),
+  };
+  try {
+    const serialized = JSON.stringify(value);
+    storage.setItem(localDraftKey(session), serialized);
+    return serialized;
+  } catch {
+    return undefined;
+  }
+}
+
+function clearLocalDraft(session: CloudSession): void {
+  try {
+    browserStorage()?.removeItem(localDraftKey(session));
+  } catch {
+    // Local storage can be unavailable in private browsing or restricted contexts.
+  }
+}
+
+function clearLocalDraftIfUnchanged(session: CloudSession, snapshot?: string): void {
+  if (!snapshot) return;
+  try {
+    const storage = browserStorage();
+    if (storage?.getItem(localDraftKey(session)) === snapshot) {
+      storage.removeItem(localDraftKey(session));
+    }
+  } catch {
+    // Keep the server save successful even if local cleanup is unavailable.
+  }
+}
+
+function readLocalDraft(session: CloudSession): LocalExamDraft | undefined {
+  try {
+    const raw = browserStorage()?.getItem(localDraftKey(session));
+    if (!raw) return undefined;
+    const value = JSON.parse(raw) as Partial<LocalExamDraft>;
+    const allowedQuestions = new Set(session.questionOrder || []);
+    const validAnswers = value.answers && typeof value.answers === 'object' && !Array.isArray(value.answers)
+      && Object.entries(value.answers).every(([questionId, selected]) =>
+        allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 4
+        && selected.every(optionId => typeof optionId === 'string'));
+    const validFlags = Array.isArray(value.flaggedQuestionIds)
+      && value.flaggedQuestionIds.every(questionId => typeof questionId === 'string' && allowedQuestions.has(questionId));
+    if (value.attemptId !== session.id || value.studentId !== session.studentId
+      || !Number.isInteger(value.revision) || !validAnswers || !validFlags
+      || !Number.isInteger(value.currentQuestionIndex) || !Number.isFinite(value.updatedAt)) {
+      return undefined;
+    }
+    return value as LocalExamDraft;
+  } catch {
+    return undefined;
+  }
+}
+
+function recoverLocalDraft(session: CloudSession): { session: CloudSession; restored: boolean; conflict: boolean } {
+  const draft = readLocalDraft(session);
+  if (!draft) return { session, restored: false, conflict: false };
+  if (draft.revision !== session.revision) {
+    revisionConflicts.add(session.quizId);
+    return { session, restored: false, conflict: true };
+  }
+  revisionConflicts.delete(session.quizId);
+  const maxIndex = Math.max(0, (session.questionOrder?.length || 1) - 1);
+  return {
+    session: {
+      ...session,
+      answers: draft.answers,
+      flaggedQuestionIds: draft.flaggedQuestionIds,
+      currentQuestionIndex: Math.max(0, Math.min(maxIndex, draft.currentQuestionIndex)),
+    },
+    restored: true,
+    conflict: false,
+  };
+}
 
 export function isSessionInProgress(session?: ExamSession): boolean {
   if (!session || session.isSubmitted) return false;
@@ -23,6 +131,13 @@ function asSession(value: unknown): CloudSession {
 
 function asResults(value: unknown): ExamResult[] {
   return Array.isArray(value) ? value as ExamResult[] : [];
+}
+
+function storeErrorMessage(error: unknown): string {
+  if (error instanceof DOMException && error.name === 'TimeoutError') {
+    return 'Dịch vụ phản hồi quá lâu. Vui lòng thử lại.';
+  }
+  return error instanceof Error ? error.message : 'Không thể tải dữ liệu phiên làm bài.';
 }
 
 interface ExamSessionState {
@@ -63,12 +178,16 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       if (!session || session.isSubmitted) return;
       set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: 'saving' } }));
       try {
-        const saved = asSession(await rpc<unknown>('save_attempt', {
-          p_id: session.id,
-          p_revision: session.revision,
-          p_answers: buildAnswers(session),
-          p_flags: session.flaggedQuestionIds || [],
-          p_index: session.currentQuestionIndex,
+        if (revisionConflicts.has(quizId)) {
+          throw new Error('Bài làm đã được cập nhật trên thiết bị khác. Bản nháp trên thiết bị này được giữ lại.');
+        }
+        const draftSnapshot = storeLocalDraft(session);
+        const saved = asSession(await examSessionService.saveAttempt({
+          attemptId: session.id,
+          revision: session.revision,
+          answers: buildAnswers(session),
+          flaggedQuestionIds: session.flaggedQuestionIds || [],
+          currentQuestionIndex: session.currentQuestionIndex,
         }));
         if (currentGeneration !== generation) return;
         set(state => {
@@ -82,6 +201,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
             saveStatus: { ...state.saveStatus, [quizId]: 'saved' },
           };
         });
+        clearLocalDraftIfUnchanged(session, draftSnapshot);
       } catch (error) {
         if (currentGeneration === generation) {
           set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: 'error' } }));
@@ -98,6 +218,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
   const queueSave = (quizId: string) => {
     const session = get().activeSessions[quizId];
     if (!session || session.isSubmitted) return;
+    if (!revisionConflicts.has(quizId)) storeLocalDraft(session);
     const oldTimer = timers.get(quizId);
     if (oldTimer) clearTimeout(oldTimer);
     timers.set(quizId, setTimeout(() => {
@@ -118,6 +239,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       generation++;
       inFlightSessionLoad = null;
       timers.forEach(timer => clearTimeout(timer)); timers.clear(); saving.clear();
+      revisionConflicts.clear();
       set({ activeSessions: {}, results: [], saveStatus: {}, isLoading: false, isSubmitting: false, error: null });
     },
     load: async () => {
@@ -126,16 +248,30 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       inFlightSessionLoad = (async () => {
         try {
           const [sessions, results] = await Promise.all([
-            rpc<unknown>('list_sessions'), rpc<unknown>('list_results'),
+            examSessionService.listSessions(), examSessionService.listResults(),
           ]);
-          const records = Object.fromEntries((Array.isArray(sessions) ? sessions : []).map(item => {
-            const session = asSession(item);
-            return [session.quizId, session];
-          }));
-          const statuses = Object.fromEntries(Object.keys(records).map(quizId => [quizId, 'saved' as const]));
-          set({ activeSessions: records, results: asResults(results), saveStatus: statuses, isLoading: false, error: null });
+          revisionConflicts.clear();
+          const records: Record<string, CloudSession> = {};
+          const statuses: Record<string, SessionSaveStatus> = {};
+          const recoveredQuizIds: string[] = [];
+          let hasConflict = false;
+          for (const item of Array.isArray(sessions) ? sessions : []) {
+            const recovery = recoverLocalDraft(asSession(item));
+            records[recovery.session.quizId] = recovery.session;
+            statuses[recovery.session.quizId] = recovery.conflict ? 'error' : 'saved';
+            if (recovery.restored) recoveredQuizIds.push(recovery.session.quizId);
+            if (recovery.conflict) hasConflict = true;
+          }
+          set({
+            activeSessions: records,
+            results: asResults(results),
+            saveStatus: statuses,
+            isLoading: false,
+            error: hasConflict ? 'Bài làm đã được cập nhật trên thiết bị khác. Bản nháp cục bộ được giữ lại và chưa ghi đè lên máy chủ.' : null,
+          });
+          recoveredQuizIds.forEach(queueSave);
         } catch (error) {
-          set({ isLoading: false, error: errorMessage(error) });
+          set({ isLoading: false, error: storeErrorMessage(error) });
           throw error;
         } finally {
           inFlightSessionLoad = null;
@@ -147,11 +283,14 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
     initSession: async ({ quiz, studentClass }) => {
       const existing = get().activeSessions[quiz.id];
       if (existing && !existing.isSubmitted) return existing;
-      const session = asSession(await rpc<unknown>('start_attempt', { p_quiz_id: quiz.id, p_class: studentClass || null }));
+      const recovery = recoverLocalDraft(asSession(await examSessionService.startAttempt(quiz.id, studentClass)));
+      const session = recovery.session;
       set(state => ({
         activeSessions: { ...state.activeSessions, [quiz.id]: session },
-        saveStatus: { ...state.saveStatus, [quiz.id]: 'saved' },
+        saveStatus: { ...state.saveStatus, [quiz.id]: recovery.conflict ? 'error' : 'saved' },
+        error: recovery.conflict ? 'Bài làm đã được cập nhật trên thiết bị khác. Bản nháp cục bộ được giữ lại và chưa ghi đè lên máy chủ.' : state.error,
       }));
+      if (recovery.restored) queueSave(quiz.id);
       return session;
     },
     getSession: quizId => get().activeSessions[quizId],
@@ -199,6 +338,9 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
     submitExam: async ({ quiz }) => {
       const session = get().activeSessions[quiz.id];
       if (!session) throw new Error('Không tìm thấy phiên làm bài.');
+      if (revisionConflicts.has(quiz.id)) {
+        throw new Error('Bài làm đã được cập nhật trên thiết bị khác. Bản nháp trên thiết bị này được giữ lại.');
+      }
       set({ isSubmitting: true });
       try {
         try {
@@ -208,7 +350,9 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
           // still finalize the answers that were saved before time expired.
           if (!(error instanceof Error) || !/hết giờ/i.test(error.message)) throw error;
         }
-        const rawResult = await rpc<ExamResult>('submit_attempt', { p_id: session.id });
+        const rawResult = await examSessionService.submitAttempt(session.id);
+        clearLocalDraft(session);
+        revisionConflicts.delete(quiz.id);
         const result: ExamResult = {
           ...rawResult,
           flaggedQuestionIds: session.flaggedQuestionIds || [],
@@ -229,7 +373,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       }
     },
     checkAndAutoSubmitExpired: async () => {
-      await rpc<void>('finalize_expired');
+      await examSessionService.finalizeExpired();
       await get().load();
     },
     getResultById: resultId => get().results.find(result => result.id === resultId),
