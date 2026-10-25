@@ -16,6 +16,7 @@
 - `npm run lint` — PASS.
 - `npm test` — PASS, 22 file / 105 test.
 - `npm run build` — PASS.
+- `npm audit` và `npm audit --omit=dev` — PASS, 0 vulnerabilities sau khi vá dependency.
 - `vercel.json` parse được; kiểm tra source cho thấy SPA rewrite và asset cache giữ nguyên, bốn header mới có giá trị dự kiến.
 - `git diff --check` — PASS.
 - Secret-pattern scan trên diff — không phát hiện credential có vẻ thật; giá trị không được in ra.
@@ -83,6 +84,7 @@ Người duyệt production: ____________________  Ngày/giờ: ________________
 ## Bản nháp ghi chú phát hành
 
 - Bảo vệ preview DOCX bằng DOMPurify.
+- Cập nhật dependency có advisory bảo mật; audit toàn bộ và runtime đều sạch, không hạ major Firebase.
 - Khôi phục câu trả lời chưa đồng bộ theo attempt và revision sau khi mất mạng/reload.
 - Chạy CI trên branch `review/**` và mọi pull request.
 - Giới hạn kích thước import: DOCX/PDF 25 MB; ảnh, TXT/MD và văn bản dán 5 MB.

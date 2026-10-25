@@ -63,6 +63,15 @@
 - Rủi ro / rollback: DOMPurify đã là dependency; cấu hình mặc định có thể loại một số markup lạ, cần kiểm tra bảng/ảnh/định dạng Word. Rollback bằng cách giữ sink dưới helper sanitize đã kiểm chứng, không khôi phục raw HTML.
 - Trạng thái: [x] Xong — Vòng 2; `npm run lint` PASS, `npm test` PASS (19 file / 94 test), `npm run build` PASS. Chrome probe với `<script>`, `onerror` và `javascript:` cho `scriptCount=0`, `eventHandler=false`, `unsafeHref=false`, `executed=false`.
 
+## QZ-P0-02 — Vá các dependency có cảnh báo bảo mật
+- Mức: P0 (chặn production)
+- Vấn đề / bằng chứng: sau `npm ci`, `npm audit --omit=dev` báo 10 lỗ hổng runtime (9 high, 1 critical), gồm DOMPurify `3.4.14` có advisory XSS [GHSA-p98j-92pf-mc4p](https://github.com/advisories/GHSA-p98j-92pf-mc4p). Audit còn báo `@grpc/grpc-js` `1.9.16` qua `@firebase/firestore`.
+- Phạm vi: chỉ sửa `qizzone/package.json` và `qizzone/package-lock.json`. KHÔNG hạ major Firebase hoặc dùng `npm audit fix --force`.
+- Tiêu chí nghiệm thu (đo được): cài sạch; `npm audit` và `npm audit --omit=dev` đều 0 vulnerability; lint, test, build pass.
+- Test cần chạy / thêm: `npm ci --ignore-scripts`, `npm audit`, `npm audit --omit=dev`, `npm run lint`, `npm test`, `npm run build`.
+- Rủi ro / rollback: bản vá theo semver, Vitest lên patch `4.1.12`; override `@grpc/grpc-js` lên `1.13.6` để sửa dependency range hẹp `~1.9.0` của Firestore. Qizzone chỉ import Firebase App/Auth, không import Firestore; nếu thêm Firestore phía server thì phải kiểm tra lại tương thích. Rollback các thay đổi package ở commit này nếu kiểm thử Firestore mới thất bại.
+- Trạng thái: [x] Xong — cập nhật dependency không force; cài sạch báo 0 vulnerabilities; `npm audit` / `npm audit --omit=dev` sạch; `npm run lint` PASS, `npm test` PASS (22 file / 105 test), `npm run build` PASS.
+
 ## QZ-P1-01 — Khôi phục câu trả lời chưa đồng bộ sau mất mạng
 - Mức: P1 (thiếu quan trọng)
 - Vấn đề / bằng chứng: `qizzone/src/store/examSessionStore.ts:14-18,99-116` giữ phiên trong Zustand memory và gửi save sau 450 ms; `qizzone/src/pages/student/QuizRoom.tsx:83-94,216-232` retry khi mạng về nhưng không lưu bản nháp cục bộ. Reload khi offline trước lần save thành công làm mất những thay đổi chưa tới server.
@@ -136,12 +145,12 @@
 
 | Mức | Số task |
 | --- | ---: |
-| P0 | 1 |
+| P0 | 2 |
 | P1 | 2 |
 | P2 | 5 |
 | P3 | 0 |
 
-Thứ tự: `QZ-P0-01` → `QZ-P1-01` → `QZ-P1-02` → `QZ-P2-01` → `QZ-P2-02` → `QZ-P2-03` → `QZ-P2-04` → `QZ-P2-05`.
+Thứ tự: `QZ-P0-01` → `QZ-P0-02` → `QZ-P1-01` → `QZ-P1-02` → `QZ-P2-01` → `QZ-P2-02` → `QZ-P2-03` → `QZ-P2-04` → `QZ-P2-05`.
 
 ## Review độc lập V3 — 2026-10-26
 
@@ -150,7 +159,7 @@ Thứ tự: `QZ-P0-01` → `QZ-P1-01` → `QZ-P1-02` → `QZ-P2-01` → `QZ-P2-0
 | Mặt đánh giá | Điểm | Lý do |
 | --- | ---: | --- |
 | Kiến trúc và chất lượng code | 8/10 | RPC phiên thi đã qua `examSessionService`; các store và service còn lại giữ phân lớp. Cấu trúc repo lồng `qizzone/qizzone` vẫn là quyết định lớn để sau. |
-| Bảo mật | 8/10 | Preview DOCX được sanitize, RLS/RPC vẫn xử lý quyền và chấm điểm phía server, header trình duyệt đã có. Chưa xác minh Vercel Preview; không thêm CSP khi chưa kiểm tra tài nguyên ngoài; ý nghĩa quyền của assignments còn chờ chủ repo. |
+| Bảo mật | 8/10 | Preview DOCX được sanitize, RLS/RPC vẫn xử lý quyền và chấm điểm phía server, header trình duyệt đã có; `npm audit` và `npm audit --omit=dev` đều 0 vulnerability. Chưa xác minh Vercel Preview; không thêm CSP khi chưa kiểm tra tài nguyên ngoài; ý nghĩa quyền của assignments còn chờ chủ repo. |
 | Đúng đắn và xử lý lỗi | 8/10 | Bản nháp offline phục hồi theo attempt/revision; xung đột không ghi đè server; dữ liệu lớn bị chặn trước khi đọc/gửi. Chưa chạy kiểm thử nhiều trình duyệt trên môi trường thật. |
 | Tính năng | 8/10 | Có thống kê đúng/bỏ trống/phân bố đáp án theo câu và CSV; ngân hàng câu hỏi tái sử dụng vẫn ở backlog. |
 | Hiệu năng | 7/10 | Route lazy-load và giới hạn import có sẵn; parser DOCX/PDF vẫn tạo chunk khoảng 583 kB/431 kB, chưa có đo trên điện thoại hoặc mạng yếu. |
@@ -163,8 +172,8 @@ Không mặt nào được 10/10 vì còn các xác minh môi trường thật c
 
 ### Kết quả cổng cuối
 
-- Backlog code: P0 còn mở **0**, P1 còn mở **0**, P2 còn mở **0**; cả 8 task đã hoàn tất.
-- Trên branch `review/production-v1`, `npm run lint`: PASS; `npm test`: PASS (22 file / 105 test); `npm run build`: PASS.
+- Backlog code: P0 còn mở **0**, P1 còn mở **0**, P2 còn mở **0**; cả 9 task đã hoàn tất.
+- Trên branch `review/production-v1`, `npm run lint`: PASS; `npm test`: PASS (22 file / 105 test); `npm run build`: PASS; `npm audit` và `npm audit --omit=dev`: PASS (0 vulnerabilities).
 - `git diff --check`: PASS; kiểm tra pattern secret trên diff không phát hiện credential có vẻ thật.
 - `develop/v1` không tồn tại trong danh sách branch đã kiểm tra. Code dựa trên `refactor/optimize-login-router` tại `919dbfd`; chưa thể xác nhận tương đương với baseline trong prompt.
 - Chưa push hoặc deploy remote. Cần chủ repo xác nhận branch/base; trigger GitHub Actions, response header ở Preview, backup/restore point và smoke test staging/production vẫn là việc kiểm tra bên ngoài.
