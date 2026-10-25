@@ -53,7 +53,7 @@ describe('practice RPC security and isolation', () => {
     const studentA: Claims = { sub: 'practice-student-a', role: 'authenticated', app_role: 'student' };
     const studentB: Claims = { sub: 'practice-student-b', role: 'authenticated', app_role: 'student' };
     const questionSet = [
-      { id: 'single', content: 'Chọn B', type: 'single_choice', points: 1, options: [{ id: 'A', content: 'Sai' }, { id: 'B', content: 'Đúng' }], correctAnswers: ['B'], explanation: 'B là đáp án đúng.' },
+      { id: 'single', content: 'Tính $2 + 2$', type: 'single_choice', points: 1, options: [{ id: 'A', content: '3' }, { id: 'B', content: '$4$' }], correctAnswers: ['B'], explanation: 'Vì $2 + 2 = 4$ nên chọn B.' },
       { id: 'multi', content: 'Chọn A và C', type: 'multiple_choice', points: 1, options: [{ id: 'A', content: 'A' }, { id: 'B', content: 'B' }, { id: 'C', content: 'C' }], correctAnswers: ['A', 'C'], explanation: 'Cần chọn đủ A và C.' },
       { id: 'boolean', content: 'Mệnh đề đúng/sai', type: 'true_false', points: 1, options: [{ id: 'A', content: 'Đúng' }, { id: 'B', content: 'Sai' }], correctAnswers: ['A'], explanation: 'Mệnh đề đúng.' },
     ];
@@ -95,7 +95,7 @@ describe('practice RPC security and isolation', () => {
     const single = json<{ isCorrect: boolean; correctAnswers: string[]; explanation: string; selectedAnswers: string[] }>(singleRows[0].payload);
     expect(single.isCorrect).toBe(true);
     expect(single.correctAnswers).toEqual(['B']);
-    expect(single.explanation).toBe('B là đáp án đúng.');
+    expect(single.explanation).toBe('Vì $2 + 2 = 4$ nên chọn B.');
     const repeatedRows = await asUser<{ payload: unknown }>(studentA, 'select public.check_practice_answer($1,$2,$3::jsonb) as payload', [session.id, questionIds[0], '["A"]']);
     const repeated = json<typeof single>(repeatedRows[0].payload);
     expect(repeated).toEqual(single);
@@ -135,7 +135,7 @@ describe('practice RPC security and isolation', () => {
     const wrongSingleRows = await asUser<{ payload: unknown }>(studentA, 'select public.check_practice_answer($1,$2,$3::jsonb) as payload', [wrongSingleSession.id, questionIds[0], '["A"]']);
     expect(json<{ isCorrect: boolean; correctAnswers: string[] }>(wrongSingleRows[0].payload)).toEqual({
       questionId: questionIds[0], selectedAnswers: ['A'], isCorrect: false, correctAnswers: ['B'],
-      explanation: 'B là đáp án đúng.', checkedAt: expect.any(String), locked: true,
+      explanation: 'Vì $2 + 2 = 4$ nên chọn B.', checkedAt: expect.any(String), locked: true,
     });
     await asUser(studentA, 'select public.finish_practice($1)', [wrongSingleSession.id]);
 

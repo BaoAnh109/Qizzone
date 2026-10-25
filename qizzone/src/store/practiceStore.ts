@@ -10,6 +10,7 @@ import type {
   PracticeSessionStatus,
 } from '@/types/practice';
 import type { OptionId, OptionItem, QuestionType } from '@/types/quiz';
+import { practiceErrorMessage } from '@/utils/practice';
 
 const OPTION_IDS: OptionId[] = ['A', 'B', 'C', 'D'];
 type UnknownRecord = Record<string, unknown>;
@@ -253,10 +254,6 @@ function clearDraftByOwner(studentId: string, sessionId: string): void {
   }
 }
 
-function messageOf(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
-}
-
 export const usePracticeStore = create<PracticeState>((set, get) => ({
   sessions: {},
   results: {},
@@ -325,7 +322,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       saveDraft(session);
       return { status: 'in_progress', session };
     } catch (error) {
-      return { status: 'error', message: messageOf(error, 'Không thể tải lượt luyện tập. Vui lòng thử lại.') };
+      return { status: 'error', message: practiceErrorMessage(error, 'Không thể tải lượt luyện tập. Vui lòng thử lại.') };
     } finally {
       set(state => ({ loadingSessions: { ...state.loadingSessions, [sessionId]: false } }));
     }
@@ -411,7 +408,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       const history = asHistory(await practiceService.listHistory());
       set({ history, historyOwnerId: studentId, historyError: null });
     } catch (error) {
-      set({ historyError: messageOf(error, 'Không thể tải lịch sử luyện tập.') });
+      set({ historyError: practiceErrorMessage(error, 'Không thể tải lịch sử luyện tập.') });
       throw error;
     } finally {
       set({ isLoadingHistory: false });

@@ -32,7 +32,7 @@ import type { Quiz } from "@/types/quiz";
 export function StudentDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const { quizzes, getQuizByCode, load: loadQuizzes, isLoading: isQuizzesLoading } = useQuizStore();
+  const { quizzes, getQuizByCode, load: loadQuizzes, isLoading: isQuizzesLoading, error: quizLoadError } = useQuizStore();
   const {
     activeSessions,
     getResultsByStudent,
@@ -366,7 +366,18 @@ export function StudentDashboard() {
             <p className="text-xs text-neutral-500 mt-0.5">Ôn từng câu, không giới hạn lượt và không tính vào kết quả thi.</p>
           </div>
         </div>
-        {practiceQuizzes.length > 0 ? (
+        {isQuizzesLoading && quizzes.length === 0 ? (
+          <Card><CardContent className="py-8 text-center text-sm text-neutral-500">Đang tải đề luyện tập…</CardContent></Card>
+        ) : quizLoadError ? (
+          <Card className="border-rose-200">
+            <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
+              <p className="text-sm text-rose-700">Không tải được danh sách đề luyện tập. Hãy kiểm tra kết nối rồi thử lại.</p>
+              <Button variant="outline" size="sm" onClick={() => void loadQuizzes().catch(() => {})} isLoading={isQuizzesLoading}>
+                Thử tải lại
+              </Button>
+            </CardContent>
+          </Card>
+        ) : practiceQuizzes.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {practiceQuizzes.map((quiz) => (
               <Card key={quiz.id} className="flex flex-col justify-between overflow-hidden border-emerald-100 bg-white hover:border-emerald-300 hover:shadow-md transition">

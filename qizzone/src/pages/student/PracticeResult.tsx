@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { usePracticeStore } from '@/store/practiceStore';
 import { useToast } from '@/hooks/useToast';
+import { practiceErrorMessage } from '@/utils/practice';
 import type { PracticeResultDetail } from '@/types/practice';
 
 function formatDuration(seconds: number): string {
@@ -81,7 +82,7 @@ export function PracticeResult() {
           setVerifiedSessionId(sessionId);
         }
       }).catch(error => {
-        if (active) setLoadError(error instanceof Error ? error.message : 'Không thể tải kết quả luyện tập.');
+        if (active) setLoadError(practiceErrorMessage(error, 'Không thể tải kết quả luyện tập.'));
       });
     }
     return () => { active = false; };
@@ -96,7 +97,7 @@ export function PracticeResult() {
       const session = await retry(cachedResult.sessionId, mode);
       navigate(`/student/practice/${session.id}/room`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Không thể bắt đầu lượt luyện lại.';
+      const message = practiceErrorMessage(error, 'Không thể bắt đầu lượt luyện lại.');
       setRetryError(message);
       toast.error(message);
     }

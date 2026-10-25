@@ -40,6 +40,7 @@ Qizzone được xây dựng nhằm giải quyết các vấn đề đó bằng 
 - Làm bài, đánh dấu câu hỏi và tiếp tục phiên thi còn thời hạn.
 - Nhận kết quả và xem lại chi tiết theo cấu hình của giáo viên.
 - Theo dõi lịch sử các bài đã hoàn thành.
+- Chọn đề đã xuất bản trong mục **Luyện tập**, làm từng câu và xem lời giải.
 
 ### Giáo viên
 
@@ -77,6 +78,7 @@ Một đề thi có thể cấu hình:
 - Điểm hoặc tỷ lệ đạt.
 - Đảo thứ tự câu hỏi.
 - Quyền xem đáp án và lời giải sau khi nộp.
+- Cho phép hoặc tắt chức năng luyện tập cho học sinh.
 
 ### Nhập câu hỏi từ tài liệu
 
@@ -113,6 +115,10 @@ Trong phòng thi, học sinh có thể:
 
 Học sinh có thể xem điểm, số câu đúng, tỷ lệ hoàn thành và nội dung chi tiết nếu giáo viên cho phép. Giáo viên có thể theo dõi toàn bộ lượt nộp, điểm trung bình, tỷ lệ đạt và kết quả của từng học sinh.
 
+### Luyện tập
+
+Học sinh mở mục **Luyện tập** trên trang chủ và chọn một đề đã xuất bản, không cần mã phòng. Có thể luyện toàn bộ câu hoặc chọn số câu ngẫu nhiên; mỗi câu được kiểm tra riêng, có thể hiện lời giải ngay hoặc xem ở cuối lượt. Phiên luyện không có đếm ngược, cho phép làm lại không giới hạn và có nút luyện lại câu sai hoặc toàn bộ câu của lượt vừa rồi. Kết quả và lịch sử luyện tập được lưu riêng, không làm tăng lượt thi hay ảnh hưởng điểm và thống kê thi. Giáo viên có thể tắt mục này trong cài đặt đề; mặc định bật cho cả đề cũ.
+
 ## Quy trình hoạt động
 
 ```text
@@ -147,6 +153,7 @@ React + TypeScript
         │       ├── Hồ sơ người dùng
         │       ├── Đề thi và câu hỏi
         │       ├── Phiên làm bài và đáp án
+        │       ├── Phiên luyện tập và đáp án đã kiểm tra
         │       └── Kết quả và lịch sử
         │
         └── Supabase Edge Functions
@@ -163,6 +170,7 @@ Frontend chịu trách nhiệm hiển thị giao diện và điều phối thao 
 - Firebase custom claims kết hợp với hồ sơ người dùng để xác định vai trò.
 - Supabase Row Level Security giới hạn dữ liệu theo người dùng và quyền sở hữu.
 - Học sinh không được phép đọc trực tiếp đáp án của đề đang thi.
+- Đáp án luyện tập chỉ được trả về theo từng câu sau khi học sinh khóa câu đó; câu chưa kiểm tra không lộ đáp án.
 - Quá trình chấm điểm được thực hiện phía server.
 - Gemini API key, Firebase Admin credentials và Supabase secret key không được đưa xuống trình duyệt.
 - Giáo viên chưa được phê duyệt không thể truy cập dữ liệu quản lý đề thi.

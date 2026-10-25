@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useToast } from '@/hooks/useToast';
 import { useQuizStore } from '@/store/quizStore';
 import { usePracticeStore } from '@/store/practiceStore';
+import { practiceErrorMessage } from '@/utils/practice';
 
 export function PracticeSetup() {
   const { quizId } = useParams();
@@ -34,6 +35,9 @@ export function PracticeSetup() {
     : quiz.status !== 'published'
       ? 'Đề chưa được xuất bản hoặc đã đóng bởi giáo viên.'
       : 'Giáo viên đã tắt chức năng luyện tập cho đề này.';
+  const unavailableMessage = !quiz && quizError
+    ? 'Không tải được đề luyện tập. Vui lòng thử lại sau.'
+    : invalidMessage;
 
   const handleStart = async () => {
     if (!quiz || !isAvailable) return;
@@ -49,7 +53,7 @@ export function PracticeSetup() {
       const session = await start(quiz.id, randomCountEnabled ? questionCount : null, showExplanation);
       navigate(`/student/practice/${session.id}/room`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không thể bắt đầu lượt luyện tập. Vui lòng thử lại.');
+      toast.error(practiceErrorMessage(error, 'Không thể bắt đầu lượt luyện tập. Vui lòng thử lại.'));
     }
   };
 
@@ -64,7 +68,7 @@ export function PracticeSetup() {
           <CircleHelp className="h-7 w-7" />
         </div>
         <h1 className="text-xl font-bold text-neutral-900">Không thể luyện tập đề này</h1>
-        <p className="text-sm text-neutral-600">{quizError || invalidMessage}</p>
+        <p className="text-sm text-neutral-600">{unavailableMessage}</p>
         <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
           Về mục Luyện tập
         </Button>

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { usePracticeStore } from '@/store/practiceStore';
 import { useQuizStore } from '@/store/quizStore';
 import type { OptionId } from '@/types/quiz';
+import { practiceErrorMessage } from '@/utils/practice';
 
 function formatElapsed(seconds: number): string {
   const safe = Math.max(0, Math.floor(seconds));
@@ -97,7 +98,7 @@ export function PracticeRoom() {
     try {
       await checkAnswer(session.id, currentQuestion.id);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Không thể kiểm tra câu trả lời. Vui lòng thử lại.');
+      toast.error(practiceErrorMessage(error, 'Không thể kiểm tra câu trả lời. Vui lòng thử lại.'));
     }
   };
 
@@ -107,7 +108,7 @@ export function PracticeRoom() {
       await finish(session.id);
       navigate(`/student/practice/${session.id}/result`);
     } catch (error) {
-      setPageError(error instanceof Error ? error.message : 'Không thể hoàn tất lượt luyện tập. Vui lòng thử lại.');
+      setPageError(practiceErrorMessage(error, 'Không thể hoàn tất lượt luyện tập. Vui lòng thử lại.'));
     }
   };
 
