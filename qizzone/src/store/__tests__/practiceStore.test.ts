@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/services/practiceService', () => ({
   practiceService: {
     start: vi.fn(),
+    retry: vi.fn(),
     getSession: vi.fn(),
     checkAnswer: vi.fn(),
     finish: vi.fn(),
@@ -108,5 +109,32 @@ describe('practice store', () => {
     expect(result.correctCount).toBe(1);
     expect(result.details[0].correctAnswers).toEqual(['B']);
     expect(practiceService.finish).toHaveBeenCalledWith('practice-1');
+  });
+
+  it('creates a new practice session for a retry without reusing the old answers', async () => {
+    vi.mocked(practiceService.retry).mockResolvedValue({
+      ...session, id: 'practice-retry-1', questionOrder: ['question-2'],
+      optionOrder: { 'question-2': ['B', 'A'] }, answers: [],
+    } as never);
+
+    const retried = await usePracticeStore.getState().retry('practice-1', 'wrong');
+
+    expect(practiceService.retry).toHaveBeenCalledWith('practice-1', 'wrong');
+    expect(retried.id).toBe('practice-retry-1');
+    expect(retried.questionOrder).toEqual(['question-2']);
+    expect(retried.checkedAnswers).toEqual({});
+  });
+
+  it('records which student owns the loaded practice history', async () => {
+    vi.mocked(practiceService.listHistory).mockResolvedValue([{
+      id: 'practice-1', quizId: 'quiz-1', quizTitle: 'Ôn tập', subject: 'Toán',
+      status: 'completed', totalQuestions: 2, answeredCount: 2, correctCount: 1,
+      percentage: 50, durationSeconds: 60,
+    }] as never);
+
+    await usePracticeStore.getState().loadHistory('student-1');
+
+    expect(usePracticeStore.getState().historyOwnerId).toBe('student-1');
+    expect(usePracticeStore.getState().history[0].correctCount).toBe(1);
   });
 });

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, CircleX, Clock3 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CircleX, Clock3, RotateCcw } from 'lucide-react';
 import { MathRenderer } from '@/components/common/MathRenderer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { usePracticeStore } from '@/store/practiceStore';
+import { useToast } from '@/hooks/useToast';
 import type { PracticeResultDetail } from '@/types/practice';
 
 function formatDuration(seconds: number): string {
@@ -61,10 +62,14 @@ function AnswerReview({ detail }: { detail: PracticeResultDetail }) {
 export function PracticeResult() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const finish = usePracticeStore(state => state.finish);
+  const retry = usePracticeStore(state => state.retry);
+  const isStarting = usePracticeStore(state => state.isStarting);
   const isFinishing = usePracticeStore(state => sessionId ? state.finishingSessions[sessionId] : false);
   const cachedResult = usePracticeStore(state => sessionId ? state.results[sessionId] : undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [verifiedSessionId, setVerifiedSessionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,6 +88,19 @@ export function PracticeResult() {
   }, [sessionId, finish]);
 
   const missedQuestions = useMemo(() => cachedResult?.details.filter(detail => !detail.isCorrect) || [], [cachedResult]);
+
+  const handleRetry = async (mode: 'wrong' | 'all') => {
+    if (!cachedResult) return;
+    setRetryError(null);
+    try {
+      const session = await retry(cachedResult.sessionId, mode);
+      navigate(`/student/practice/${session.id}/room`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Không thể bắt đầu lượt luyện lại.';
+      setRetryError(message);
+      toast.error(message);
+    }
+  };
 
   const displayedError = loadError || (!sessionId ? 'Không tìm thấy lượt luyện tập. Hãy quay lại mục Luyện tập.' : null);
   if (displayedError) {
@@ -144,8 +162,21 @@ export function PracticeResult() {
         )}
       </section>
 
+      {retryError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{retryError}</p>}
       <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về mục Luyện tập</Button>
+        <Button
+          variant="outline"
+          onClick={() => void handleRetry('wrong')}
+          disabled={missedQuestions.length === 0}
+          isLoading={isStarting}
+          leftIcon={<RotateCcw className="h-4 w-4" />}
+        >
+          Luyện lại câu sai
+        </Button>
+        <Button onClick={() => void handleRetry('all')} isLoading={isStarting} leftIcon={<RotateCcw className="h-4 w-4" />}>
+          Luyện lại toàn bộ
+        </Button>
       </div>
     </div>
   );

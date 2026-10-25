@@ -8,6 +8,11 @@ export const practiceService = {
       p_question_count: questionCount,
       p_show_explanation: showExplanation,
     }),
+  retry: (sessionId: string, mode: 'wrong' | 'all') =>
+    rpc<unknown>('start_practice_retry', {
+      p_source_session_id: sessionId,
+      p_mode: mode,
+    }),
   getSession: (sessionId: string) =>
     rpc<unknown>('get_practice_session', { p_session_id: sessionId }),
   checkAnswer: (sessionId: string, questionId: string, selectedAnswers: OptionId[]) =>

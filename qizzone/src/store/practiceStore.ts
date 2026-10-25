@@ -27,6 +27,7 @@ interface PracticeState {
   sessions: Record<string, PracticeSession>;
   results: Record<string, PracticeResult>;
   history: PracticeHistoryItem[];
+  historyOwnerId: string | null;
   loadingSessions: Record<string, boolean>;
   checkingAnswers: Record<string, boolean>;
   finishingSessions: Record<string, boolean>;
@@ -35,13 +36,14 @@ interface PracticeState {
   historyError: string | null;
   reset: () => void;
   start: (quizId: string, questionCount: number | null, showExplanation: boolean) => Promise<PracticeSession>;
+  retry: (sessionId: string, mode: 'wrong' | 'all') => Promise<PracticeSession>;
   open: (sessionId: string) => Promise<PracticeOpenResult>;
   selectAnswer: (sessionId: string, questionId: string, optionId: OptionId, multipleChoice: boolean) => void;
   toggleFlag: (sessionId: string, questionId: string) => void;
   setQuestionIndex: (sessionId: string, index: number) => void;
   checkAnswer: (sessionId: string, questionId: string) => Promise<PracticeAnswer>;
   finish: (sessionId: string) => Promise<PracticeResult>;
-  loadHistory: () => Promise<void>;
+  loadHistory: (studentId: string) => Promise<void>;
   getSession: (sessionId: string) => PracticeSession | undefined;
   getResult: (sessionId: string) => PracticeResult | undefined;
 }
@@ -259,6 +261,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   sessions: {},
   results: {},
   history: [],
+  historyOwnerId: null,
   loadingSessions: {},
   checkingAnswers: {},
   finishingSessions: {},
@@ -266,13 +269,24 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   isLoadingHistory: false,
   historyError: null,
   reset: () => set({
-    sessions: {}, results: {}, history: [], loadingSessions: {}, checkingAnswers: {},
+    sessions: {}, results: {}, history: [], historyOwnerId: null, loadingSessions: {}, checkingAnswers: {},
     finishingSessions: {}, isStarting: false, isLoadingHistory: false, historyError: null,
   }),
   start: async (quizId, questionCount, showExplanation) => {
     set({ isStarting: true });
     try {
       const session = asActiveSession(await practiceService.start(quizId, questionCount, showExplanation));
+      set(state => ({ sessions: { ...state.sessions, [session.id]: session } }));
+      saveDraft(session);
+      return session;
+    } finally {
+      set({ isStarting: false });
+    }
+  },
+  retry: async (sessionId, mode) => {
+    set({ isStarting: true });
+    try {
+      const session = asActiveSession(await practiceService.retry(sessionId, mode));
       set(state => ({ sessions: { ...state.sessions, [session.id]: session } }));
       saveDraft(session);
       return session;
@@ -391,11 +405,11 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       set(state => ({ finishingSessions: { ...state.finishingSessions, [sessionId]: false } }));
     }
   },
-  loadHistory: async () => {
+  loadHistory: async studentId => {
     set({ isLoadingHistory: true, historyError: null });
     try {
       const history = asHistory(await practiceService.listHistory());
-      set({ history, historyError: null });
+      set({ history, historyOwnerId: studentId, historyError: null });
     } catch (error) {
       set({ historyError: messageOf(error, 'Không thể tải lịch sử luyện tập.') });
       throw error;

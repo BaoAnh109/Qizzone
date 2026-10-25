@@ -114,6 +114,22 @@ describe('practice RPC security and isolation', () => {
     const repeatedFinish = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [session.id]);
     expect(json(repeatedFinish[0].payload)).toEqual(result);
 
+    const wrongRetryRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice_retry($1,$2) as payload', [session.id, 'wrong']);
+    const wrongRetry = json<{ id: string; questionOrder: string[] }>(wrongRetryRows[0].payload);
+    expect(wrongRetry.questionOrder).toEqual([questionIds[1]]);
+    const wrongRetryStateRows = await asUser<{ payload: unknown }>(studentA, 'select public.get_practice_session($1) as payload', [wrongRetry.id]);
+    expect(JSON.stringify(json(wrongRetryStateRows[0].payload))).not.toContain('correctAnswers');
+    await expect(asUser(studentB, 'select public.start_practice_retry($1,$2)', [session.id, 'wrong']))
+      .rejects.toThrow(/quyền|không tìm thấy/i);
+    await asUser(studentA, 'select public.finish_practice($1)', [wrongRetry.id]);
+
+    const allRetryRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice_retry($1,$2) as payload', [session.id, 'all']);
+    const allRetry = json<{ id: string; questionOrder: string[] }>(allRetryRows[0].payload);
+    expect(allRetry.questionOrder).toEqual(questionIds);
+    await asUser(studentA, 'select public.finish_practice($1)', [allRetry.id]);
+    await expect(asUser(studentA, 'select public.start_practice_retry($1,$2)', [session.id, 'other']))
+      .rejects.toThrow(/không hợp lệ/i);
+
     const wrongSingleSessionRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [quizId]);
     const wrongSingleSession = json<{ id: string }>(wrongSingleSessionRows[0].payload);
     const wrongSingleRows = await asUser<{ payload: unknown }>(studentA, 'select public.check_practice_answer($1,$2,$3::jsonb) as payload', [wrongSingleSession.id, questionIds[0], '["A"]']);
@@ -140,10 +156,12 @@ describe('practice RPC security and isolation', () => {
     expect(json<{ isCorrect: boolean; explanation: string | null }>(partialCheckRows[0].payload)).toMatchObject({ isCorrect: true, explanation: null });
     const partialResultRows = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [partial.id]);
     expect(json<{ details: Array<{ explanation: string }> }>(partialResultRows[0].payload).details[0].explanation).not.toBe('');
+    await expect(asUser(studentA, 'select public.start_practice_retry($1,$2)', [partial.id, 'wrong']))
+      .rejects.toThrow(/câu sai|cần luyện lại/i);
 
     const historyRows = await asUser<{ payload: unknown }>(studentA, 'select public.list_practice_history() as payload');
     const history = json<Array<Record<string, unknown>>>(historyRows[0].payload);
-    expect(history.length).toBe(3);
+    expect(history.length).toBe(5);
     expect(JSON.stringify(history)).not.toContain('correctAnswers');
     expect(JSON.stringify(history)).not.toContain('explanation');
     const examResultsBefore = await asUser<{ payload: unknown }>(studentA, 'select public.list_results() as payload');
