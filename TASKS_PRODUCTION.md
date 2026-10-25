@@ -142,3 +142,31 @@
 | P3 | 0 |
 
 Thứ tự: `QZ-P0-01` → `QZ-P1-01` → `QZ-P1-02` → `QZ-P2-01` → `QZ-P2-02` → `QZ-P2-03` → `QZ-P2-04` → `QZ-P2-05`.
+
+## Review độc lập V3 — 2026-10-26
+
+### Điểm sẵn sàng theo 9 mặt
+
+| Mặt đánh giá | Điểm | Lý do |
+| --- | ---: | --- |
+| Kiến trúc và chất lượng code | 8/10 | RPC phiên thi đã qua `examSessionService`; các store và service còn lại giữ phân lớp. Cấu trúc repo lồng `qizzone/qizzone` vẫn là quyết định lớn để sau. |
+| Bảo mật | 8/10 | Preview DOCX được sanitize, RLS/RPC vẫn xử lý quyền và chấm điểm phía server, header trình duyệt đã có. Chưa xác minh Vercel Preview; không thêm CSP khi chưa kiểm tra tài nguyên ngoài; ý nghĩa quyền của assignments còn chờ chủ repo. |
+| Đúng đắn và xử lý lỗi | 8/10 | Bản nháp offline phục hồi theo attempt/revision; xung đột không ghi đè server; dữ liệu lớn bị chặn trước khi đọc/gửi. Chưa chạy kiểm thử nhiều trình duyệt trên môi trường thật. |
+| Tính năng | 8/10 | Có thống kê đúng/bỏ trống/phân bố đáp án theo câu và CSV; ngân hàng câu hỏi tái sử dụng vẫn ở backlog. |
+| Hiệu năng | 7/10 | Route lazy-load và giới hạn import có sẵn; parser DOCX/PDF vẫn tạo chunk khoảng 583 kB/431 kB, chưa có đo trên điện thoại hoặc mạng yếu. |
+| Trải nghiệm và accessibility | 7/10 | Thông báo giới hạn tiếng Việt và mẫu số phân tích rõ; chưa có kiểm tra bàn phím, screen reader, tương phản hoặc E2E trình duyệt tự động. |
+| Kiểm thử | 8/10 | 22 file / 105 test, có PGlite kiểm tra migration/RLS và test offline/service. Chưa xác minh trigger GitHub Actions từ push/PR thật; thiếu E2E/a11y suite. |
+| Production và vận hành | 7/10 | CI config, header, hướng dẫn deploy và rollback đã có. Chưa xác minh Preview, backup/restore, health/logs hoặc quyền truy cập dashboard production. |
+| Tài liệu | 9/10 | README dẫn tới SETUP; biến môi trường, thứ tự migrations, seed, deploy, smoke và rollback đã được ghi. Branch đích và một quyết định về assignments còn cần chủ repo xác nhận. |
+
+Không mặt nào được 10/10 vì còn các xác minh môi trường thật chưa thực hiện.
+
+### Kết quả cổng cuối
+
+- Backlog code: P0 còn mở **0**, P1 còn mở **0**, P2 còn mở **0**; cả 8 task đã hoàn tất.
+- Trên branch `review/production-v1`, `npm run lint`: PASS; `npm test`: PASS (22 file / 105 test); `npm run build`: PASS.
+- `git diff --check`: PASS; kiểm tra pattern secret trên diff không phát hiện credential có vẻ thật.
+- `develop/v1` không tồn tại trong danh sách branch đã kiểm tra. Code dựa trên `refactor/optimize-login-router` tại `919dbfd`; chưa thể xác nhận tương đương với baseline trong prompt.
+- Chưa push hoặc deploy remote. Cần chủ repo xác nhận branch/base; trigger GitHub Actions, response header ở Preview, backup/restore point và smoke test staging/production vẫn là việc kiểm tra bên ngoài.
+
+**Quyết định:** cổng mã nguồn đạt để tạo release candidate và bắt đầu xác minh trên staging. Chưa tuyên bố production đã sẵn sàng hoặc đã phát hành. Checklist thao tác và các mục cần chủ repo ký xác nhận nằm trong `RELEASE_CHECKLIST.md`.
