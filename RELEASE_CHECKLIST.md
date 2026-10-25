@@ -2,14 +2,15 @@
 
 - Ngày lập: **2026-10-26**
 - Branch: `review/production-v1`
-- Commit code đã qua các cổng local: `561a1e8`
+- Commit code đã qua các cổng local: `eba0262`
+- Trạng thái push: đã đẩy `origin/review/production-v1`; PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9) nhắm vào `main`.
 - Baseline theo prompt: `develop/v1` không có trong danh sách branch đã kiểm tra; code được rà soát trên proxy sạch `refactor/optimize-login-router` từ `919dbfd`.
 
 ## Trạng thái cổng
 
 - **Cổng mã nguồn: ĐẠT.** Không còn P0/P1/P2 trong danh sách task; lint, test, build, diff whitespace và secret-pattern scan đều đạt.
-- **Release candidate/staging: SẴN SÀNG để chủ repo bắt đầu xác minh.**
-- **Production: CHƯA ký duyệt/chưa triển khai.** Chưa có push, Vercel Preview, quyền dashboard Supabase/Vercel, xác nhận backup hoặc smoke test trên hệ thống thật.
+- **Release candidate/staging: SẴN SÀNG để chủ repo bắt đầu xác minh.** PR #9 có Vercel Preview; chưa smoke-test vì thiếu cấu hình Firebase dev.
+- **Production: CHƯA ký duyệt/chưa triển khai.** Chưa deploy Vercel Production hoặc chạy migration/function trên Supabase remote; backup và smoke test hệ thống thật chưa xác minh.
 
 ## Bằng chứng từ checkout
 
@@ -17,10 +18,12 @@
 - `npm test` — PASS, 22 file / 105 test.
 - `npm run build` — PASS.
 - `npm audit` và `npm audit --omit=dev` — PASS, 0 vulnerabilities sau khi vá dependency.
+- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9) đã tạo từ `review/production-v1` vào `main`; GitHub Actions và Vercel Preview thành công trên commit `eba0262`.
+- Local setup: Supabase local đã áp dụng 4 migrations và seed; Vite local mở được trang đăng nhập. Bốn biến Firebase dev vẫn trống trong `.env.local`, nên chưa đăng nhập được.
 - `vercel.json` parse được; kiểm tra source cho thấy SPA rewrite và asset cache giữ nguyên, bốn header mới có giá trị dự kiến.
 - `git diff --check` — PASS.
 - Secret-pattern scan trên diff — không phát hiện credential có vẻ thật; giá trị không được in ra.
-- Mọi task `QZ-P0-01` đến `QZ-P2-05` được đánh dấu xong trong `TASKS_PRODUCTION.md`.
+- Cả 9 task, gồm `QZ-P0-02`, được đánh dấu xong trong `TASKS_PRODUCTION.md`.
 
 ## Trước khi deploy
 

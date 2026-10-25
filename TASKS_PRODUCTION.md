@@ -88,7 +88,7 @@
 - Tiêu chí nghiệm thu (đo được): push trên `review/*` chạy workflow; PR từ branch bất kỳ cũng chạy đủ lint, test và build; workflow YAML hợp lệ.
 - Test cần chạy / thêm: kiểm tra cấu hình workflow và chạy lại ba lệnh ở app; xác nhận trigger qua GitHub Actions khi có push/PR (chưa thể xác minh từ checkout local).
 - Rủi ro / rollback: chạy CI nhiều hơn trên các nhánh. Rollback bằng cách khôi phục branch filter cũ nếu vượt quota Actions của repo.
-- Trạng thái: [x] Xong — Vòng 2; `npm run lint` PASS, `npm test` PASS (19 file / 96 test), `npm run build` PASS; workflow đã kiểm tra bằng cấu hình source: push bao gồm `review/**`, pull request không lọc branch đích. Chạy trigger trên GitHub cần push/PR và chưa xác minh từ checkout local.
+- Trạng thái: [x] Xong — Vòng 2; `npm run lint` PASS, `npm test` PASS (19 file / 96 test), `npm run build` PASS; workflow đã kiểm tra bằng cấu hình source: push bao gồm `review/**`, pull request không lọc branch đích. PR #9 đã trigger GitHub Actions; job Lint, Typecheck & Production Build PASS cho commit `eba0262`.
 
 ## QZ-P2-01 — Giới hạn kích thước tệp nhập đề
 - Mức: P2 (UX/hiệu năng)
@@ -164,7 +164,7 @@ Thứ tự: `QZ-P0-01` → `QZ-P0-02` → `QZ-P1-01` → `QZ-P1-02` → `QZ-P2-0
 | Tính năng | 8/10 | Có thống kê đúng/bỏ trống/phân bố đáp án theo câu và CSV; ngân hàng câu hỏi tái sử dụng vẫn ở backlog. |
 | Hiệu năng | 7/10 | Route lazy-load và giới hạn import có sẵn; parser DOCX/PDF vẫn tạo chunk khoảng 583 kB/431 kB, chưa có đo trên điện thoại hoặc mạng yếu. |
 | Trải nghiệm và accessibility | 7/10 | Thông báo giới hạn tiếng Việt và mẫu số phân tích rõ; chưa có kiểm tra bàn phím, screen reader, tương phản hoặc E2E trình duyệt tự động. |
-| Kiểm thử | 8/10 | 22 file / 105 test, có PGlite kiểm tra migration/RLS và test offline/service. Chưa xác minh trigger GitHub Actions từ push/PR thật; thiếu E2E/a11y suite. |
+| Kiểm thử | 8/10 | 22 file / 105 test, có PGlite kiểm tra migration/RLS và test offline/service. PR #9 đã trigger GitHub Actions và job chính PASS; vẫn thiếu E2E/a11y suite. |
 | Production và vận hành | 7/10 | CI config, header, hướng dẫn deploy và rollback đã có. Chưa xác minh Preview, backup/restore, health/logs hoặc quyền truy cập dashboard production. |
 | Tài liệu | 9/10 | README dẫn tới SETUP; biến môi trường, thứ tự migrations, seed, deploy, smoke và rollback đã được ghi. Branch đích và một quyết định về assignments còn cần chủ repo xác nhận. |
 
@@ -176,6 +176,6 @@ Không mặt nào được 10/10 vì còn các xác minh môi trường thật c
 - Trên branch `review/production-v1`, `npm run lint`: PASS; `npm test`: PASS (22 file / 105 test); `npm run build`: PASS; `npm audit` và `npm audit --omit=dev`: PASS (0 vulnerabilities).
 - `git diff --check`: PASS; kiểm tra pattern secret trên diff không phát hiện credential có vẻ thật.
 - `develop/v1` không tồn tại trong danh sách branch đã kiểm tra. Code dựa trên `refactor/optimize-login-router` tại `919dbfd`; chưa thể xác nhận tương đương với baseline trong prompt.
-- Chưa push hoặc deploy remote. Cần chủ repo xác nhận branch/base; trigger GitHub Actions, response header ở Preview, backup/restore point và smoke test staging/production vẫn là việc kiểm tra bên ngoài.
+- Đã push `review/production-v1` và mở [PR #9 vào `main`](https://github.com/BaoAnh109/Qizzone/pull/9). GitHub Actions và Vercel Preview PASS trên commit `eba0262`; Preview chưa smoke-test vì thiếu Firebase dev config. Chưa chạy migration/function trên Supabase remote hoặc deploy production; backup/restore point và smoke test hệ thống thật vẫn cần xác minh.
 
 **Quyết định:** cổng mã nguồn đạt để tạo release candidate và bắt đầu xác minh trên staging. Chưa tuyên bố production đã sẵn sàng hoặc đã phát hành. Checklist thao tác và các mục cần chủ repo ký xác nhận nằm trong `RELEASE_CHECKLIST.md`.
