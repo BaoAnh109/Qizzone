@@ -45,6 +45,7 @@ export function StudentDashboard() {
 
   const studentResults = user ? getResultsByStudent(user.id) : [];
   const publishedQuizzes = quizzes.filter((q) => q.status === "published");
+  const practiceQuizzes = publishedQuizzes.filter((quiz) => quiz.settings.practiceEnabled !== false);
 
   // Auto-fetch latest quizzes from server on dashboard mount
   useEffect(() => {
@@ -341,6 +342,49 @@ export function StudentDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Practice catalog is intentionally separate from rooms and exam history. */}
+      <section id="practice" className="space-y-4 pt-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-emerald-700" />
+          <div>
+            <h2 className="text-xl font-bold text-neutral-900">Luyện tập</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">Ôn từng câu, không giới hạn lượt và không tính vào kết quả thi.</p>
+          </div>
+        </div>
+        {practiceQuizzes.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {practiceQuizzes.map((quiz) => (
+              <Card key={quiz.id} className="flex flex-col justify-between overflow-hidden border-emerald-100 bg-white hover:border-emerald-300 hover:shadow-md transition">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="success" size="sm">{quiz.subject}</Badge>
+                    <Badge variant="secondary" size="sm">{quiz.totalQuestions} câu</Badge>
+                  </div>
+                  <CardTitle className="text-base font-bold text-neutral-900 line-clamp-2">{quiz.title}</CardTitle>
+                  <p className="text-xs text-neutral-500">Giáo viên: {quiz.teacherName || "Thầy Cô"}</p>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Button
+                    variant="primary"
+                    className="w-full bg-emerald-700 hover:bg-emerald-800"
+                    leftIcon={<Play className="h-4 w-4 fill-current" />}
+                    onClick={() => navigate(`/student/practice/${quiz.id}`)}
+                  >
+                    Luyện tập
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-sm text-neutral-500">
+              Hiện chưa có đề được bật cho mục luyện tập.
+            </CardContent>
+          </Card>
+        )}
+      </section>
 
       {/* SECTION: ĐỀ THI ĐƯỢC GIAO CHO BẠN (Hiện thẳng lên đề đang mở, không cần nhập mã) */}
       <div className="space-y-4 pt-2">

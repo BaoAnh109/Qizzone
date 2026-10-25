@@ -114,6 +114,15 @@ describe('practice RPC security and isolation', () => {
     const repeatedFinish = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [session.id]);
     expect(json(repeatedFinish[0].payload)).toEqual(result);
 
+    const wrongSingleSessionRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [quizId]);
+    const wrongSingleSession = json<{ id: string }>(wrongSingleSessionRows[0].payload);
+    const wrongSingleRows = await asUser<{ payload: unknown }>(studentA, 'select public.check_practice_answer($1,$2,$3::jsonb) as payload', [wrongSingleSession.id, questionIds[0], '["A"]']);
+    expect(json<{ isCorrect: boolean; correctAnswers: string[] }>(wrongSingleRows[0].payload)).toEqual({
+      questionId: questionIds[0], selectedAnswers: ['A'], isCorrect: false, correctAnswers: ['B'],
+      explanation: 'B là đáp án đúng.', checkedAt: expect.any(String), locked: true,
+    });
+    await asUser(studentA, 'select public.finish_practice($1)', [wrongSingleSession.id]);
+
     await expect(asUser(studentA, 'select public.start_practice($1, 0, true)', [quizId])).rejects.toThrow(/số câu/i);
     await expect(asUser(studentA, 'select public.start_practice($1, 4, true)', [quizId])).rejects.toThrow(/số câu/i);
     const partialRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, 1, false) as payload', [quizId]);
@@ -134,7 +143,7 @@ describe('practice RPC security and isolation', () => {
 
     const historyRows = await asUser<{ payload: unknown }>(studentA, 'select public.list_practice_history() as payload');
     const history = json<Array<Record<string, unknown>>>(historyRows[0].payload);
-    expect(history.length).toBe(2);
+    expect(history.length).toBe(3);
     expect(JSON.stringify(history)).not.toContain('correctAnswers');
     expect(JSON.stringify(history)).not.toContain('explanation');
     const examResultsBefore = await asUser<{ payload: unknown }>(studentA, 'select public.list_results() as payload');
@@ -162,6 +171,17 @@ describe('practice RPC security and isolation', () => {
     await asUser(teacher, 'select public.set_quiz_status($1, $2)', [closedMidwayId, 'closed']);
     const invalidatedRows = await asUser<{ payload: unknown }>(studentA, 'select public.get_practice_session($1) as payload', [midway.id]);
     expect(json<{ status: string; message: string }>(invalidatedRows[0].payload)).toMatchObject({ status: 'invalidated' });
+
+    const editedQuizId = await createQuiz();
+    const editedSessionRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [editedQuizId]);
+    const editedSession = json<{ id: string }>(editedSessionRows[0].payload);
+    await asUser(teacher, 'select public.save_quiz($1::jsonb, $2, null)', [JSON.stringify({
+      title: 'Đề đã sửa', subject: 'Toán', description: '', status: 'published',
+      settings: { durationMinutes: 30, shuffleQuestions: false, shuffleOptions: true, allowReview: true, maxAttempts: 1, passPercentage: 50 },
+      questions: questionSet,
+    }), editedQuizId]);
+    const editedStateRows = await asUser<{ payload: unknown }>(studentA, 'select public.get_practice_session($1) as payload', [editedSession.id]);
+    expect(json<{ status: string; message: string }>(editedStateRows[0].payload)).toMatchObject({ status: 'invalidated' });
 
     const deletedQuizId = await createQuiz();
     const deletedSessionRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [deletedQuizId]);
