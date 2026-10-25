@@ -115,7 +115,7 @@
 - Tiêu chí nghiệm thu (đo được): phản hồi HTML có `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` hoặc CSP tương thích; cache asset và SPA rewrite không đổi.
 - Test cần chạy / thêm: validate JSON; kiểm tra header qua preview deployment nếu quyền deploy có; `npm run build`.
 - Rủi ro / rollback: header CSP sai có thể chặn Firebase/Supabase; ưu tiên header không phá kết nối và xác minh ở preview. Rollback riêng header.
-- Trạng thái: [ ] Chưa làm
+- Trạng thái: [x] Xong — Vòng 2; đã thêm `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy`; JSON kiểm tra hợp lệ, rewrite/cache asset giữ nguyên. `npm run lint` PASS, `npm test` PASS (21 file / 104 test), `npm run build` PASS. Chưa xác minh response trên Vercel Preview vì chưa deploy remote.
 
 ## QZ-P2-05 — Đưa RPC của phiên thi qua service layer
 - Mức: P2 (UX/hiệu năng)
