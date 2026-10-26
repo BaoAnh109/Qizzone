@@ -159,7 +159,7 @@ export function PracticeRoom() {
             <Badge variant="secondary" size="sm">{session.subject}</Badge>
           </div>
           <h1 className="truncate text-lg font-bold text-neutral-900 sm:text-xl">{session.quizTitle}</h1>
-          <p className="mt-1 text-xs text-neutral-500">Đã kiểm tra {checkedCount}/{questions.length} câu · Chưa kiểm tra vẫn có thể sửa đáp án.</p>
+          <p className="mt-1 text-xs text-neutral-500">Đã kiểm tra {checkedCount}/{questions.length} câu · Mỗi lần hiển thị một câu; câu chưa kiểm tra vẫn có thể sửa đáp án.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex items-center justify-center gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm font-semibold tabular-nums text-neutral-700">

@@ -105,8 +105,10 @@ export function AppRoutes() {
               <Route path="/student" element={<StudentDashboard />} />
               <Route path="/student/practice" element={<Navigate to="/student#practice" replace />} />
               <Route path="/student/practice/:quizId" element={<PracticeSetup />} />
-              <Route path="/student/practice/:sessionId/room" element={<PracticeRoom />} />
               <Route path="/student/practice/:sessionId/result" element={<PracticeResult />} />
+            </Route>
+            <Route element={<ExamLayout mode="practice" />}>
+              <Route path="/student/practice/:sessionId/room" element={<PracticeRoom />} />
             </Route>
           </Route>
 

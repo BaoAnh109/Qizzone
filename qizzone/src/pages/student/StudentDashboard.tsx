@@ -253,9 +253,16 @@ export function StudentDashboard() {
                 className="h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
               >
                 <LogIn className="h-4 w-4 text-indigo-600" />
-                <span>Vào phòng</span>
+                <span>Vào phòng thi</span>
               </button>
             </form>
+            <a
+              href="#practice"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/35 bg-white/10 px-4 text-sm font-semibold text-white transition hover:bg-white/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-white/80"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>Luyện tập</span>
+            </a>
           </div>
         </div>
       </div>
