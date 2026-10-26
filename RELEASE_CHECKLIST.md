@@ -8,9 +8,9 @@
 
 ## Trạng thái cổng
 
-- **Cổng mã nguồn: ĐẠT.** Trên commit `33bcd5f`, lint, 26 file / 116 test, build, `npm audit`, `npm audit --omit=dev` (0 vulnerabilities) và `git diff --check` đều đạt; commit `688f7ab` chỉ cập nhật checklist. Trên head `688f7ab` của PR #15, GitHub/Vercel báo 3/3 checks thành công.
+- **Cổng mã nguồn: ĐẠT.** Trên commit `33bcd5f`, lint, 26 file / 116 test, build, `npm audit`, `npm audit --omit=dev` (0 vulnerabilities) và `git diff --check` đều đạt; các commit tiếp theo chỉ cập nhật checklist. Trên head `626fe7c` của PR #15, GitHub/Vercel báo 3/3 checks thành công.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
-- **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor xác nhận migration bảo mật `202610260000` đã áp dụng trong transaction và ledger; truy vấn catalog xác nhận `list_quizzes()` đã có bộ lọc email theo học sinh hiện tại. Chưa kiểm tra hành vi bằng tài khoản học sinh. Hai migration luyện tập vẫn chưa có trên production; các bảng/RPC Azota chưa tồn tại. Supabase đang báo sự cố Management API; gói Free không có scheduled backups và chưa xác minh restore point. Chưa có tài khoản giáo viên/học sinh test được duyệt.
+- **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). Ba migration đến `202610260002` đã chạy trong một transaction qua SQL Editor sau khi chủ repo xác nhận. Ledger có cả `202610260001` và `202610260002`; hai bảng luyện tập bật RLS và không cấp quyền bảng trực tiếp cho `public`, `anon` hoặc `authenticated`; cả sáu RPC là `SECURITY DEFINER`, từ chối `anon` và chỉ cho phép `authenticated` (mỗi RPC kiểm tra role/owner). Chưa kiểm tra hành vi bằng tài khoản học sinh. Supabase đang báo sự cố Management API; gói Free không có scheduled backups và chưa xác minh restore point. Chưa có tài khoản giáo viên/học sinh test được duyệt.
 
 ## Bằng chứng từ checkout
 
@@ -32,9 +32,9 @@
 - Cả sáu biến public `VITE_*` trong `qizzone/.env` đều khớp chính xác với giá trị trong graph bundle production (58 asset); URL Supabase cũng khớp project ref được link trong `supabase/.temp/project-ref`. Giá trị không được in ra. Đây xác minh cấu hình hiệu lực của client, không phải metadata trong Vercel Dashboard.
 - Quét toàn bộ graph JavaScript production: 58 asset, khoảng 2.3 MB; không thấy marker `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `sb_secret_*`, `FIREBASE_SERVICE_ACCOUNT`, private key PEM hoặc `GEMINI_API_KEY`. Giá trị Google API key duy nhất khớp `VITE_FIREBASE_API_KEY` client config; không ghi giá trị vào checklist.
 - Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `71db6f3` ở trạng thái Ready. Dashboard liệt kê `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_FIREBASE_API_KEY` và `VITE_FIREBASE_AUTH_DOMAIN`, tất cả scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
-- Qua Edge, xác nhận production project ref `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`. Ban đầu ledger có bốn migration đến `202609250001`; migration `202610260000_redact_assigned_emails` sau đó đã áp dụng atomically qua SQL Editor và ghi ledger cùng transaction.
+- Qua Edge, xác nhận production project ref `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`. Ban đầu ledger có bốn migration đến `202609250001`; migration `202610260000_redact_assigned_emails` sau đó đã áp dụng nguyên tử qua SQL Editor cùng ledger. Sau khi chủ repo xác nhận, hai migration luyện tập cũng được chạy nguyên tử trong một transaction.
 - Edge đã khôi phục phiên admin Qizzone và tải `/admin/teacher-approvals`, hiển thị không có yêu cầu đang chờ; chưa xác minh được luồng giáo viên/học sinh.
-- SQL Editor xác nhận ledger hiện có `202609050001`, `202609090001`, `202609160001`, `202609250001`, `202610260000`; bản ghi mới có một statement. `to_regclass`/`to_regprocedure` xác nhận `practice_sessions`, `practice_answers` và ba RPC luyện tập vẫn chưa có.
+- SQL Editor xác nhận ledger có các migration `202609050001`, `202609090001`, `202609160001`, `202609250001`, `202610260000`, `202610260001` và `202610260002`. Truy vấn catalog xác nhận `practice_sessions` và `practice_answers` tồn tại với RLS bật; không có quyền bảng trực tiếp cho client roles; sáu RPC đều là `SECURITY DEFINER`, `anon` không thể gọi và `authenticated` có quyền gọi.
 - Banner Supabase báo sự cố Management API; trang Migration History và Edge Functions không tải. Trang Backups xác nhận gói Free không có scheduled backups, chưa có restore point/retention xác minh. [Incident](https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T).
 - Migration `202610260000_redact_assigned_emails.sql` từ PR #14 đã áp dụng. Read-only catalog checks xác nhận `jsonb_set`, so khớp email theo `current_uid()` và security definer còn nguyên; chưa có tài khoản học sinh để smoke test output thực tế.
 - Chưa chạy luồng giáo viên/học sinh, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; secrets và logs vẫn chưa xác minh.
@@ -49,9 +49,9 @@
 - [ ] Nâng cấp Supabase khỏi Free hoặc thiết lập backup ngoài nền tảng, sau đó xác nhận restore point, retention và người có quyền khôi phục. Free Plan không có scheduled backups.
 - [x] Đối chiếu ledger production qua SQL Editor: bốn migration trước đó khớp main; migration `202610260000` sau đó được áp dụng nguyên tử và ghi ledger. Trang Migration History không tải do sự cố Management API.
 - [x] Áp dụng `202610260000_redact_assigned_emails.sql` trong transaction; catalog check xác nhận function lọc theo email của học sinh hiện tại. Chưa xác minh response bằng tài khoản học sinh.
-- [ ] Chạy `supabase db push --dry-run` cho hai migration feature sau khi có CLI/auth phù hợp; chưa áp dụng lên production khi chưa có backup/restore point.
+- [ ] `supabase db push --dry-run` chưa chạy vì máy chưa có Supabase CLI/auth phù hợp. Theo xác nhận của chủ repo, hai migration feature đã được áp dụng qua SQL Editor; kết quả được đối chiếu trực tiếp với catalog và ledger.
 - [ ] Có tài khoản giáo viên/học sinh test được phê duyệt để chạy smoke test các luồng đăng nhập, tạo đề, tham gia, lưu/nộp bài và phân quyền.
-- [ ] PR nháp [#15](https://github.com/BaoAnh109/Qizzone/pull/15) chứa hai migration luyện tập chưa áp dụng production; ledger/catalog xác nhận các bảng/RPC còn thiếu. Chưa merge/deploy cho tới khi có đường backup/restore được xác minh, dry-run trên đúng project và smoke test staging/production. Migration chỉ thêm bảng/RPC/policy; không sửa hoặc xóa dữ liệu bảng hiện có.
+- [ ] PR [#15](https://github.com/BaoAnh109/Qizzone/pull/15) chứa code luyện tập; hai migration đã áp dụng production sau xác nhận của chủ repo. Chưa chạy smoke test bằng tài khoản học sinh vì chưa có tài khoản test được duyệt. Backup/restore, secrets/logs và lịch sử migration vẫn chưa được xác minh trong dashboard.
 
 ## Deploy staging / Preview
 
@@ -81,12 +81,12 @@ Người kiểm tra: ____________________  Ngày/giờ: ____________________  K�
 - [ ] Chủ repo xác nhận backup/restore point và cửa sổ triển khai.
 - [ ] Đúng Supabase production project ref; xem lại `supabase db push --dry-run`; không dùng `--include-seed`.
 - [ ] Trang Migration History, Edge Function secrets và logs cần kiểm tra lại sau khi Supabase Management API phục hồi; không đọc/ghi giá trị secret vào checklist.
-- [ ] Có backup/restore point được xác minh trước khi áp dụng các migration production còn thiếu.
+- [ ] Backup/restore point và retention chưa được xác minh. Chủ repo đã cho phép áp dụng hai migration luyện tập dù mục này chưa hoàn tất; ghi nhận đây là rủi ro còn mở, không diễn đạt như sign-off hoàn chỉnh.
 - [x] Áp dụng migration bảo mật `202610260000_redact_assigned_emails.sql` và xác minh function/ledger qua SQL Editor; còn thiếu smoke test dữ liệu phân quyền bằng tài khoản giáo viên/học sinh test được duyệt.
 - [x] Quét bundle JavaScript production; không thấy marker của server secrets trong phạm vi mẫu đã kiểm tra.
 - [x] Vercel Dashboard xác nhận sáu tên biến browser `VITE_*` có scope `Production`; giá trị không được ghi vào checklist.
 - [x] Frontend đã được deploy qua Vercel production pipeline; deployment đang phục vụ `main` tại commit merge PR #14 (`71db6f3`), domain và response công khai đã kiểm tra.
-- [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận migrations/functions và logs.
+- [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận nghiệp vụ học sinh và logs. Catalog/ledger và quyền truy cập đã được xác minh sau khi áp dụng migration.
 - [ ] Ghi commit/deployment URL, người deploy, người duyệt và kết quả cuối.
 
 Người duyệt production: ____________________  Ngày/giờ: ____________________
