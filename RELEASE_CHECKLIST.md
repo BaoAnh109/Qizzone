@@ -4,11 +4,11 @@
 - Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
 - Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#14](https://github.com/BaoAnh109/Qizzone/pull/14), `71db6f3`; deployment ở trạng thái Ready.
 - PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11, #12, #13 và #14 đã merge vào `main` qua pull request.
-- PR [#5](https://github.com/BaoAnh109/Qizzone/pull/5) (`feat/V1`) đã merged vào `main`; head hiện tại của `feat/V1` cũng không còn chênh lệch với `main`. `develop/v1` không có trong danh sách branch. Nhánh luyện tập `feature/practice-azota` đã rebase lên `origin/main` (`71db6f3`) và đã push; chưa có PR.
+- PR [#5](https://github.com/BaoAnh109/Qizzone/pull/5) (`feat/V1`) đã merged vào `main`; head hiện tại của `feat/V1` cũng không còn chênh lệch với `main`. `develop/v1` không có trong danh sách branch. Nhánh luyện tập `feature/practice-azota` đã rebase lên `origin/main` (`71db6f3`), đã push và đang có PR nháp [#15](https://github.com/BaoAnh109/Qizzone/pull/15).
 
 ## Trạng thái cổng
 
-- **Cổng mã nguồn: ĐẠT tại checkout hiện tại.** Trên commit `dcdff9d`, `npm run lint`, `npm test -- --pool=threads --maxWorkers=1` (26 file / 116 test), `npm run build` và `git diff --check` đều đạt. CI/Vercel Preview của PR feature chưa chạy vì chưa có PR.
+- **Cổng mã nguồn: ĐẠT tại checkout hiện tại.** Trên commit `33bcd5f`, `npm run lint`, `npm test -- --pool=threads --maxWorkers=1` (26 file / 116 test), `npm run build`, `npm audit`, `npm audit --omit=dev` (0 vulnerabilities) và `git diff --check` đều đạt. PR #15 là Draft; Vercel Preview đã triển khai, GitHub CI lint/typecheck/build đang chạy khi ghi nhận.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
 - **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor chỉ đọc xác nhận bốn migration hiện có khớp main; trang Migration History và Edge Functions không tải do sự cố Management API. Gói Free không có scheduled backups. PR #14 đã đưa migration bảo vệ `assignedEmails` vào `main`, nhưng chưa áp dụng nên email allowlist vẫn lộ qua `list_quizzes()`. Các bảng/RPC luyện tập Azota cũng chưa tồn tại trên production. Chưa có tài khoản giáo viên/học sinh test được duyệt.
 
@@ -51,7 +51,7 @@
 - [ ] Sau khi có phương án backup/restore, dry-run và áp dụng migration `202610260000_redact_assigned_emails.sql`; xác minh học sinh chỉ thấy email của chính mình.
 - [ ] Chạy `supabase db push --dry-run` cho hai migration feature sau khi có CLI/auth phù hợp; chưa áp dụng lên production khi chưa có backup/restore point.
 - [ ] Có tài khoản giáo viên/học sinh test được phê duyệt để chạy smoke test các luồng đăng nhập, tạo đề, tham gia, lưu/nộp bài và phân quyền.
-- [ ] Nhánh `feature/practice-azota` có hai migration luyện tập chưa push/chưa áp dụng production; ledger và catalog đã xác nhận đây là hai migration/tables/RPC còn thiếu. Chỉ đưa vào PR phát hành sau khi `supabase db push --dry-run` và restore point được xác nhận. Migration chỉ thêm bảng/RPC/policy; không sửa hoặc xóa dữ liệu bảng hiện có.
+- [ ] PR nháp [#15](https://github.com/BaoAnh109/Qizzone/pull/15) chứa hai migration luyện tập chưa áp dụng production; ledger/catalog xác nhận các bảng/RPC còn thiếu. Chưa merge/deploy cho tới khi có đường backup/restore được xác minh, dry-run trên đúng project và smoke test staging/production. Migration chỉ thêm bảng/RPC/policy; không sửa hoặc xóa dữ liệu bảng hiện có.
 
 ## Deploy staging / Preview
 
