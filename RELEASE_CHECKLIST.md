@@ -4,11 +4,11 @@
 - Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
 - Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#14](https://github.com/BaoAnh109/Qizzone/pull/14), `71db6f3`; deployment ở trạng thái Ready.
 - PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11, #12, #13 và #14 đã merge vào `main` qua pull request.
-- PR [#5](https://github.com/BaoAnh109/Qizzone/pull/5) (`feat/V1`) đã merged vào `main`; head hiện tại của `feat/V1` cũng không còn chênh lệch với `main`. `develop/v1` không có trong danh sách branch. Nhánh luyện tập hiện tại là `feature/practice-azota`, đã rebase lên `main` và chưa push.
+- PR [#5](https://github.com/BaoAnh109/Qizzone/pull/5) (`feat/V1`) đã merged vào `main`; head hiện tại của `feat/V1` cũng không còn chênh lệch với `main`. `develop/v1` không có trong danh sách branch. Nhánh luyện tập `feature/practice-azota` đã rebase lên `origin/main` (`71db6f3`) và đã push; chưa có PR.
 
 ## Trạng thái cổng
 
-- **Cổng mã nguồn: ĐẠT.** Trước lần rebase cuối, `feature/practice-azota` đã đạt lint, 26 file / 116 test, build và `git diff --check`; PR #14 sau đó được merge, production CI/Preview cũng đạt. Rebase cuối có thay đổi checklist và tích hợp regression test từ #14; CI của PR Azota sẽ xác minh trạng thái mới.
+- **Cổng mã nguồn: ĐẠT tại checkout hiện tại.** Trên commit `dcdff9d`, `npm run lint`, `npm test -- --pool=threads --maxWorkers=1` (26 file / 116 test), `npm run build` và `git diff --check` đều đạt. CI/Vercel Preview của PR feature chưa chạy vì chưa có PR.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
 - **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor chỉ đọc xác nhận bốn migration hiện có khớp main; trang Migration History và Edge Functions không tải do sự cố Management API. Gói Free không có scheduled backups. PR #14 đã đưa migration bảo vệ `assignedEmails` vào `main`, nhưng chưa áp dụng nên email allowlist vẫn lộ qua `list_quizzes()`. Các bảng/RPC luyện tập Azota cũng chưa tồn tại trên production. Chưa có tài khoản giáo viên/học sinh test được duyệt.
 
