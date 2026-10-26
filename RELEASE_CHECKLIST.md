@@ -10,7 +10,7 @@
 
 - **Cổng mã nguồn: ĐẠT.** Trên `feature/practice-azota` sau rebase: lint, 26 file / 116 test, build và `git diff --check` đều đạt. CI/Vercel của các PR production trước đó cũng thành công.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
-- **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor chỉ đọc xác nhận bốn migration hiện có khớp main; trang Migration History và Edge Functions không tải do sự cố Management API. Gói Free không có scheduled backups. PR #14 đã đưa migration bảo vệ `assignedEmails` vào `main`, nhưng chưa áp dụng lên database nên email allowlist vẫn lộ qua `list_quizzes()`. Chưa có tài khoản giáo viên/học sinh test được duyệt.
+- **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor chỉ đọc xác nhận bốn migration hiện có khớp main; trang Migration History và Edge Functions không tải do sự cố Management API. Gói Free không có scheduled backups. PR #14 đã đưa migration bảo vệ `assignedEmails` vào `main`, nhưng chưa áp dụng nên email allowlist vẫn lộ qua `list_quizzes()`. Các bảng/RPC luyện tập Azota cũng chưa tồn tại trên production. Chưa có tài khoản giáo viên/học sinh test được duyệt.
 
 ## Bằng chứng từ checkout
 
@@ -33,10 +33,10 @@
 - Quét toàn bộ graph JavaScript production: 58 asset, khoảng 2.3 MB; không thấy marker `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `sb_secret_*`, `FIREBASE_SERVICE_ACCOUNT`, private key PEM hoặc `GEMINI_API_KEY`. Giá trị Google API key duy nhất khớp `VITE_FIREBASE_API_KEY` client config; không ghi giá trị vào checklist.
 - Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `38b8cd8` ở trạng thái Ready. Dashboard liệt kê `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_FIREBASE_API_KEY` và `VITE_FIREBASE_AUTH_DOMAIN`, tất cả scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
 - Qua Edge, đã xác nhận production project ref `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`. Query catalog chỉ đọc xác nhận production đã có bốn migration đến `202609250001`; các bảng/RPC của luyện tập Azota chưa tồn tại.
-- Edge khôi phục phiên admin Qizzone sẵn có và tải `/admin/teacher-approvals`, hiển thị trạng thái không có yêu cầu đang chờ. Đây chỉ xác nhận khôi phục phiên admin và một màn hình quản trị; chưa xác nhận luồng giáo viên/học sinh.
-- Edge khôi phục phiên admin Qizzone sẵn có và tải `/admin/teacher-approvals`, hiển thị không có yêu cầu đang chờ. Đây chưa phải xác minh luồng giáo viên/học sinh.
-- Banner Supabase báo sự cố Management API; trang Migration History và Edge Functions không tải. Trang Backups xác nhận gói Free không có scheduled backups; chưa có restore point/retention đã xác minh. [Incident](https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T).
-- Hàm production `list_quizzes()` đang lộ toàn bộ `settings.assignedEmails` cho học sinh. Bản vá migration `202610260000_redact_assigned_emails.sql` đã merge qua PR #14, nhưng chưa áp dụng lên database.
+- Edge đã khôi phục phiên admin Qizzone và tải `/admin/teacher-approvals`, hiển thị không có yêu cầu đang chờ; chưa xác minh được luồng giáo viên/học sinh.
+- SQL Editor xác nhận ledger gồm `202609050001`, `202609090001`, `202609160001`, `202609250001`, khớp bốn migration trên `main`. `to_regclass`/`to_regprocedure` xác nhận `practice_sessions`, `practice_answers` và ba RPC luyện tập chưa có.
+- Banner Supabase báo sự cố Management API; trang Migration History và Edge Functions không tải. Trang Backups xác nhận gói Free không có scheduled backups, chưa có restore point/retention xác minh. [Incident](https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T).
+- `list_quizzes()` production đang lộ toàn bộ `settings.assignedEmails` cho học sinh. Migration `202610260000_redact_assigned_emails.sql` đã merge qua PR #14, nhưng chưa áp dụng lên database.
 - Chưa chạy luồng giáo viên/học sinh, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; secrets và logs vẫn chưa xác minh.
 
 ## Xác minh production còn mở
@@ -48,16 +48,10 @@
 - [ ] Người có quyền xác minh Supabase Edge Function Secrets (`FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu dùng, `ALLOWED_ORIGINS`) và logs mà không sao chép giá trị secrets.
 - [ ] Nâng cấp Supabase khỏi Free hoặc thiết lập backup ngoài nền tảng, sau đó xác nhận restore point, retention và người có quyền khôi phục. Free Plan không có scheduled backups.
 - [x] Đối chiếu bốn migration production (`202609050001`, `202609090001`, `202609160001`, `202609250001`) với schema main bằng SQL Editor chỉ đọc; trang Migration History không tải. Chưa chạy migration nào lên production.
-- [ ] Sau khi có phương án backup/restore, dry-run và áp dụng migration `202610260000_redact_assigned_emails.sql` để khắc phục lộ email; xác minh role học sinh chỉ thấy email của chính mình.
-- [x] Xác minh Supabase production project ref trong Edge: `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`.
-- [ ] Chủ repo xác nhận `assignedClasses`/`assignedEmails` chỉ để phân phối/lọc dashboard hay phải chặn join tại RPC/RLS.
-- [x] Vercel Dashboard liệt kê sáu biến public `VITE_*` ở scope `Production`, không hiển thị giá trị; bundle production cũng khớp cấu hình client đã link.
-- [ ] Người có quyền xác minh Supabase Edge Function Secrets (`FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu dùng, `ALLOWED_ORIGINS`) và logs mà không sao chép giá trị secrets.
-- [ ] Nâng cấp Supabase khỏi Free hoặc thiết lập backup ngoài nền tảng, sau đó xác nhận restore point, retention và người có quyền khôi phục. Free Plan không có scheduled backups.
-- [x] Đối chiếu bốn migration production (`202609050001`, `202609090001`, `202609160001`, `202609250001`) với schema main bằng SQL Editor chỉ đọc; trang Migration History không tải.
-- [ ] Sau khi có phương án backup/restore, dry-run và áp dụng migration `202610260000_redact_assigned_emails.sql`.
+- [ ] Sau khi có phương án backup/restore, dry-run và áp dụng migration `202610260000_redact_assigned_emails.sql`; xác minh học sinh chỉ thấy email của chính mình.
+- [ ] Chạy `supabase db push --dry-run` cho hai migration feature sau khi có CLI/auth phù hợp; chưa áp dụng lên production khi chưa có backup/restore point.
 - [ ] Có tài khoản giáo viên/học sinh test được phê duyệt để chạy smoke test các luồng đăng nhập, tạo đề, tham gia, lưu/nộp bài và phân quyền.
-- [ ] Nhánh `feature/practice-azota` có hai migration luyện tập chưa push; trạng thái áp dụng trên production chưa xác minh. Chỉ đưa vào PR phát hành sau khi kiểm tra migration ledger, `supabase db push --dry-run` và restore point. Migration chỉ thêm bảng/RPC/policy; không sửa hoặc xóa dữ liệu bảng hiện có.
+- [ ] Nhánh `feature/practice-azota` có hai migration luyện tập chưa push/chưa áp dụng production; ledger và catalog đã xác nhận đây là hai migration/tables/RPC còn thiếu. Chỉ đưa vào PR phát hành sau khi `supabase db push --dry-run` và restore point được xác nhận. Migration chỉ thêm bảng/RPC/policy; không sửa hoặc xóa dữ liệu bảng hiện có.
 
 ## Deploy staging / Preview
 
