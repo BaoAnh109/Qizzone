@@ -141,6 +141,14 @@ describe('practice RPC security and isolation', () => {
 
     await expect(asUser(studentA, 'select public.start_practice($1, 0, true)', [quizId])).rejects.toThrow(/số câu/i);
     await expect(asUser(studentA, 'select public.start_practice($1, 4, true)', [quizId])).rejects.toThrow(/số câu/i);
+    const unansweredRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, 1, true) as payload', [quizId]);
+    const unanswered = json<{ id: string }>(unansweredRows[0].payload);
+    const unansweredResultRows = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [unanswered.id]);
+    const unansweredResult = json<{ details: Array<{ correctAnswers: string[]; explanation: string }> }>(unansweredResultRows[0].payload);
+    expect(unansweredResult.details).toHaveLength(1);
+    expect(unansweredResult.details[0].correctAnswers).toEqual([]);
+    expect(unansweredResult.details[0].explanation).toBe('');
+
     const partialRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, 1, false) as payload', [quizId]);
     const partial = json<{ id: string; questionOrder: string[] }>(partialRows[0].payload);
     expect(partial.questionOrder).toHaveLength(1);
@@ -161,7 +169,7 @@ describe('practice RPC security and isolation', () => {
 
     const historyRows = await asUser<{ payload: unknown }>(studentA, 'select public.list_practice_history() as payload');
     const history = json<Array<Record<string, unknown>>>(historyRows[0].payload);
-    expect(history.length).toBe(5);
+    expect(history.length).toBe(6);
     expect(JSON.stringify(history)).not.toContain('correctAnswers');
     expect(JSON.stringify(history)).not.toContain('explanation');
     const examResultsBefore = await asUser<{ payload: unknown }>(studentA, 'select public.list_results() as payload');

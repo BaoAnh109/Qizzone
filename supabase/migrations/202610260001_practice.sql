@@ -278,10 +278,11 @@ begin
     'options', q.options,
     'optionOrder', s.option_order->q.id::text,
     'selectedAnswers', coalesce(a.selected_answers, '[]'::jsonb),
-    'correctAnswers', coalesce(a.correct_answers, k.correct_answers),
+    -- Never disclose keys for questions the student has not checked yet.
+    'correctAnswers', coalesce(a.correct_answers, '[]'::jsonb),
     'isCorrect', coalesce(a.is_correct, false),
     'checked', a.question_id is not null,
-    'explanation', coalesce(a.explanation, k.explanation, '')
+    'explanation', coalesce(a.explanation, '')
   ) order by requested.position), '[]'::jsonb)
   into details
   from unnest(s.question_order) with ordinality as requested(question_id, position)
