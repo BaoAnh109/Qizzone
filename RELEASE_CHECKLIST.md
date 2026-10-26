@@ -2,13 +2,13 @@
 
 - Ngày cập nhật: **2026-10-26**
 - Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
-- Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#13](https://github.com/BaoAnh109/Qizzone/pull/13), `c302ce7`; deployment ở trạng thái Ready.
-- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11, #12 và #13 đã merge vào `main` qua pull request.
+- Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#14](https://github.com/BaoAnh109/Qizzone/pull/14), `71db6f3`; deployment ở trạng thái Ready.
+- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11, #12, #13 và #14 đã merge vào `main` qua pull request.
 - PR [#5](https://github.com/BaoAnh109/Qizzone/pull/5) (`feat/V1`) đã merged vào `main`; head hiện tại của `feat/V1` cũng không còn chênh lệch với `main`. `develop/v1` không có trong danh sách branch. Nhánh luyện tập hiện tại là `feature/practice-azota`, đã rebase lên `main` và chưa push.
 
 ## Trạng thái cổng
 
-- **Cổng mã nguồn: ĐẠT.** Trên `feature/practice-azota` sau rebase: lint, 26 file / 116 test, build và `git diff --check` đều đạt. CI/Vercel của các PR production trước đó cũng thành công.
+- **Cổng mã nguồn: ĐẠT.** Trước lần rebase cuối, `feature/practice-azota` đã đạt lint, 26 file / 116 test, build và `git diff --check`; PR #14 sau đó được merge, production CI/Preview cũng đạt. Rebase cuối có thay đổi checklist và tích hợp regression test từ #14; CI của PR Azota sẽ xác minh trạng thái mới.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
 - **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor chỉ đọc xác nhận bốn migration hiện có khớp main; trang Migration History và Edge Functions không tải do sự cố Management API. Gói Free không có scheduled backups. PR #14 đã đưa migration bảo vệ `assignedEmails` vào `main`, nhưng chưa áp dụng nên email allowlist vẫn lộ qua `list_quizzes()`. Các bảng/RPC luyện tập Azota cũng chưa tồn tại trên production. Chưa có tài khoản giáo viên/học sinh test được duyệt.
 
@@ -31,7 +31,7 @@
 - Supabase Auth `/auth/v1/health` trả HTTP 200. Thử đọc `public.quizzes` trực tiếp và gọi `rpc/list_quizzes` bằng client key anonymous đều bị từ chối `401 permission denied`, khớp ranh giới ACL trong migration; điều này chưa xác minh thao tác của tài khoản đã đăng nhập.
 - Cả sáu biến public `VITE_*` trong `qizzone/.env` đều khớp chính xác với giá trị trong graph bundle production (58 asset); URL Supabase cũng khớp project ref được link trong `supabase/.temp/project-ref`. Giá trị không được in ra. Đây xác minh cấu hình hiệu lực của client, không phải metadata trong Vercel Dashboard.
 - Quét toàn bộ graph JavaScript production: 58 asset, khoảng 2.3 MB; không thấy marker `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `sb_secret_*`, `FIREBASE_SERVICE_ACCOUNT`, private key PEM hoặc `GEMINI_API_KEY`. Giá trị Google API key duy nhất khớp `VITE_FIREBASE_API_KEY` client config; không ghi giá trị vào checklist.
-- Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `38b8cd8` ở trạng thái Ready. Dashboard liệt kê `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_FIREBASE_API_KEY` và `VITE_FIREBASE_AUTH_DOMAIN`, tất cả scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
+- Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `71db6f3` ở trạng thái Ready. Dashboard liệt kê `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_FIREBASE_API_KEY` và `VITE_FIREBASE_AUTH_DOMAIN`, tất cả scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
 - Qua Edge, đã xác nhận production project ref `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`. Query catalog chỉ đọc xác nhận production đã có bốn migration đến `202609250001`; các bảng/RPC của luyện tập Azota chưa tồn tại.
 - Edge đã khôi phục phiên admin Qizzone và tải `/admin/teacher-approvals`, hiển thị không có yêu cầu đang chờ; chưa xác minh được luồng giáo viên/học sinh.
 - SQL Editor xác nhận ledger gồm `202609050001`, `202609090001`, `202609160001`, `202609250001`, khớp bốn migration trên `main`. `to_regclass`/`to_regprocedure` xác nhận `practice_sessions`, `practice_answers` và ba RPC luyện tập chưa có.
@@ -85,7 +85,7 @@ Người kiểm tra: ____________________  Ngày/giờ: ____________________  K�
 - [ ] Áp dụng migration bảo mật `202610260000_redact_assigned_emails.sql`, rồi smoke test dữ liệu phân quyền bằng tài khoản giáo viên/học sinh test được duyệt.
 - [x] Quét bundle JavaScript production; không thấy marker của server secrets trong phạm vi mẫu đã kiểm tra.
 - [x] Vercel Dashboard xác nhận sáu tên biến browser `VITE_*` có scope `Production`; giá trị không được ghi vào checklist.
-- [x] Frontend đã được deploy qua Vercel production pipeline; deployment đang phục vụ `main` tại commit merge PR #13 (`c302ce7`), domain và response công khai đã kiểm tra.
+- [x] Frontend đã được deploy qua Vercel production pipeline; deployment đang phục vụ `main` tại commit merge PR #14 (`71db6f3`), domain và response công khai đã kiểm tra.
 - [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận migrations/functions và logs.
 - [ ] Ghi commit/deployment URL, người deploy, người duyệt và kết quả cuối.
 
