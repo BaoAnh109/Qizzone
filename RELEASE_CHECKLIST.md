@@ -4,7 +4,7 @@
 - Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
 - Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#13](https://github.com/BaoAnh109/Qizzone/pull/13), `c302ce7`; deployment ở trạng thái Ready.
 - PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11, #12 và #13 đã merge vào `main` qua pull request.
-- `develop/v1` không có trong danh sách branch; `feat/V1` đã nằm trong lịch sử `main`. Nhánh luyện tập hiện tại là `feature/practice-azota`, đã rebase lên `main` và chưa push.
+- PR [#5](https://github.com/BaoAnh109/Qizzone/pull/5) (`feat/V1`) đã merged vào `main`; head hiện tại của `feat/V1` cũng không còn chênh lệch với `main`. `develop/v1` không có trong danh sách branch. Nhánh luyện tập hiện tại là `feature/practice-azota`, đã rebase lên `main` và chưa push.
 
 ## Trạng thái cổng
 
@@ -33,11 +33,11 @@
 - Quét toàn bộ graph JavaScript production: 58 asset, khoảng 2.3 MB; không thấy marker `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `sb_secret_*`, `FIREBASE_SERVICE_ACCOUNT`, private key PEM hoặc `GEMINI_API_KEY`. Giá trị Google API key duy nhất khớp `VITE_FIREBASE_API_KEY` client config; không ghi giá trị vào checklist.
 - Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `38b8cd8` ở trạng thái Ready. Dashboard liệt kê `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_FIREBASE_API_KEY` và `VITE_FIREBASE_AUTH_DOMAIN`, tất cả scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
 - Qua Edge, đã xác nhận production project ref `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`. Query catalog chỉ đọc xác nhận production đã có bốn migration đến `202609250001`; các bảng/RPC của luyện tập Azota chưa tồn tại.
-- Trang Database Migrations và Edge Functions không tải danh sách trong phiên kiểm tra; banner Supabase báo sự cố Management API. Trang Backups xác nhận gói Free không có scheduled backups. Không có điểm backup/restore đã xác minh, retention hay đường khôi phục.
-- Review hàm production `list_quizzes()` phát hiện trường `settings.assignedEmails` đang lộ toàn bộ allowlist cho học sinh đăng nhập. Migration `202610260000_redact_assigned_emails.sql` đã merge qua PR #14; production chưa được sửa cho tới khi migration này được áp dụng.
-- Chưa chạy đăng nhập, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; secrets và logs vẫn chưa xác minh.
-- Status page ghi sự cố “Elevated Mgmt API Error Rates in Multiple Regions” ở trạng thái Monitoring; các trang migrations và Edge Function secrets/logs không tải. [Incident](https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T).
-- Trang Backups xác nhận gói Free không có scheduled backups; không có restore point/retention đã xác minh. Chưa áp dụng migration production.
+- Edge khôi phục phiên admin Qizzone sẵn có và tải `/admin/teacher-approvals`, hiển thị trạng thái không có yêu cầu đang chờ. Đây chỉ xác nhận khôi phục phiên admin và một màn hình quản trị; chưa xác nhận luồng giáo viên/học sinh.
+- Edge khôi phục phiên admin Qizzone sẵn có và tải `/admin/teacher-approvals`, hiển thị không có yêu cầu đang chờ. Đây chưa phải xác minh luồng giáo viên/học sinh.
+- Banner Supabase báo sự cố Management API; trang Migration History và Edge Functions không tải. Trang Backups xác nhận gói Free không có scheduled backups; chưa có restore point/retention đã xác minh. [Incident](https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T).
+- Hàm production `list_quizzes()` đang lộ toàn bộ `settings.assignedEmails` cho học sinh. Bản vá migration `202610260000_redact_assigned_emails.sql` đã merge qua PR #14, nhưng chưa áp dụng lên database.
+- Chưa chạy luồng giáo viên/học sinh, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; secrets và logs vẫn chưa xác minh.
 
 ## Xác minh production còn mở
 
