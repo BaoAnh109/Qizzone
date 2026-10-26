@@ -21,6 +21,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore, isSessionInProgress } from "@/store/examSessionStore";
+import { usePracticeStore } from "@/store/practiceStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -31,12 +32,17 @@ import type { Quiz } from "@/types/quiz";
 export function StudentDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const { quizzes, getQuizByCode, load: loadQuizzes, isLoading: isQuizzesLoading } = useQuizStore();
+  const { quizzes, getQuizByCode, load: loadQuizzes, isLoading: isQuizzesLoading, error: quizLoadError } = useQuizStore();
   const {
     activeSessions,
     getResultsByStudent,
     checkAndAutoSubmitExpired,
   } = useExamSessionStore();
+  const practiceHistory = usePracticeStore((state) => state.history);
+  const practiceHistoryOwnerId = usePracticeStore((state) => state.historyOwnerId);
+  const loadPracticeHistory = usePracticeStore((state) => state.loadHistory);
+  const isPracticeHistoryLoading = usePracticeStore((state) => state.isLoadingHistory);
+  const practiceHistoryError = usePracticeStore((state) => state.historyError);
   const toast = useToast();
 
   const [roomCode, setRoomCode] = useState("");
@@ -45,11 +51,16 @@ export function StudentDashboard() {
 
   const studentResults = user ? getResultsByStudent(user.id) : [];
   const publishedQuizzes = quizzes.filter((q) => q.status === "published");
+  const practiceQuizzes = publishedQuizzes.filter((quiz) => quiz.settings.practiceEnabled !== false);
 
   // Auto-fetch latest quizzes from server on dashboard mount
   useEffect(() => {
     void loadQuizzes().catch(() => {});
   }, [loadQuizzes]);
+
+  useEffect(() => {
+    if (user?.id) void loadPracticeHistory(user.id).catch(() => {});
+  }, [user?.id, loadPracticeHistory]);
 
   // Auto-finalize any expired exam sessions when visiting dashboard
   useEffect(() => {
@@ -146,6 +157,10 @@ export function StudentDashboard() {
       result.roomCode.toLowerCase().includes(historySearchTerm.toLowerCase())
     );
   });
+  const visiblePracticeHistory = practiceHistoryOwnerId === user?.id ? practiceHistory : [];
+  const activePracticeSessions = visiblePracticeHistory.filter((session) => session.status === "in_progress");
+  const invalidatedPracticeSessions = visiblePracticeHistory.filter((session) => session.status === "invalidated");
+  const completedPracticeHistory = visiblePracticeHistory.filter((session) => session.status === "completed");
 
   const handleJoinByCode = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -341,6 +356,151 @@ export function StudentDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Practice catalog is intentionally separate from rooms and exam history. */}
+      <section id="practice" className="space-y-4 pt-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-emerald-700" />
+          <div>
+            <h2 className="text-xl font-bold text-neutral-900">Luyện tập</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">Ôn từng câu, không giới hạn lượt và không tính vào kết quả thi.</p>
+          </div>
+        </div>
+        {isQuizzesLoading && quizzes.length === 0 ? (
+          <Card><CardContent className="py-8 text-center text-sm text-neutral-500">Đang tải đề luyện tập…</CardContent></Card>
+        ) : quizLoadError ? (
+          <Card className="border-rose-200">
+            <CardContent className="flex flex-col items-center gap-3 py-6 text-center">
+              <p className="text-sm text-rose-700">Không tải được danh sách đề luyện tập. Hãy kiểm tra kết nối rồi thử lại.</p>
+              <Button variant="outline" size="sm" onClick={() => void loadQuizzes().catch(() => {})} isLoading={isQuizzesLoading}>
+                Thử tải lại
+              </Button>
+            </CardContent>
+          </Card>
+        ) : practiceQuizzes.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {practiceQuizzes.map((quiz) => (
+              <Card key={quiz.id} className="flex flex-col justify-between overflow-hidden border-emerald-100 bg-white hover:border-emerald-300 hover:shadow-md transition">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="success" size="sm">{quiz.subject}</Badge>
+                    <Badge variant="secondary" size="sm">{quiz.totalQuestions} câu</Badge>
+                  </div>
+                  <CardTitle className="text-base font-bold text-neutral-900 line-clamp-2">{quiz.title}</CardTitle>
+                  <p className="text-xs text-neutral-500">Giáo viên: {quiz.teacherName || "Thầy Cô"}</p>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <Button
+                    variant="primary"
+                    className="w-full bg-emerald-700 hover:bg-emerald-800"
+                    leftIcon={<Play className="h-4 w-4 fill-current" />}
+                    onClick={() => navigate(`/student/practice/${quiz.id}`)}
+                  >
+                    Luyện tập
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-sm text-neutral-500">
+              Hiện chưa có đề được bật cho mục luyện tập.
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {(activePracticeSessions.length > 0 || invalidatedPracticeSessions.length > 0) && (
+        <section className="space-y-3 pt-1">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+            <History className="h-5 w-5 text-emerald-700" />Luyện tập đang dở
+          </h2>
+          <Card className="overflow-hidden">
+            <div className="divide-y divide-neutral-100">
+              {activePracticeSessions.map((session) => (
+                <div key={session.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div>
+                    <p className="text-sm font-bold text-neutral-900">{session.quizTitle}</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {session.subject} · Đã kiểm tra {session.answeredCount}/{session.totalQuestions} câu · {new Date(session.startedAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/student/practice/${session.id}/room`)} leftIcon={<Play className="h-3.5 w-3.5" />}>
+                    Tiếp tục luyện
+                  </Button>
+                </div>
+              ))}
+              {invalidatedPracticeSessions.map((session) => (
+                <div key={session.id} className="p-4 sm:px-5">
+                  <p className="text-sm font-bold text-neutral-800">{session.quizTitle}</p>
+                  <p className="mt-1 text-xs text-amber-800">{session.message || "Đề đã thay đổi nên lượt luyện này không thể tiếp tục."}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+      )}
+
+      <section className="space-y-4 pt-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-bold text-neutral-900">
+              <History className="h-5 w-5 text-emerald-700" />Lịch sử luyện tập
+              {practiceHistoryOwnerId === user?.id && <span className="text-sm font-semibold text-neutral-400">({completedPracticeHistory.length})</span>}
+            </h2>
+            <p className="mt-0.5 text-xs text-neutral-500">Kết quả này tách riêng và không ảnh hưởng lịch sử thi.</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => user && void loadPracticeHistory(user.id).catch(() => {})}
+            isLoading={isPracticeHistoryLoading}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+          >
+            Làm mới
+          </Button>
+        </div>
+
+        {isPracticeHistoryLoading && practiceHistoryOwnerId !== user?.id ? (
+          <Card><CardContent className="p-5 text-center text-sm text-neutral-500">Đang tải lịch sử luyện tập…</CardContent></Card>
+        ) : practiceHistoryError && practiceHistoryOwnerId !== user?.id ? (
+          <Card className="border-rose-200"><CardContent className="p-5 text-center text-sm text-rose-700">{practiceHistoryError}</CardContent></Card>
+        ) : completedPracticeHistory.length > 0 ? (
+          <Card className="overflow-hidden">
+            <div className="divide-y divide-neutral-100">
+              {completedPracticeHistory.map((session) => (
+                <div key={session.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" size="sm">{session.subject}</Badge>
+                      <h3 className="text-sm font-bold text-neutral-900">{session.quizTitle}</h3>
+                    </div>
+                    <p className="text-xs text-neutral-500">
+                      Luyện lúc: {new Date(session.finishedAt || session.startedAt).toLocaleString("vi-VN")}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 sm:justify-end">
+                    <div className="text-right">
+                      <p className="font-mono text-sm font-extrabold text-emerald-800">{session.correctCount}/{session.totalQuestions} câu</p>
+                      <p className="text-[11px] text-neutral-500">{session.percentage}% đúng · {session.durationSeconds}s</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/student/practice/${session.quizId}`)}>
+                      Luyện lại
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-6 text-center text-sm text-neutral-500">
+              {practiceHistoryError ? `Không tải được lịch sử luyện tập: ${practiceHistoryError}` : "Bạn chưa hoàn thành lượt luyện tập nào."}
+            </CardContent>
+          </Card>
+        )}
+      </section>
 
       {/* SECTION: ĐỀ THI ĐƯỢC GIAO CHO BẠN (Hiện thẳng lên đề đang mở, không cần nhập mã) */}
       <div className="space-y-4 pt-2">

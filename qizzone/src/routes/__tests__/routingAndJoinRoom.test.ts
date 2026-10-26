@@ -32,6 +32,13 @@ describe('Router & Room Join Routing Logic', () => {
     expect(getRoleHomeRoute('admin')).toBe('/admin/teacher-approvals');
   });
 
+  it('keeps practice routes inside the student role', () => {
+    expect(getPostLoginRedirect('student', '/student/practice/quiz-1')).toBe('/student/practice/quiz-1');
+    expect(getPostLoginRedirect('student', '/student/practice/session-1/room')).toBe('/student/practice/session-1/room');
+    expect(getPostLoginRedirect('teacher', '/student/practice/session-1/result')).toBe('/teacher');
+    expect(getPostLoginRedirect('admin', '/student/practice/session-1/room')).toBe('/admin/teacher-approvals');
+  });
+
   it('handles room code normalization for join links', () => {
     const rawCodes = ['abc123', ' ABC123 ', 'qZ9821\n', 'qz9821'];
     const cleaned = rawCodes.map(c => c.trim().toUpperCase());

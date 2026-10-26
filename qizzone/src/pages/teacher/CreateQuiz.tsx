@@ -124,18 +124,19 @@ export function CreateQuiz() {
     locationState?.initialDescription || existingQuiz?.description || ""
   );
 
-  const [settings, setSettings] = useState<QuizSettings>(
-    existingQuiz?.settings || {
-      durationMinutes: 45, // 0 = vô thời hạn
-      shuffleQuestions: false,
-      shuffleOptions: false,
-      allowReview: true,
-      maxAttempts: 0,
-      passPercentage: 50,
-      assignedClasses: [],
-      assignedEmails: [],
-    }
-  );
+  const [settings, setSettings] = useState<QuizSettings>(() => existingQuiz
+    ? { ...existingQuiz.settings, practiceEnabled: existingQuiz.settings.practiceEnabled !== false }
+    : {
+        durationMinutes: 45, // 0 = vô thời hạn
+        shuffleQuestions: false,
+        shuffleOptions: false,
+        allowReview: true,
+        maxAttempts: 0,
+        passPercentage: 50,
+        practiceEnabled: true,
+        assignedClasses: [],
+        assignedEmails: [],
+      });
 
   const [classInput, setClassInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
@@ -219,7 +220,7 @@ export function CreateQuiz() {
     setSubjectPreset(POPULAR_SUBJECTS.includes(existingQuiz.subject) ? existingQuiz.subject : "custom");
     setCustomSubject(POPULAR_SUBJECTS.includes(existingQuiz.subject) ? "" : existingQuiz.subject);
     setDescription(existingQuiz.description || "");
-    setSettings(existingQuiz.settings);
+    setSettings({ ...existingQuiz.settings, practiceEnabled: existingQuiz.settings.practiceEnabled !== false });
     setQuestions(existingQuiz.questions);
   }, [existingQuiz]);
 
@@ -1002,6 +1003,28 @@ export function CreateQuiz() {
                       </p>
                       <p className="text-xs text-neutral-500">
                         Hiển thị đáp án đúng và lời giải sau khi nộp bài.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 cursor-pointer hover:bg-emerald-50 transition sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={settings.practiceEnabled !== false}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          practiceEnabled: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 h-4 w-4 rounded-sm text-emerald-700 focus:ring-emerald-600 cursor-pointer"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">
+                        Cho phép học sinh luyện tập đề này
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        Mặc định bật, kể cả với đề đã tạo trước đây. Cài đặt và lượt thi vẫn giữ nguyên khi đổi mục này.
                       </p>
                     </div>
                   </label>
