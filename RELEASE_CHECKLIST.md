@@ -29,15 +29,16 @@
 - Sau deploy, Lighthouse desktop và mobile đều đạt Accessibility 100, Best Practices 100, SEO 100. Không có lỗi console trong lần smoke kiểm tra giao diện công khai.
 - Cả năm Edge Function production trả lời preflight `OPTIONS` bằng HTTP 200, cho phép origin `https://qizzone.vercel.app` và `POST, OPTIONS`. Đây chỉ xác minh endpoint/CORS; không xác nhận secrets hoặc nghiệp vụ function.
 - Supabase Auth `/auth/v1/health` trả HTTP 200. Thử đọc `public.quizzes` trực tiếp và gọi `rpc/list_quizzes` bằng client key anonymous đều bị từ chối `401 permission denied`, khớp ranh giới ACL trong migration; điều này chưa xác minh thao tác của tài khoản đã đăng nhập.
+- Cả sáu biến public `VITE_*` trong `qizzone/.env` đều khớp chính xác với giá trị trong graph bundle production (58 asset); URL Supabase cũng khớp project ref được link trong `supabase/.temp/project-ref`. Giá trị không được in ra. Đây xác minh cấu hình hiệu lực của client, không phải metadata trong Vercel Dashboard.
 - Quét toàn bộ graph JavaScript production: 58 asset, khoảng 2.3 MB; không thấy marker `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `sb_secret_*`, `FIREBASE_SERVICE_ACCOUNT`, private key PEM hoặc `GEMINI_API_KEY`. Giá trị Google API key duy nhất khớp `VITE_FIREBASE_API_KEY` client config; không ghi giá trị vào checklist.
-- Vercel và Supabase Dashboard trên Chrome đều yêu cầu đăng nhập, nên chưa xác minh trực tiếp settings, migration history, function secrets/logs hoặc backup/restore.
+- Vercel và Supabase Dashboard trên Chrome đều yêu cầu đăng nhập, nên chưa xác minh trực tiếp project settings, migration history, function secrets/logs hoặc backup/restore.
 - Chưa chạy đăng nhập, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; chưa xem được log hay cấu hình backup trong dashboard.
 
 ## Xác minh production còn mở
 
 - [ ] Chủ hệ thống xác nhận Vercel project, production branch và Supabase project ref là môi trường đích dự kiến.
 - [ ] Chủ repo xác nhận `assignedClasses`/`assignedEmails` chỉ để phân phối/lọc dashboard hay phải chặn join tại RPC/RLS.
-- [ ] Người có quyền xác minh sáu biến `VITE_*` trong Vercel Production; chỉ kiểm tra tên/trạng thái, không ghi giá trị vào repo hoặc checklist.
+- [x] Cấu hình hiệu lực của sáu biến public `VITE_*` đã được đối chiếu với bundle production; metadata Vercel Dashboard chưa truy cập được.
 - [ ] Người có quyền xác minh Supabase Edge Function Secrets (`FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu dùng, `ALLOWED_ORIGINS`) và logs mà không sao chép giá trị secrets.
 - [ ] Chủ hệ thống xác nhận backup/restore point, retention và người có quyền khôi phục trên Supabase production. Repository không chứng minh backup đã bật.
 - [ ] Người có quyền kiểm tra migration history và đối chiếu với [SETUP.md](SETUP.md); không chạy migration production khi chưa xác nhận backup, project và danh sách migration.
@@ -72,7 +73,7 @@ Người kiểm tra: ____________________  Ngày/giờ: ____________________  K�
 - [ ] Đúng Supabase production project ref; xem lại `supabase db push --dry-run`; không dùng `--include-seed`.
 - [ ] Đối chiếu migration history hiện tại với [SETUP.md](SETUP.md); xác minh secrets và logs Edge Function. Chỉ áp dụng migration còn thiếu sau dry-run, xác nhận đúng project và backup/restore point.
 - [x] Quét bundle JavaScript production; không thấy marker của server secrets trong phạm vi mẫu đã kiểm tra.
-- [ ] Người có quyền xác minh sáu biến browser `VITE_*` được đặt đúng trong Vercel Production.
+- [x] Bundle production chứa đúng sáu giá trị client `VITE_*` theo cấu hình local đã link tới Supabase project; metadata cài đặt trong Vercel Dashboard chưa xem được.
 - [x] Frontend đã được deploy qua Vercel production pipeline sau merge PR #10; domain và response công khai đã kiểm tra.
 - [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận migrations/functions và logs.
 - [ ] Ghi commit/deployment URL, người deploy, người duyệt và kết quả cuối.
