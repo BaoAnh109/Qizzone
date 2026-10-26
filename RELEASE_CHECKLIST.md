@@ -2,20 +2,20 @@
 
 - Ngày cập nhật: **2026-10-26**
 - Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
-- Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#12](https://github.com/BaoAnh109/Qizzone/pull/12), `38b8cd8`; deployment ở trạng thái Ready.
-- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11 và #12 đã merge vào `main` qua pull request.
-- Baseline theo prompt: `develop/v1` không có trong danh sách branch đã kiểm tra; code được rà soát trên proxy sạch `refactor/optimize-login-router` từ `919dbfd`.
+- Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#13](https://github.com/BaoAnh109/Qizzone/pull/13), `c302ce7`; deployment ở trạng thái Ready.
+- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11, #12 và #13 đã merge vào `main` qua pull request.
+- `develop/v1` không có trong danh sách branch; `feat/V1` đã nằm trong lịch sử `main`. Nhánh luyện tập hiện tại là `feature/practice-azota`, đã rebase lên `main` và chưa push.
 
 ## Trạng thái cổng
 
-- **Cổng mã nguồn: ĐẠT.** Lint, test, build, diff whitespace và secret-pattern scan đã đạt trên nhánh release; CI và Vercel Preview của PR #10 cũng thành công.
+- **Cổng mã nguồn: ĐẠT.** Trên `feature/practice-azota` sau rebase: lint, 26 file / 116 test, build và `git diff --check` đều đạt. CI/Vercel của các PR production trước đó cũng thành công.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
-- **Toàn hệ thống production: CHƯA ký sign-off.** Đã vào Supabase production bằng Edge, xác nhận project `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, `ap-southeast-2`) và dùng SQL Editor chỉ đọc để đối chiếu schema. Lịch sử migration trên giao diện dashboard không tải; SQL Editor xác nhận bốn migration hiện có khớp main. Project dùng gói Free nên không có scheduled backups. Edge Functions/secrets/logs chưa tải được trong lúc Supabase đang báo sự cố Management API; chưa có tài khoản test được duyệt. Đã phát hiện `list_quizzes()` production trả toàn bộ `settings.assignedEmails` cho mọi học sinh; PR sửa đang được chuẩn bị và chỉ có hiệu lực production sau khi migration được áp dụng.
+- **Toàn hệ thống production: CHƯA ký sign-off.** Edge xác nhận project Supabase `qizzone` / `main PRODUCTION` (ref `iqojrgrljrttqjbhcogr`, region `ap-southeast-2`). SQL Editor chỉ đọc xác nhận bốn migration hiện có khớp main; trang Migration History và Edge Functions không tải do sự cố Management API. Gói Free không có scheduled backups. PR #14 đã đưa migration bảo vệ `assignedEmails` vào `main`, nhưng chưa áp dụng lên database nên email allowlist vẫn lộ qua `list_quizzes()`. Chưa có tài khoản giáo viên/học sinh test được duyệt.
 
 ## Bằng chứng từ checkout
 
 - `npm run lint` — PASS.
-- `npm test` — PASS, 22 file / 105 test.
+- `npm test -- --pool=threads --maxWorkers=1` — PASS trên nhánh feature sau rebase, 26 file / 116 test.
 - `npm run build` — PASS.
 - `npm audit` và `npm audit --omit=dev` — PASS, 0 vulnerabilities sau khi vá dependency.
 - PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9) đã tạo từ `review/production-v1` vào `main`; GitHub Actions và Vercel Preview thành công trên commit `eba0262`.
@@ -34,8 +34,10 @@
 - Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `38b8cd8` ở trạng thái Ready. Dashboard liệt kê `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_FIREBASE_API_KEY` và `VITE_FIREBASE_AUTH_DOMAIN`, tất cả scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
 - Qua Edge, đã xác nhận production project ref `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`. Query catalog chỉ đọc xác nhận production đã có bốn migration đến `202609250001`; các bảng/RPC của luyện tập Azota chưa tồn tại.
 - Trang Database Migrations và Edge Functions không tải danh sách trong phiên kiểm tra; banner Supabase báo sự cố Management API. Trang Backups xác nhận gói Free không có scheduled backups. Không có điểm backup/restore đã xác minh, retention hay đường khôi phục.
-- Review hàm production `list_quizzes()` phát hiện trường `settings.assignedEmails` đang lộ toàn bộ allowlist cho học sinh đăng nhập. Migration `202610260000_redact_assigned_emails.sql` cùng regression test được chuẩn bị trên nhánh bảo mật; production chưa được sửa cho tới khi migration này được áp dụng.
+- Review hàm production `list_quizzes()` phát hiện trường `settings.assignedEmails` đang lộ toàn bộ allowlist cho học sinh đăng nhập. Migration `202610260000_redact_assigned_emails.sql` đã merge qua PR #14; production chưa được sửa cho tới khi migration này được áp dụng.
 - Chưa chạy đăng nhập, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; secrets và logs vẫn chưa xác minh.
+- Status page ghi sự cố “Elevated Mgmt API Error Rates in Multiple Regions” ở trạng thái Monitoring; các trang migrations và Edge Function secrets/logs không tải. [Incident](https://status.supabase.com/incidents/01M5J8ZQ04EZXAYF10Q75MGC1T).
+- Trang Backups xác nhận gói Free không có scheduled backups; không có restore point/retention đã xác minh. Chưa áp dụng migration production.
 
 ## Xác minh production còn mở
 
@@ -47,7 +49,15 @@
 - [ ] Nâng cấp Supabase khỏi Free hoặc thiết lập backup ngoài nền tảng, sau đó xác nhận restore point, retention và người có quyền khôi phục. Free Plan không có scheduled backups.
 - [x] Đối chiếu bốn migration production (`202609050001`, `202609090001`, `202609160001`, `202609250001`) với schema main bằng SQL Editor chỉ đọc; trang Migration History không tải. Chưa chạy migration nào lên production.
 - [ ] Sau khi có phương án backup/restore, dry-run và áp dụng migration `202610260000_redact_assigned_emails.sql` để khắc phục lộ email; xác minh role học sinh chỉ thấy email của chính mình.
+- [x] Xác minh Supabase production project ref trong Edge: `iqojrgrljrttqjbhcogr`, branch `main PRODUCTION`, region `ap-southeast-2`.
+- [ ] Chủ repo xác nhận `assignedClasses`/`assignedEmails` chỉ để phân phối/lọc dashboard hay phải chặn join tại RPC/RLS.
+- [x] Vercel Dashboard liệt kê sáu biến public `VITE_*` ở scope `Production`, không hiển thị giá trị; bundle production cũng khớp cấu hình client đã link.
+- [ ] Người có quyền xác minh Supabase Edge Function Secrets (`FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu dùng, `ALLOWED_ORIGINS`) và logs mà không sao chép giá trị secrets.
+- [ ] Nâng cấp Supabase khỏi Free hoặc thiết lập backup ngoài nền tảng, sau đó xác nhận restore point, retention và người có quyền khôi phục. Free Plan không có scheduled backups.
+- [x] Đối chiếu bốn migration production (`202609050001`, `202609090001`, `202609160001`, `202609250001`) với schema main bằng SQL Editor chỉ đọc; trang Migration History không tải.
+- [ ] Sau khi có phương án backup/restore, dry-run và áp dụng migration `202610260000_redact_assigned_emails.sql`.
 - [ ] Có tài khoản giáo viên/học sinh test được phê duyệt để chạy smoke test các luồng đăng nhập, tạo đề, tham gia, lưu/nộp bài và phân quyền.
+- [ ] Nhánh `feature/practice-azota` có hai migration luyện tập chưa push; trạng thái áp dụng trên production chưa xác minh. Chỉ đưa vào PR phát hành sau khi kiểm tra migration ledger, `supabase db push --dry-run` và restore point. Migration chỉ thêm bảng/RPC/policy; không sửa hoặc xóa dữ liệu bảng hiện có.
 
 ## Deploy staging / Preview
 
@@ -81,7 +91,7 @@ Người kiểm tra: ____________________  Ngày/giờ: ____________________  K�
 - [ ] Áp dụng migration bảo mật `202610260000_redact_assigned_emails.sql`, rồi smoke test dữ liệu phân quyền bằng tài khoản giáo viên/học sinh test được duyệt.
 - [x] Quét bundle JavaScript production; không thấy marker của server secrets trong phạm vi mẫu đã kiểm tra.
 - [x] Vercel Dashboard xác nhận sáu tên biến browser `VITE_*` có scope `Production`; giá trị không được ghi vào checklist.
-- [x] Frontend đã được deploy qua Vercel production pipeline; deployment đang phục vụ `main` tại commit merge PR #12 (`38b8cd8`), domain và response công khai đã kiểm tra.
+- [x] Frontend đã được deploy qua Vercel production pipeline; deployment đang phục vụ `main` tại commit merge PR #13 (`c302ce7`), domain và response công khai đã kiểm tra.
 - [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận migrations/functions và logs.
 - [ ] Ghi commit/deployment URL, người deploy, người duyệt và kết quả cuối.
 
