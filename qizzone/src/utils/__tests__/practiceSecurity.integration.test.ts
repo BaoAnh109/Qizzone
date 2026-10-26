@@ -141,13 +141,14 @@ describe('practice RPC security and isolation', () => {
 
     await expect(asUser(studentA, 'select public.start_practice($1, 0, true)', [quizId])).rejects.toThrow(/số câu/i);
     await expect(asUser(studentA, 'select public.start_practice($1, 4, true)', [quizId])).rejects.toThrow(/số câu/i);
-    const unansweredRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, 1, true) as payload', [quizId]);
+    const unansweredRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [quizId]);
     const unanswered = json<{ id: string }>(unansweredRows[0].payload);
     const unansweredResultRows = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [unanswered.id]);
     const unansweredResult = json<{ details: Array<{ correctAnswers: string[]; explanation: string }> }>(unansweredResultRows[0].payload);
-    expect(unansweredResult.details).toHaveLength(1);
-    expect(unansweredResult.details[0].correctAnswers).toEqual([]);
-    expect(unansweredResult.details[0].explanation).toBe('');
+    expect(unansweredResult.details).toHaveLength(3);
+    expect(unansweredResult.details.every(detail => detail.correctAnswers.length === 0 && detail.explanation === '')).toBe(true);
+    await expect(asUser(studentA, 'select public.start_practice_retry($1,$2)', [unanswered.id, 'wrong']))
+      .rejects.toThrow(/câu sai đã kiểm tra/i);
 
     const partialRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, 1, false) as payload', [quizId]);
     const partial = json<{ id: string; questionOrder: string[] }>(partialRows[0].payload);
@@ -172,6 +173,20 @@ describe('practice RPC security and isolation', () => {
     expect(history.length).toBe(6);
     expect(JSON.stringify(history)).not.toContain('correctAnswers');
     expect(JSON.stringify(history)).not.toContain('explanation');
+
+    const mixedRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [quizId]);
+    const mixed = json<{ id: string; questionOrder: string[] }>(mixedRows[0].payload);
+    const wrongQuestionId = questionIds[0];
+    const wrongCheckRows = await asUser<{ payload: unknown }>(studentA,
+      'select public.check_practice_answer($1,$2,$3::jsonb) as payload', [mixed.id, wrongQuestionId, '["A"]']);
+    expect(json<{ isCorrect: boolean }>(wrongCheckRows[0].payload).isCorrect).toBe(false);
+    const mixedResultRows = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [mixed.id]);
+    const mixedResult = json<{ details: Array<{ questionId: string; checked: boolean; isCorrect: boolean }> }>(mixedResultRows[0].payload);
+    expect(mixedResult.details.filter(detail => detail.checked && !detail.isCorrect).map(detail => detail.questionId)).toEqual([wrongQuestionId]);
+    expect(mixedResult.details.filter(detail => !detail.checked)).toHaveLength(2);
+    const retryRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice_retry($1,$2) as payload', [mixed.id, 'wrong']);
+    expect(json<{ questionOrder: string[] }>(retryRows[0].payload).questionOrder).toEqual([wrongQuestionId]);
+
     const examResultsBefore = await asUser<{ payload: unknown }>(studentA, 'select public.list_results() as payload');
     expect(json(examResultsBefore[0].payload)).toEqual([]);
     expect((await db.query('select * from public.exam_attempts where quiz_id=$1', [quizId])).rows).toEqual([]);

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, CircleX, Clock3, RotateCcw } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, Clock3, RotateCcw } from 'lucide-react';
 import { MathRenderer } from '@/components/common/MathRenderer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { usePracticeStore } from '@/store/practiceStore';
 import { useToast } from '@/hooks/useToast';
-import { practiceErrorMessage } from '@/utils/practice';
+import { getRetryableWrongQuestions, practiceErrorMessage } from '@/utils/practice';
 import type { PracticeResultDetail } from '@/types/practice';
 
 function formatDuration(seconds: number): string {
@@ -88,7 +88,7 @@ export function PracticeResult() {
     return () => { active = false; };
   }, [sessionId, finish]);
 
-  const missedQuestions = useMemo(() => cachedResult?.details.filter(detail => !detail.isCorrect) || [], [cachedResult]);
+  const missedQuestions = useMemo(() => getRetryableWrongQuestions(cachedResult?.details || []), [cachedResult]);
 
   const handleRetry = async (mode: 'wrong' | 'all') => {
     if (!cachedResult) return;
@@ -144,7 +144,7 @@ export function PracticeResult() {
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <CircleX className="h-5 w-5 text-rose-600" />
-          <h2 className="text-lg font-bold text-neutral-900">Câu cần xem lại ({missedQuestions.length})</h2>
+          <h2 className="text-lg font-bold text-neutral-900">Câu trả lời sai ({missedQuestions.length})</h2>
         </div>
         {missedQuestions.length > 0 ? missedQuestions.map(detail => (
           <Card key={detail.questionId} className="overflow-hidden">
@@ -155,9 +155,14 @@ export function PracticeResult() {
             <CardContent className="space-y-4 p-4"><AnswerReview detail={detail} /></CardContent>
           </Card>
         )) : (
-          <Card className="border-emerald-200 bg-emerald-50/50">
-            <CardContent className="flex items-center gap-2 p-5 text-sm font-semibold text-emerald-900">
-              <CheckCircle2 className="h-5 w-5" />Bạn đã trả lời đúng tất cả câu hỏi.
+          <Card className={cachedResult.skippedCount > 0 ? 'border-amber-200 bg-amber-50/50' : 'border-emerald-200 bg-emerald-50/50'}>
+            <CardContent className={`flex items-center gap-2 p-5 text-sm font-semibold ${cachedResult.skippedCount > 0 ? 'text-amber-900' : 'text-emerald-900'}`}>
+              {cachedResult.skippedCount > 0
+                ? <CircleAlert className="h-5 w-5" />
+                : <CheckCircle2 className="h-5 w-5" />}
+              {cachedResult.skippedCount > 0
+                ? `Không có câu đã kiểm tra bị sai. Còn ${cachedResult.skippedCount} câu chưa trả lời.`
+                : 'Bạn đã trả lời đúng tất cả câu hỏi.'}
             </CardContent>
           </Card>
         )}

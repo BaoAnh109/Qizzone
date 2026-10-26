@@ -1,3 +1,7 @@
+export function getRetryableWrongQuestions<T extends { checked: boolean; isCorrect: boolean }>(details: readonly T[]): T[] {
+  return details.filter(detail => detail.checked && !detail.isCorrect);
+}
+
 export function practiceErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof DOMException && error.name === 'TimeoutError') {
     return 'Dịch vụ luyện tập phản hồi quá lâu. Vui lòng thử lại.';
