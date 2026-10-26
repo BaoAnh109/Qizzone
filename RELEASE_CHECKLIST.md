@@ -2,15 +2,15 @@
 
 - Ngày cập nhật: **2026-10-26**
 - Production frontend: [https://qizzone.vercel.app](https://qizzone.vercel.app), đang phục vụ từ `main`.
-- Commit production mới nhất đã kiểm tra: merge PR [#10](https://github.com/BaoAnh109/Qizzone/pull/10), `80854c8`.
-- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9) đã merge vào `main` tại `c1db5d5`; PR #10 đã merge tiếp sau đó.
+- Commit production mới nhất đã kiểm tra trực tiếp trong Vercel: merge PR [#12](https://github.com/BaoAnh109/Qizzone/pull/12), `38b8cd8`; deployment ở trạng thái Ready.
+- PR [#9](https://github.com/BaoAnh109/Qizzone/pull/9), #10, #11 và #12 đã merge vào `main` qua pull request.
 - Baseline theo prompt: `develop/v1` không có trong danh sách branch đã kiểm tra; code được rà soát trên proxy sạch `refactor/optimize-login-router` từ `919dbfd`.
 
 ## Trạng thái cổng
 
 - **Cổng mã nguồn: ĐẠT.** Lint, test, build, diff whitespace và secret-pattern scan đã đạt trên nhánh release; CI và Vercel Preview của PR #10 cũng thành công.
 - **Frontend production: ĐÃ TRIỂN KHAI.** Domain công khai, `/login`, `/robots.txt` và các header đã được kiểm tra sau merge.
-- **Toàn hệ thống production: CHƯA ký sign-off.** Chưa xác minh quyền truy cập dashboard, migration history, secrets/logs Edge Function, backup/restore, hay luồng đăng nhập và thi bằng tài khoản test được duyệt.
+- **Toàn hệ thống production: CHƯA ký sign-off.** Đã đọc Vercel Dashboard bằng Edge; Supabase Dashboard dừng ở MFA. Migration history, Edge Function secrets/logs, backup/restore và luồng thi có tài khoản test vẫn chưa được xác minh.
 
 ## Bằng chứng từ checkout
 
@@ -31,14 +31,16 @@
 - Supabase Auth `/auth/v1/health` trả HTTP 200. Thử đọc `public.quizzes` trực tiếp và gọi `rpc/list_quizzes` bằng client key anonymous đều bị từ chối `401 permission denied`, khớp ranh giới ACL trong migration; điều này chưa xác minh thao tác của tài khoản đã đăng nhập.
 - Cả sáu biến public `VITE_*` trong `qizzone/.env` đều khớp chính xác với giá trị trong graph bundle production (58 asset); URL Supabase cũng khớp project ref được link trong `supabase/.temp/project-ref`. Giá trị không được in ra. Đây xác minh cấu hình hiệu lực của client, không phải metadata trong Vercel Dashboard.
 - Quét toàn bộ graph JavaScript production: 58 asset, khoảng 2.3 MB; không thấy marker `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEY`, `sb_secret_*`, `FIREBASE_SERVICE_ACCOUNT`, private key PEM hoặc `GEMINI_API_KEY`. Giá trị Google API key duy nhất khớp `VITE_FIREBASE_API_KEY` client config; không ghi giá trị vào checklist.
-- Vercel và Supabase Dashboard trên Chrome đều yêu cầu đăng nhập, nên chưa xác minh trực tiếp project settings, migration history, function secrets/logs hoặc backup/restore.
+- Vercel Dashboard qua Edge xác nhận project `qizzone` nối repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment `38b8cd8` ở trạng thái Ready. Danh sách Dashboard có đủ sáu biến `VITE_*` với scope `Production`; giá trị được giữ kín. Trang Build and Deployment xác nhận các lệnh cài/build/output cùng header/rewrite được override từ `vercel.json`; không thay đổi cài đặt.
+- Supabase Dashboard chưa vào được organization vì cần hoàn tất MFA sau đăng nhập GitHub; migration history, function secrets/logs và backup/restore vì thế vẫn chưa xác minh. Luồng đăng nhập dừng ở MFA và Edge đã rời khỏi URL chứa thông tin xác thực.
 - Chưa chạy đăng nhập, tạo đề, làm bài và nộp bài trên production vì chưa có tài khoản test được phê duyệt; chưa xem được log hay cấu hình backup trong dashboard.
 
 ## Xác minh production còn mở
 
-- [ ] Chủ hệ thống xác nhận Vercel project, production branch và Supabase project ref là môi trường đích dự kiến.
+- [x] Vercel Dashboard xác nhận project `qizzone`, repo `BaoAnh109/Qizzone`, production domain `qizzone.vercel.app`, source branch `main` và deployment Ready.
+- [ ] Xác minh Supabase production project ref trong Dashboard; bundle khớp project ref cục bộ đã link nhưng chưa xác nhận ownership/môi trường đích.
 - [ ] Chủ repo xác nhận `assignedClasses`/`assignedEmails` chỉ để phân phối/lọc dashboard hay phải chặn join tại RPC/RLS.
-- [x] Cấu hình hiệu lực của sáu biến public `VITE_*` đã được đối chiếu với bundle production; metadata Vercel Dashboard chưa truy cập được.
+- [x] Vercel Dashboard liệt kê sáu biến public `VITE_*` ở scope `Production`, không hiển thị giá trị; bundle production cũng khớp cấu hình client đã link.
 - [ ] Người có quyền xác minh Supabase Edge Function Secrets (`FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu dùng, `ALLOWED_ORIGINS`) và logs mà không sao chép giá trị secrets.
 - [ ] Chủ hệ thống xác nhận backup/restore point, retention và người có quyền khôi phục trên Supabase production. Repository không chứng minh backup đã bật.
 - [ ] Người có quyền kiểm tra migration history và đối chiếu với [SETUP.md](SETUP.md); không chạy migration production khi chưa xác nhận backup, project và danh sách migration.
@@ -73,8 +75,8 @@ Người kiểm tra: ____________________  Ngày/giờ: ____________________  K�
 - [ ] Đúng Supabase production project ref; xem lại `supabase db push --dry-run`; không dùng `--include-seed`.
 - [ ] Đối chiếu migration history hiện tại với [SETUP.md](SETUP.md); xác minh secrets và logs Edge Function. Chỉ áp dụng migration còn thiếu sau dry-run, xác nhận đúng project và backup/restore point.
 - [x] Quét bundle JavaScript production; không thấy marker của server secrets trong phạm vi mẫu đã kiểm tra.
-- [x] Bundle production chứa đúng sáu giá trị client `VITE_*` theo cấu hình local đã link tới Supabase project; metadata cài đặt trong Vercel Dashboard chưa xem được.
-- [x] Frontend đã được deploy qua Vercel production pipeline sau merge PR #10; domain và response công khai đã kiểm tra.
+- [x] Vercel Dashboard xác nhận sáu tên biến browser `VITE_*` có scope `Production`; giá trị không được ghi vào checklist.
+- [x] Frontend đã được deploy qua Vercel production pipeline; deployment đang phục vụ `main` tại commit merge PR #12 (`38b8cd8`), domain và response công khai đã kiểm tra.
 - [ ] Hoàn tất smoke test bằng tài khoản test được duyệt sau deploy; xác nhận migrations/functions và logs.
 - [ ] Ghi commit/deployment URL, người deploy, người duyệt và kết quả cuối.
 
