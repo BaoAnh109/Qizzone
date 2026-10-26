@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { practiceErrorMessage } from '@/utils/practice';
+import { getRetryableWrongQuestions, practiceErrorMessage } from '@/utils/practice';
+
+describe('getRetryableWrongQuestions', () => {
+  it('includes checked wrong answers and excludes skipped or correct answers', () => {
+    const checkedWrong = { questionId: 'wrong', checked: true, isCorrect: false };
+    const skipped = { questionId: 'skipped', checked: false, isCorrect: false };
+    const checkedCorrect = { questionId: 'correct', checked: true, isCorrect: true };
+
+    expect(getRetryableWrongQuestions([checkedWrong, skipped, checkedCorrect])).toEqual([checkedWrong]);
+  });
+});
 
 describe('practiceErrorMessage', () => {
   it('shows a Vietnamese message for network failures and preserves server validation messages', () => {
