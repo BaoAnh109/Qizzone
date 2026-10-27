@@ -6,6 +6,7 @@ import {
   GraduationCap,
   X,
   BookOpen,
+  History,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -44,6 +45,12 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       label: "Vào phòng thi",
       path: "/student",
       icon: BookOpen,
+      end: true,
+    },
+    {
+      label: "Lịch sử luyện tập",
+      path: "/student/practice",
+      icon: History,
       end: true,
     },
   ];

@@ -113,8 +113,8 @@ export function PracticeRoom() {
   };
 
   const displayedError = pageError
-    || (!sessionId ? 'Không tìm thấy mã lượt luyện tập. Hãy quay lại mục Luyện tập.' : null)
-    || (quizNotAvailable ? 'Không tải được đề của lượt luyện tập. Hãy tải lại hoặc quay về mục Luyện tập.' : null);
+    || (!sessionId ? 'Không tìm thấy mã lượt luyện tập. Hãy quay lại lịch sử luyện tập.' : null)
+    || (quizNotAvailable ? 'Không tải được đề của lượt luyện tập. Hãy tải lại hoặc quay về lịch sử luyện tập.' : null);
   if (displayedError) {
     return (
       <div className="mx-auto max-w-xl space-y-4 py-12 text-center">
@@ -123,8 +123,8 @@ export function PracticeRoom() {
         </div>
         <h1 className="text-xl font-bold text-neutral-900">Không thể tiếp tục lượt luyện</h1>
         <p className="text-sm text-neutral-600">{displayedError}</p>
-        <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
-          Về mục Luyện tập
+        <Button variant="outline" onClick={() => navigate('/student/practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
+          Về lịch sử luyện tập
         </Button>
       </div>
     );
@@ -139,13 +139,13 @@ export function PracticeRoom() {
       <div className="mx-auto max-w-xl space-y-4 py-12 text-center">
         <h1 className="text-xl font-bold text-neutral-900">Đề luyện tập đã thay đổi</h1>
         <p className="text-sm text-neutral-600">Giáo viên đã đóng hoặc chỉnh sửa đề. Lượt luyện dở không thể tiếp tục.</p>
-        <Button variant="outline" onClick={() => navigate('/student#practice')}>Về mục Luyện tập</Button>
+        <Button variant="outline" onClick={() => navigate('/student/practice')}>Về lịch sử luyện tập</Button>
       </div>
     );
   }
 
   if (!currentQuestion) {
-    return <div className="mx-auto max-w-xl py-16 text-center text-sm text-neutral-600">Không tìm thấy câu hỏi trong lượt luyện. Hãy quay lại mục Luyện tập.</div>;
+    return <div className="mx-auto max-w-xl py-16 text-center text-sm text-neutral-600">Không tìm thấy câu hỏi trong lượt luyện. Hãy quay lại lịch sử luyện tập.</div>;
   }
 
   const isFlagged = session.flaggedQuestionIds.includes(currentQuestion.id);

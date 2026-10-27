@@ -16,7 +16,7 @@ export function ExamLayout({ mode = "exam" }: ExamLayoutProps) {
       : "Bạn có chắc chắn muốn rời khỏi phòng thi?";
 
     if (window.confirm(message)) {
-      navigate(isPractice ? "/student#practice" : "/student");
+      navigate(isPractice ? "/student/practice" : "/student");
     }
   };
 

@@ -117,7 +117,7 @@ Học sinh có thể xem điểm, số câu đúng, tỷ lệ hoàn thành và n
 
 ### Luyện tập
 
-Học sinh mở mục **Luyện tập** trên trang chủ và chọn một đề đã xuất bản, không cần mã phòng. Phòng luyện có bố cục toàn màn hình như khi làm bài thi và chỉ hiển thị một câu hỏi tại một thời điểm; lưới bên cạnh chỉ dùng để chuyển số câu. Có thể luyện toàn bộ câu hoặc chọn số câu ngẫu nhiên; mỗi câu được kiểm tra riêng, có thể hiện lời giải ngay hoặc xem ở cuối lượt. Phiên luyện không có đếm ngược, cho phép làm lại không giới hạn và có nút luyện lại câu sai hoặc toàn bộ câu của lượt vừa rồi. Kết quả và lịch sử luyện tập được lưu riêng, không làm tăng lượt thi hay ảnh hưởng điểm và thống kê thi. Giáo viên có thể tắt mục này trong cài đặt đề; mặc định bật cho cả đề cũ.
+Học sinh mở luyện tập bằng nút **Luyện tập** dưới nút vào thi của đề được giao, hoặc trên sảnh của đề mở qua link/mã. Đề không còn được liệt kê thành một mục riêng trên trang chủ; lịch sử và lượt đang dở ở mục **Lịch sử luyện tập** trên thanh bên. Nút luyện tập chỉ hiện khi giáo viên bật tính năng cho đề. Phòng luyện có bố cục toàn màn hình như khi làm bài thi và chỉ hiển thị một câu hỏi tại một thời điểm; lưới bên cạnh chỉ dùng để chuyển số câu. Có thể luyện toàn bộ câu hoặc chọn số câu ngẫu nhiên; mỗi câu được kiểm tra riêng, có thể hiện lời giải ngay hoặc xem ở cuối lượt. Phiên luyện không có đếm ngược, cho phép làm lại không giới hạn và có nút luyện lại câu sai hoặc toàn bộ câu của lượt vừa rồi. Kết quả và lịch sử luyện tập được lưu riêng, không làm tăng lượt thi hay ảnh hưởng điểm và thống kê thi. Giáo viên có thể tắt chức năng này trong cài đặt đề; mặc định bật cho cả đề cũ.
 
 ## Quy trình hoạt động
 

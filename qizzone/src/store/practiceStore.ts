@@ -70,7 +70,7 @@ function asStatus(value: unknown): PracticeSessionStatus {
 function asActiveSession(value: unknown): PracticeSession {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.quizId !== 'string'
     || typeof value.studentId !== 'string' || !Array.isArray(value.questionOrder)) {
-    throw new Error('Dữ liệu lượt luyện tập không hợp lệ. Vui lòng quay lại mục Luyện tập.');
+    throw new Error('Dữ liệu lượt luyện tập không hợp lệ. Vui lòng quay lại lịch sử luyện tập.');
   }
   const questionOrder = value.questionOrder.filter((id): id is string => typeof id === 'string');
   if (questionOrder.length === 0) throw new Error('Đề không còn câu hỏi để luyện tập.');
@@ -298,7 +298,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       if (!isRecord(raw)) throw new Error('Không thể tải lượt luyện tập. Vui lòng thử lại.');
       if (raw.status === 'completed') return { status: 'completed' };
       if (raw.status === 'invalidated') {
-        return { status: 'invalidated', message: typeof raw.message === 'string' ? raw.message : 'Lượt luyện tập đã thay đổi. Hãy quay lại mục Luyện tập.' };
+        return { status: 'invalidated', message: typeof raw.message === 'string' ? raw.message : 'Lượt luyện tập đã thay đổi. Hãy quay lại lịch sử luyện tập.' };
       }
       const base = asActiveSession(raw);
       const checkedAnswers: Record<string, PracticeAnswer> = {};
@@ -368,7 +368,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     try {
       const raw = await practiceService.checkAnswer(sessionId, questionId, selectedAnswers);
       if (isRecord(raw) && raw.status === 'invalidated') {
-        throw new Error(typeof raw.message === 'string' ? raw.message : 'Đề đã thay đổi. Hãy quay lại mục Luyện tập.');
+        throw new Error(typeof raw.message === 'string' ? raw.message : 'Đề đã thay đổi. Hãy quay lại lịch sử luyện tập.');
       }
       const checked = asPracticeAnswer(raw);
       if (checked.questionId !== questionId) throw new Error('Kết quả kiểm tra không khớp câu hỏi hiện tại.');
@@ -391,7 +391,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     try {
       const raw = await practiceService.finish(sessionId);
       if (isRecord(raw) && raw.status === 'invalidated') {
-        throw new Error(typeof raw.message === 'string' ? raw.message : 'Đề đã thay đổi. Hãy quay lại mục Luyện tập.');
+        throw new Error(typeof raw.message === 'string' ? raw.message : 'Đề đã thay đổi. Hãy quay lại lịch sử luyện tập.');
       }
       const result = asPracticeResult(raw);
       set(state => ({ results: { ...state.results, [sessionId]: result } }));
