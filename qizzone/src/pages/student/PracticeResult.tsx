@@ -103,13 +103,13 @@ export function PracticeResult() {
     }
   };
 
-  const displayedError = loadError || (!sessionId ? 'Không tìm thấy lượt luyện tập. Hãy quay lại mục Luyện tập.' : null);
+  const displayedError = loadError || (!sessionId ? 'Không tìm thấy lượt luyện tập. Hãy quay lại lịch sử luyện tập.' : null);
   if (displayedError) {
     return (
       <div className="mx-auto max-w-xl space-y-4 py-12 text-center">
         <h1 className="text-xl font-bold text-neutral-900">Không thể tải kết quả</h1>
         <p className="text-sm text-neutral-600">{displayedError}</p>
-        <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về mục Luyện tập</Button>
+        <Button variant="outline" onClick={() => navigate('/student/practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về lịch sử luyện tập</Button>
       </div>
     );
   }
@@ -126,7 +126,7 @@ export function PracticeResult() {
           <h1 className="mt-2 text-2xl font-bold text-neutral-900">{cachedResult.quizTitle}</h1>
           <p className="mt-1 text-sm text-neutral-500">{cachedResult.subject} · {new Date(cachedResult.finishedAt).toLocaleString('vi-VN')}</p>
         </div>
-        <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về mục Luyện tập</Button>
+        <Button variant="outline" onClick={() => navigate('/student/practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về lịch sử luyện tập</Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -170,7 +170,7 @@ export function PracticeResult() {
 
       {retryError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{retryError}</p>}
       <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4 sm:flex-row sm:justify-end">
-        <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về mục Luyện tập</Button>
+        <Button variant="outline" onClick={() => navigate('/student/practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>Về lịch sử luyện tập</Button>
         <Button
           variant="outline"
           onClick={() => void handleRetry('wrong')}

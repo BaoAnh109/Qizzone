@@ -69,8 +69,8 @@ export function PracticeSetup() {
         </div>
         <h1 className="text-xl font-bold text-neutral-900">Không thể luyện tập đề này</h1>
         <p className="text-sm text-neutral-600">{unavailableMessage}</p>
-        <Button variant="outline" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
-          Về mục Luyện tập
+        <Button variant="outline" onClick={() => navigate('/student')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
+          Về trang học sinh
         </Button>
       </div>
     );
@@ -78,8 +78,8 @@ export function PracticeSetup() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-12">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/student#practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
-        Về mục Luyện tập
+      <Button variant="ghost" size="sm" onClick={() => navigate('/student')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
+        Về trang học sinh
       </Button>
       <Card className="overflow-hidden">
         <CardHeader className="bg-emerald-50/70">

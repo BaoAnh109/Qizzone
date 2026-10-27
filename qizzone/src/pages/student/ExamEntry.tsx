@@ -269,7 +269,7 @@ export function ExamEntry() {
           )}
 
           {/* Start Exam CTA */}
-          <div className="pt-4">
+          <div className="space-y-2 pt-4">
             {isAttemptsExceeded ? (
               <Button
                 variant="outline"
@@ -288,6 +288,17 @@ export function ExamEntry() {
                 leftIcon={<Play className="h-5 w-5 fill-current" />}
               >
                 Bắt đầu làm bài thi ngay
+              </Button>
+            )}
+            {user?.role === "student" && quiz.settings.practiceEnabled !== false && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate(`/student/practice/${quiz.id}`)}
+                className="w-full h-12 border-emerald-200 font-bold text-emerald-800 hover:bg-emerald-50"
+                leftIcon={<BookOpen className="h-5 w-5" />}
+              >
+                Luyện tập
               </Button>
             )}
           </div>

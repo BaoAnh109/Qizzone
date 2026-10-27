@@ -20,6 +20,7 @@ const QuestionReview = lazy(() => import("@/pages/teacher/QuestionReview"));
 const QuizResultsView = lazy(() => import("@/pages/teacher/QuizResultsView"));
 const SplitExamEditor = lazy(() => import("@/pages/teacher/SplitExamEditor"));
 const StudentDashboard = lazy(() => import("@/pages/student/StudentDashboard"));
+const PracticeHistory = lazy(() => import("@/pages/student/PracticeHistory"));
 const PracticeSetup = lazy(() => import("@/pages/student/PracticeSetup"));
 const PracticeRoom = lazy(() => import("@/pages/student/PracticeRoom"));
 const PracticeResult = lazy(() => import("@/pages/student/PracticeResult"));
@@ -103,7 +104,7 @@ export function AppRoutes() {
           <Route element={<ProtectedRoute allowedRole="student" />}>
             <Route element={<DashboardLayout />}>
               <Route path="/student" element={<StudentDashboard />} />
-              <Route path="/student/practice" element={<Navigate to="/student#practice" replace />} />
+              <Route path="/student/practice" element={<PracticeHistory />} />
               <Route path="/student/practice/:quizId" element={<PracticeSetup />} />
               <Route path="/student/practice/:sessionId/result" element={<PracticeResult />} />
             </Route>
