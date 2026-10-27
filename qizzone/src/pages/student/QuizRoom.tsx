@@ -197,7 +197,7 @@ export function QuizRoom() {
   return (
     <div className="flex flex-col min-h-screen bg-neutral-100/60 pb-12">
       {/* Top Fixed Exam Header Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/90 shadow-2xs">
+      <header className="sticky top-0 z-40 theme-surface-raised backdrop-blur-md border-b theme-border shadow-2xs">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
           {/* Quiz Title & Subject */}
           <div className="flex items-center gap-3 min-w-0">
