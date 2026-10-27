@@ -80,7 +80,7 @@ export function Modal({
       {/* Modal Dialog Content */}
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl",
+          "relative w-full overflow-hidden rounded-lg border theme-border theme-surface-raised shadow-xl",
           "transition-opacity duration-150",
           sizeStyles[size],
           className

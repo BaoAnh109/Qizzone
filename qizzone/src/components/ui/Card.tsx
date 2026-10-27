@@ -13,7 +13,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-neutral-200 bg-white",
+        "rounded-lg border theme-border theme-surface",
         hoverEffect && "transition-colors duration-150 hover:border-neutral-300 hover:bg-neutral-50/30",
         className
       )}
@@ -28,7 +28,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-col space-y-1.5 border-b border-neutral-200 p-5", className)}
+      className={cn("flex flex-col space-y-1.5 border-b theme-border p-5", className)}
       {...props}
     />
   );
@@ -40,7 +40,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("font-semibold leading-snug tracking-tight text-neutral-950", className)}
+      className={cn("font-semibold leading-snug tracking-tight theme-text-primary", className)}
       {...props}
     />
   );
@@ -52,7 +52,7 @@ export function CardDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-sm text-neutral-500", className)}
+      className={cn("text-sm theme-text-muted", className)}
       {...props}
     />
   );

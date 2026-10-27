@@ -230,11 +230,11 @@ export function StudentDashboard() {
                 maxLength={10}
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                className="h-11 w-full sm:w-52 rounded-xl border border-white/25 bg-white px-3.5 text-center font-mono text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-white/60 shadow-xs"
+                className="theme-light-control h-11 w-full sm:w-52 rounded-xl border border-white/25 bg-white px-3.5 text-center font-mono text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-white/60 shadow-xs"
               />
               <button
                 type="submit"
-                className="h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+                className="theme-light-control theme-light-control-button h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
               >
                 <LogIn className="h-4 w-4 text-indigo-600" />
                 <span>Vào phòng thi</span>

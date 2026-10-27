@@ -4,12 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f6f7f9" />
     <meta
       name="description"
       content="Qizzone - Nền tảng tạo đề và tổ chức thi trắc nghiệm trực tuyến."
     />
     <title>Qizzone</title>
+    <script>
+      (() => {
+        let preference = "system";
+        try {
+          const storedPreference = window.localStorage.getItem("qizzone-theme");
+          if (storedPreference === "light" || storedPreference === "dark" || storedPreference === "system") {
+            preference = storedPreference;
+          }
+        } catch {
+          // Fall back to the system setting when browser storage is unavailable.
+        }
+
+        const followsDarkSystemTheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+        const isDark = preference === "dark" || (preference === "system" && followsDarkSystemTheme);
+        const theme = isDark ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.documentElement.style.backgroundColor = isDark ? "#0E1524" : "#f6f7f9";
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", isDark ? "#0E1524" : "#f6f7f9");
+      })();
+    </script>
   </head>
   <body>
     <main id="root"></main>

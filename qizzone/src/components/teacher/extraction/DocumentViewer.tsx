@@ -201,7 +201,7 @@ export function DocumentViewer() {
           {/* Render PDF Canvas */}
           {document?.fileType === "pdf" && document.pdfDoc ? (
             <div className="flex flex-col items-center justify-center p-2">
-              <div className="rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
+              <div className="theme-document-canvas rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
                 <canvas ref={canvasRef} className="max-w-full h-auto block" />
               </div>
             </div>
@@ -209,7 +209,7 @@ export function DocumentViewer() {
             /* Render Image Viewer */
             <div className="flex flex-col items-center justify-center p-2">
               <div
-                className="overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
+                className="theme-document-canvas overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
                 style={{
                   transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
                 }}
@@ -224,7 +224,7 @@ export function DocumentViewer() {
           ) : (
             /* Render Word / Text Document */
             <div
-              className="min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
+              className="theme-document-paper min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
               style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left" }}
             >
               {document?.rawHtml ? (

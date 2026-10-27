@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Moon, Sun, Monitor } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { useThemeStore } from "@/store/themeStore";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -27,6 +28,9 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   const logout = useAuthStore((state) => state.logout);
   const requestTeacherAccess = useAuthStore((state) => state.requestTeacherAccess);
   const switchRole = useAuthStore((state) => state.switchRole);
+  const themePreference = useThemeStore((state) => state.preference);
+  const isDarkTheme = useThemeStore((state) => state.isDark);
+  const setThemePreference = useThemeStore((state) => state.setPreference);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -96,7 +100,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-16 border-b border-neutral-200 bg-white">
+      <header className="sticky top-0 z-30 h-16 border-b theme-border theme-surface">
         <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             {onToggleMobileSidebar && (
@@ -143,7 +147,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 top-11 z-40 w-80 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl">
+                  <div className="absolute right-0 top-11 z-40 w-80 overflow-hidden rounded-xl border theme-border theme-surface-raised shadow-xl">
                     <div className="border-b border-neutral-100 px-4 py-3">
                       <p className="truncate text-sm font-semibold text-neutral-900">{user?.fullName || "Người dùng"}</p>
                       <p className="truncate text-xs text-neutral-500">{user?.email}</p>
@@ -208,7 +212,47 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                       </div>
                     )}
 
-                    <div className="border-t border-neutral-100 p-2">
+                    <div className="border-y border-neutral-100 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          {isDarkTheme ? (
+                            <Moon className="h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
+                          ) : (
+                            <Sun className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-neutral-800">Giao diện tối</p>
+                            <p className="text-[11px] text-neutral-500">
+                              {themePreference === "system" ? "Tự động theo thiết bị" : isDarkTheme ? "Đang bật" : "Đang tắt"}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isDarkTheme}
+                          aria-label="Giao diện tối"
+                          onClick={() => setThemePreference(isDarkTheme ? "light" : "dark")}
+                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isDarkTheme ? "bg-blue-600" : "bg-neutral-200"}`}
+                        >
+                          <span
+                            className={`theme-switch-thumb pointer-events-none h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isDarkTheme ? "translate-x-5" : "translate-x-0.5"}`}
+                          />
+                        </button>
+                      </div>
+                      {themePreference !== "system" && (
+                        <button
+                          type="button"
+                          onClick={() => setThemePreference("system")}
+                          className="mt-2 inline-flex items-center gap-1.5 rounded text-[11px] font-medium text-blue-700 transition hover:text-blue-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                        >
+                          <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
+                          Dùng theo giao diện thiết bị
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="p-2">
                       <button
                         type="button"
                         onClick={() => void handleLogout()}
