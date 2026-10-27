@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { QuestionFrame } from '@/components/student/QuestionFrame';
 import { useToast } from '@/hooks/useToast';
+import { useQuestionKeyboardShortcuts } from '@/hooks/useQuestionKeyboardShortcuts';
 import { usePracticeStore } from '@/store/practiceStore';
 import { useQuizStore } from '@/store/quizStore';
 import type { OptionId } from '@/types/quiz';
@@ -113,6 +114,47 @@ export function PracticeRoom() {
       setPageError(practiceErrorMessage(error, 'Không thể hoàn tất lượt luyện tập. Vui lòng thử lại.'));
     }
   };
+
+  useQuestionKeyboardShortcuts({
+    optionCount: orderedOptions.length,
+    onOptionSelect: (index) => {
+      if (!session || !currentQuestion || checked) return;
+      const option = orderedOptions[index];
+      if (option) {
+        selectAnswer(session.id, currentQuestion.id, option.id as OptionId, currentQuestion.type === 'multiple_choice');
+      }
+    },
+    onEnter: () => {
+      if (!session || !currentQuestion) return;
+      if (checked) {
+        if (currentIndex < questions.length - 1) {
+          setQuestionIndex(session.id, currentIndex + 1);
+        } else {
+          void handleFinish();
+        }
+      } else if (selectedAnswers.length > 0) {
+        void handleCheck();
+      }
+    },
+    onPrevious: () => {
+      if (session) setQuestionIndex(session.id, Math.max(0, currentIndex - 1));
+    },
+    onNext: () => {
+      if (session) setQuestionIndex(session.id, Math.min(questions.length - 1, currentIndex + 1));
+    },
+    disabled: !session
+      || session.status !== 'in_progress'
+      || !quiz
+      || quiz.status !== 'published'
+      || quiz.settings.practiceEnabled === false
+      || questions.length !== session.questionOrder.length
+      || !currentQuestion
+      || isLoading
+      || isQuizLoading
+      || !!pageError
+      || isChecking
+      || isFinishing,
+  });
 
   const displayedError = pageError
     || (!sessionId ? 'Không tìm thấy mã lượt luyện tập. Hãy quay lại lịch sử luyện tập.' : null)

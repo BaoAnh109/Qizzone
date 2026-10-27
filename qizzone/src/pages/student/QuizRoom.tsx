@@ -20,6 +20,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
 import { useExamTimer } from "@/hooks/useExamTimer";
+import { useQuestionKeyboardShortcuts } from "@/hooks/useQuestionKeyboardShortcuts";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -180,6 +181,27 @@ export function QuizRoom() {
     if (!quiz || !currentQuestion) return;
     clearAnswer(quiz.id, currentQuestion.id);
   };
+
+  useQuestionKeyboardShortcuts({
+    optionCount: currentQuestion?.options.length || 0,
+    onOptionSelect: (index) => {
+      const option = currentQuestion?.options[index];
+      if (option) handleSelectOption(option.id);
+    },
+    onEnter: () => {
+      if (!quiz || currentIndex >= questions.length - 1) return;
+      setQuestionIndex(quiz.id, currentIndex + 1);
+    },
+    onPrevious: () => {
+      if (!quiz) return;
+      setQuestionIndex(quiz.id, Math.max(0, currentIndex - 1));
+    },
+    onNext: () => {
+      if (!quiz) return;
+      setQuestionIndex(quiz.id, Math.min(questions.length - 1, currentIndex + 1));
+    },
+    disabled: !quiz || !session || !currentQuestion || isSubmitModalOpen,
+  });
 
   if (!quiz || !session) {
     return (
