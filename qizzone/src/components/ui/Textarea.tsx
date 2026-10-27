@@ -41,7 +41,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               : undefined
           }
           className={cn(
-            "w-full rounded-md border bg-white px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400",
+            "theme-control w-full rounded-md border px-3 py-2.5 text-sm placeholder:text-neutral-400",
             "transition-colors duration-150",
             "focus-visible:outline-hidden focus-visible:ring-2",
             error

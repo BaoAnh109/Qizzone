@@ -28,7 +28,7 @@ export function RouteLoadingFallback() {
 
 export function AuthLoadingFallback() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#f6f7f9] p-4 text-center">
+    <div className="app-shell min-h-screen flex flex-col items-center justify-center p-4 text-center">
       <div className="h-8 w-8 animate-spin rounded-full border-3 border-neutral-200 border-t-blue-600 mb-4" />
       <p className="text-sm font-semibold text-neutral-800">Đang chuẩn bị phiên làm việc...</p>
       <p className="text-xs text-neutral-500 mt-1">Hệ thống đang kết nối dữ liệu an toàn</p>

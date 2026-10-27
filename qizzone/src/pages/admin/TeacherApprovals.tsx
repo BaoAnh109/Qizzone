@@ -136,7 +136,7 @@ export function TeacherApprovals() {
                     className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"}`}
                   >
                     <span className={`relative h-4 w-7 rounded-full transition-colors ${request.blocked ? "bg-rose-500" : "bg-neutral-300"}`}>
-                      <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                      <span className={`theme-switch-thumb absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </span>
                     {request.blocked ? "Đã khóa gửi yêu cầu" : "Cho phép gửi yêu cầu"}
                   </button>

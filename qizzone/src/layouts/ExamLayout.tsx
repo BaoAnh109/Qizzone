@@ -21,9 +21,9 @@ export function ExamLayout({ mode = "exam" }: ExamLayoutProps) {
   };
 
   return (
-    <div className="flex min-h-screen select-none flex-col bg-[#f6f7f9]">
+    <div className="app-shell flex min-h-screen select-none flex-col">
       {/* Exam Header */}
-      <header className="sticky top-0 z-30 h-14 border-b border-neutral-200 bg-white px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 h-14 border-b theme-border theme-surface px-4 sm:px-6 lg:px-8">
         <div className="flex h-full w-full items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-600 text-white">

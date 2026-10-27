@@ -7,7 +7,7 @@ export function DashboardLayout() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#f6f7f9]">
+    <div className="app-shell flex min-h-screen">
       {/* Sidebar (Desktop + Mobile Drawer) */}
       <Sidebar
         isOpenMobile={isMobileSidebarOpen}
