@@ -249,7 +249,7 @@ export function PracticeRoom() {
               </div>
             )}
           >
-            {orderedOptions.map(option => {
+            {orderedOptions.map((option, index) => {
               const isSelected = selectedAnswers.includes(option.id);
               const isCorrectOption = !!checked?.correctAnswers.includes(option.id);
               const isWrongSelection = !!checked && isSelected && !isCorrectOption;
@@ -272,9 +272,10 @@ export function PracticeRoom() {
                   className={'flex min-h-14 w-full items-start gap-3 rounded-xl border p-3.5 text-left transition sm:p-4 ' + style + ' disabled:cursor-default'}
                 >
                   <span className={'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ' + (isSelected || isCorrectOption ? 'border-current' : 'border-neutral-300')}>
-                    {checked && isCorrectOption ? <Check className="h-3.5 w-3.5" /> : option.id}
+                    {String.fromCharCode(65 + index)}
                   </span>
                   <span className="min-w-0 flex-1 text-sm leading-6"><MathRenderer content={option.content} /></span>
+                  {checked && isCorrectOption && <Check className="h-4 w-4 shrink-0 text-emerald-700" aria-label="Đáp án đúng" />}
                   {isWrongSelection && <span className="text-xs font-semibold text-rose-700">Bạn chọn</span>}
                 </button>
               );
