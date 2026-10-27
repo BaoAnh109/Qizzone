@@ -5,6 +5,7 @@ import { MathRenderer } from '@/components/common/MathRenderer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { QuestionFrame } from '@/components/student/QuestionFrame';
 import { useToast } from '@/hooks/useToast';
 import { usePracticeStore } from '@/store/practiceStore';
 import { useQuizStore } from '@/store/quizStore';
@@ -174,73 +175,46 @@ export function PracticeRoom() {
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
         <main className="space-y-4 lg:col-span-8">
-          <Card className="overflow-hidden shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 bg-neutral-50/70 p-4 sm:p-5">
-              <div className="flex items-center gap-2">
-                <Badge variant="primary" size="md">Câu {currentIndex + 1} / {questions.length}</Badge>
-                {checked && <Badge variant={checked.isCorrect ? 'success' : 'destructive'} size="sm">{checked.isCorrect ? 'Chính xác' : 'Chưa chính xác'}</Badge>}
-              </div>
+          <QuestionFrame
+            questionNumber={currentIndex + 1}
+            questionCount={questions.length}
+            headerMeta={checked && (
+              <Badge variant={checked.isCorrect ? 'success' : 'destructive'} size="sm">
+                {checked.isCorrect ? 'Chính xác' : 'Chưa chính xác'}
+              </Badge>
+            )}
+            headerActions={(
               <Button
                 size="sm"
                 variant={isFlagged ? 'secondary' : 'outline'}
                 className={isFlagged ? 'border-amber-300 bg-amber-50 text-amber-800' : ''}
                 onClick={() => toggleFlag(session.id, currentQuestion.id)}
-                leftIcon={<Flag className={`h-3.5 w-3.5 ${isFlagged ? 'fill-current' : ''}`} />}
+                leftIcon={<Flag className={isFlagged ? 'h-3.5 w-3.5 fill-current' : 'h-3.5 w-3.5'} />}
               >
                 {isFlagged ? 'Bỏ cờ' : 'Đánh dấu'}
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-5 p-4 sm:p-6">
-              <div className="text-base font-medium leading-7 text-neutral-900 sm:text-lg">
-                <MathRenderer content={currentQuestion.content} />
-              </div>
-              <div className="space-y-3">
-                {orderedOptions.map(option => {
-                  const isSelected = selectedAnswers.includes(option.id);
-                  const isCorrectOption = !!checked?.correctAnswers.includes(option.id);
-                  const isWrongSelection = !!checked && isSelected && !isCorrectOption;
-                  const style = checked
-                    ? isCorrectOption
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-950'
-                      : isWrongSelection
-                        ? 'border-rose-400 bg-rose-50 text-rose-950'
-                        : 'border-neutral-200 bg-white text-neutral-500'
-                    : isSelected
-                      ? 'border-blue-500 bg-blue-50 text-neutral-950'
-                      : 'border-neutral-200 bg-white text-neutral-800 hover:border-blue-300 hover:bg-blue-50/40';
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      disabled={!!checked}
-                      aria-pressed={isSelected}
-                      onClick={() => selectAnswer(session.id, currentQuestion.id, option.id as OptionId, currentQuestion.type === 'multiple_choice')}
-                      className={`flex min-h-14 w-full items-start gap-3 rounded-xl border p-3.5 text-left transition sm:p-4 ${style} disabled:cursor-default`}
-                    >
-                      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${isSelected || isCorrectOption ? 'border-current' : 'border-neutral-300'}`}>
-                        {checked && isCorrectOption ? <Check className="h-3.5 w-3.5" /> : option.id}
-                      </span>
-                      <span className="min-w-0 flex-1 text-sm leading-6"><MathRenderer content={option.content} /></span>
-                      {isWrongSelection && <span className="text-xs font-semibold text-rose-700">Bạn chọn</span>}
-                    </button>
-                  );
-                })}
-              </div>
+            )}
+            prompt={<MathRenderer content={currentQuestion.content} />}
+            feedback={(
+              <>
+                {checked && session.showExplanation && checked.explanation && (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+                    <p className="mb-1 text-xs font-bold uppercase tracking-wide text-sky-900">Lời giải</p>
+                    <div className="text-sm leading-6 text-sky-950"><MathRenderer content={checked.explanation} /></div>
+                  </div>
+                )}
 
-              {checked && session.showExplanation && checked.explanation && (
-                <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-sky-900">Lời giải</p>
-                  <div className="text-sm leading-6 text-sky-950"><MathRenderer content={checked.explanation} /></div>
-                </div>
-              )}
-
-              {checked && !session.showExplanation && (
-                <div className={`flex items-center gap-2 rounded-xl p-3 text-sm font-semibold ${checked.isCorrect ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  {checked.isCorrect ? 'Bạn đã chọn đúng.' : 'Câu này chưa đúng. Đáp án đúng đã được đánh dấu.'} Lời giải sẽ hiện ở kết quả.
-                </div>
-              )}
-
+                {checked && !session.showExplanation && (
+                  <div className={checked.isCorrect
+                    ? 'flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800'
+                    : 'flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-800'}>
+                    <CheckCircle2 className="h-4 w-4" />
+                    {checked.isCorrect ? 'Bạn đã chọn đúng.' : 'Câu này chưa đúng. Đáp án đúng đã được đánh dấu.'} Lời giải sẽ hiện ở kết quả.
+                  </div>
+                )}
+              </>
+            )}
+            footer={(
               <div className="flex flex-col gap-3 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="outline"
@@ -273,8 +247,39 @@ export function PracticeRoom() {
                   </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          >
+            {orderedOptions.map(option => {
+              const isSelected = selectedAnswers.includes(option.id);
+              const isCorrectOption = !!checked?.correctAnswers.includes(option.id);
+              const isWrongSelection = !!checked && isSelected && !isCorrectOption;
+              const style = checked
+                ? isCorrectOption
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-950'
+                  : isWrongSelection
+                    ? 'border-rose-400 bg-rose-50 text-rose-950'
+                    : 'border-neutral-200 bg-white text-neutral-500'
+                : isSelected
+                  ? 'border-blue-500 bg-blue-50 text-neutral-950'
+                  : 'border-neutral-200 bg-white text-neutral-800 hover:border-blue-300 hover:bg-blue-50/40';
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={!!checked}
+                  aria-pressed={isSelected}
+                  onClick={() => selectAnswer(session.id, currentQuestion.id, option.id as OptionId, currentQuestion.type === 'multiple_choice')}
+                  className={'flex min-h-14 w-full items-start gap-3 rounded-xl border p-3.5 text-left transition sm:p-4 ' + style + ' disabled:cursor-default'}
+                >
+                  <span className={'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ' + (isSelected || isCorrectOption ? 'border-current' : 'border-neutral-300')}>
+                    {checked && isCorrectOption ? <Check className="h-3.5 w-3.5" /> : option.id}
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm leading-6"><MathRenderer content={option.content} /></span>
+                  {isWrongSelection && <span className="text-xs font-semibold text-rose-700">Bạn chọn</span>}
+                </button>
+              );
+            })}
+          </QuestionFrame>
         </main>
 
         <aside className="space-y-4 lg:col-span-4">
