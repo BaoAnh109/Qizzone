@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { QuestionFrame } from "@/components/student/QuestionFrame";
 import { SubmitConfirmModal } from "@/components/student/SubmitConfirmModal";
 import { useToast } from "@/hooks/useToast";
 import type { OptionId, Question } from "@/types/quiz";
@@ -280,35 +281,26 @@ export function QuizRoom() {
               </div>
             )}
             {currentQuestion ? (
-              <Card className="border-neutral-200/90 shadow-sm overflow-hidden bg-white">
-                {/* Question Header */}
-                <CardHeader className="bg-neutral-50/70 border-b border-neutral-200/60 p-4 sm:p-5 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="primary" size="md">
-                      Câu {currentIndex + 1} / {questions.length}
-                    </Badge>
-                    <span className="text-xs text-neutral-400">
-                      ({Number((currentQuestion.points || 1).toFixed(2))} điểm)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
+              <QuestionFrame
+                questionNumber={currentIndex + 1}
+                questionCount={questions.length}
+                headerMeta={(
+                  <span className="text-xs text-neutral-400">
+                    ({Number((currentQuestion.points || 1).toFixed(2))} điểm)
+                  </span>
+                )}
+                headerActions={(
+                  <>
                     <button
                       type="button"
                       onClick={handleToggleFlag}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                        isCurrentFlagged
-                          ? "bg-amber-100 border-amber-300 text-amber-950 ring-2 ring-amber-400/40 shadow-xs"
-                          : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300"
-                      }`}
+                      className={isCurrentFlagged
+                        ? "flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950 ring-2 ring-amber-400/40 shadow-xs transition cursor-pointer"
+                        : "flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-50 cursor-pointer"}
                     >
-                      <Flag
-                        className={`h-3.5 w-3.5 ${
-                          isCurrentFlagged
-                            ? "fill-amber-500 text-amber-600"
-                            : "text-neutral-400"
-                        }`}
-                      />
+                      <Flag className={isCurrentFlagged
+                        ? "h-3.5 w-3.5 fill-amber-500 text-amber-600"
+                        : "h-3.5 w-3.5 text-neutral-400"} />
                       <span>{isCurrentFlagged ? "Đã gắn cờ" : "Gắn cờ"}</span>
                     </button>
 
@@ -317,60 +309,17 @@ export function QuizRoom() {
                         type="button"
                         onClick={handleClearCurrent}
                         title="Bỏ chọn đáp án"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-neutral-500 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-neutral-500 transition hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Bỏ chọn</span>
                       </button>
                     )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="p-5 sm:p-7 space-y-6">
-                  {/* Question Prompt with KaTeX */}
-                  <div className="text-base sm:text-lg font-medium text-neutral-900 leading-relaxed">
-                    <MathRenderer content={currentQuestion.content} />
-                  </div>
-
-                  {/* 4 Option Buttons */}
-                  <div className="space-y-3 pt-2">
-                    {currentQuestion.options.map((opt, index) => {
-                      const isSelected = currentAnswers.includes(opt.id);
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleSelectOption(opt.id)}
-                          className={`flex w-full cursor-pointer items-start gap-4 rounded-lg border p-4 text-left transition-colors sm:p-5 ${
-                            isSelected
-                              ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100"
-                              : "border-neutral-200 bg-white hover:border-indigo-300 hover:bg-neutral-50/80"
-                          }`}
-                        >
-                          <span
-                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold transition sm:text-sm ${
-                              isSelected
-                                ? "bg-indigo-600 text-white shadow-2xs"
-                                : "bg-neutral-100 text-neutral-700 border border-neutral-200"
-                            }`}
-                          >
-                            {String.fromCharCode(65 + index)}
-                          </span>
-
-                          <div className="flex-1 pt-0.5 text-sm sm:text-base font-normal text-neutral-900">
-                            <MathRenderer content={opt.content} />
-                          </div>
-
-                          {isSelected && (
-                            <CheckCircle2 className="h-5 w-5 text-indigo-600 shrink-0 ml-auto mt-0.5" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Prev / Next Navigation Controls */}
-                  <div className="flex items-center justify-between pt-6 border-t border-neutral-100">
+                  </>
+                )}
+                prompt={<MathRenderer content={currentQuestion.content} />}
+                footer={(
+                  <div className="flex items-center justify-between border-t border-neutral-100 pt-6">
                     <Button
                       variant="outline"
                       disabled={currentIndex === 0}
@@ -395,12 +344,42 @@ export function QuizRoom() {
                         leftIcon={<Send className="h-4 w-4" />}
                         className="bg-emerald-600 hover:bg-emerald-700 font-bold"
                       >
-                        Hoàn tất & Nộp bài
+                        Hoàn tất &amp; Nộp bài
                       </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              >
+                {currentQuestion.options.map((opt, index) => {
+                  const isSelected = currentAnswers.includes(opt.id);
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleSelectOption(opt.id)}
+                      className={isSelected
+                        ? "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-blue-600 bg-blue-50 p-4 text-left ring-2 ring-blue-100 transition-colors sm:p-5"
+                        : "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-indigo-300 hover:bg-neutral-50/80 sm:p-5"}
+                    >
+                      <span
+                        className={isSelected
+                          ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs transition sm:text-sm"
+                          : "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-100 text-xs font-bold text-neutral-700 transition sm:text-sm"}
+                      >
+                        {String.fromCharCode(65 + index)}
+                      </span>
+
+                      <div className="flex-1 pt-0.5 text-sm font-normal text-neutral-900 sm:text-base">
+                        <MathRenderer content={opt.content} />
+                      </div>
+
+                      {isSelected && (
+                        <CheckCircle2 className="ml-auto mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
+                      )}
+                    </button>
+                  );
+                })}
+              </QuestionFrame>
             ) : null}
           </div>
 
