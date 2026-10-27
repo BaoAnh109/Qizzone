@@ -172,15 +172,18 @@
   }
 
   .page-heading {
-    @apply text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl;
+    @apply text-2xl font-semibold tracking-tight sm:text-3xl;
+    color: var(--text-primary);
   }
 
   .page-description {
-    @apply mt-1.5 max-w-2xl text-sm leading-6 text-neutral-600;
+    @apply mt-1.5 max-w-2xl text-sm leading-6;
+    color: var(--text-secondary);
   }
 
   .section-heading {
-    @apply text-lg font-semibold text-neutral-950;
+    @apply text-lg font-semibold;
+    color: var(--text-primary);
   }
 
   .route-progress-bar {
