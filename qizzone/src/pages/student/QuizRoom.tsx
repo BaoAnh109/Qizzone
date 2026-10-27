@@ -13,6 +13,8 @@ import {
   AlertCircle,
   ListChecks,
   RotateCcw,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
@@ -78,6 +80,7 @@ export function QuizRoom() {
 
   const currentIndex = session?.currentQuestionIndex || 0;
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [isNavigatorCollapsed, setIsNavigatorCollapsed] = useState(false);
 
   useEffect(() => {
     if (!quizId) return;
@@ -271,9 +274,11 @@ export function QuizRoom() {
 
       {/* Main Exam Body: 2 Columns (Question Area + Question Navigator) */}
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className={isNavigatorCollapsed
+          ? "grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_3rem]"
+          : "grid grid-cols-1 items-start gap-6 lg:grid-cols-12"}>
           {/* LEFT: Current Question Content & Options (8 cols) */}
-          <div className="lg:col-span-8 space-y-4">
+          <div className={isNavigatorCollapsed ? "min-w-0 space-y-4" : "min-w-0 space-y-4 lg:col-span-8"}>
             {incorrectQuestionIds && (
               <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 px-4 text-xs text-amber-900 flex items-center justify-between font-medium shadow-2xs">
                 <span>Chế độ luyện tập: Làm lại các câu sai ({questions.length} câu)</span>
@@ -384,21 +389,49 @@ export function QuizRoom() {
           </div>
 
           {/* RIGHT: Question Matrix Navigator (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            <Card className="border-neutral-200/90 shadow-xs bg-white">
-              <CardHeader className="pb-3 border-b border-neutral-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-bold flex items-center gap-1.5">
-                    <ListChecks className="h-4 w-4 text-blue-600" />
-                    <span>Danh sách câu hỏi</span>
-                  </CardTitle>
-                  <span className="text-xs font-semibold text-neutral-500">
-                    {answeredCount}/{questions.length} đã làm
-                  </span>
-                </div>
-              </CardHeader>
+          <aside id="quiz-question-navigator" className={isNavigatorCollapsed ? "ml-auto w-12 lg:ml-0" : "space-y-4 lg:col-span-4"}>
+            {isNavigatorCollapsed ? (
+              <button
+                type="button"
+                onClick={() => setIsNavigatorCollapsed(false)}
+                aria-label="Mở danh sách câu hỏi"
+                aria-controls="quiz-question-navigator"
+                aria-expanded="false"
+                title="Mở danh sách câu hỏi"
+                className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors hover:bg-neutral-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 lg:min-h-[32rem]"
+              >
+                <PanelRightOpen className="h-4 w-4 shrink-0" />
+                <span className="[writing-mode:vertical-rl] text-xs font-semibold tracking-wide">Danh sách câu hỏi</span>
+              </button>
+            ) : (
+              <Card className="border-neutral-200/90 shadow-xs bg-white">
+                <CardHeader className="pb-3 border-b border-neutral-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="flex min-w-0 items-center gap-1.5 text-sm font-bold sm:text-base">
+                      <ListChecks className="h-4 w-4 shrink-0 text-blue-600" />
+                      <span className="truncate">Danh sách câu hỏi</span>
+                    </CardTitle>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className="text-xs font-semibold text-neutral-500">
+                        {answeredCount}/{questions.length} đã làm
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 shrink-0 p-0"
+                        onClick={() => setIsNavigatorCollapsed(true)}
+                        aria-label="Thu nhỏ danh sách câu hỏi"
+                        aria-controls="quiz-question-navigator"
+                        aria-expanded="true"
+                        title="Thu nhỏ danh sách câu hỏi"
+                      >
+                        <PanelRightClose className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
 
-              <CardContent className="p-4 space-y-4">
+                <CardContent className="p-4 space-y-4">
                 {/* Status Legend */}
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600 pb-1 border-b border-neutral-100">
                   <div className="flex items-center gap-1.5">
@@ -466,9 +499,10 @@ export function QuizRoom() {
                     Nộp bài thi ngay
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            )}
+          </aside>
         </div>
       </main>
 
