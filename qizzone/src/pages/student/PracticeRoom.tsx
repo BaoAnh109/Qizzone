@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock3, Flag, ListChecks } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock3, Flag, ListChecks, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { MathRenderer } from '@/components/common/MathRenderer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +39,7 @@ export function PracticeRoom() {
   const quiz = session ? quizzes.find(item => item.id === session.quizId) : undefined;
   const [pageError, setPageError] = useState<string | null>(null);
   const [now, setNow] = useState(0);
+  const [isNavigatorCollapsed, setIsNavigatorCollapsed] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -173,8 +174,10 @@ export function PracticeRoom() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-        <main className="space-y-4 lg:col-span-8">
+      <div className={isNavigatorCollapsed
+        ? 'grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_3rem]'
+        : 'grid grid-cols-1 items-start gap-5 lg:grid-cols-12'}>
+        <main className={isNavigatorCollapsed ? 'min-w-0 space-y-4' : 'min-w-0 space-y-4 lg:col-span-8'}>
           <QuestionFrame
             questionNumber={currentIndex + 1}
             questionCount={questions.length}
@@ -283,47 +286,72 @@ export function PracticeRoom() {
           </QuestionFrame>
         </main>
 
-        <aside className="space-y-4 lg:col-span-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm"><ListChecks className="h-4 w-4 text-emerald-700" />Điều hướng câu hỏi</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-0">
-              <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 lg:grid-cols-5">
-                {session.questionOrder.map((questionId, index) => {
-                  const answer = session.checkedAnswers[questionId];
-                  const flagged = session.flaggedQuestionIds.includes(questionId);
-                  const selected = (session.answers[questionId] || []).length > 0;
-                  const color = answer
-                    ? answer.isCorrect ? 'border-emerald-300 bg-emerald-100 text-emerald-900' : 'border-rose-300 bg-rose-100 text-rose-900'
-                    : flagged ? 'border-amber-300 bg-amber-50 text-amber-900'
-                      : selected ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-neutral-200 bg-white text-neutral-700';
-                  return (
-                    <button
-                      key={questionId}
-                      type="button"
-                      onClick={() => setQuestionIndex(session.id, index)}
-                      className={`relative flex h-10 items-center justify-center rounded-lg border text-sm font-bold ${color} ${index === currentIndex ? 'ring-2 ring-emerald-600 ring-offset-1' : ''}`}
-                      aria-label={`Chuyển đến câu ${index + 1}${flagged ? ', đã đánh dấu' : ''}${answer ? (answer.isCorrect ? ', đúng' : ', sai') : ''}`}
-                    >
-                      {index + 1}
-                      {flagged && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-500" />}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-500">
-                <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Đúng</span>
-                <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-rose-500" />Sai</span>
-                <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-blue-500" />Đã chọn</span>
-                <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-amber-500" />Đánh dấu</span>
-              </div>
-              <p className="text-xs text-neutral-500">Câu nhiều đáp án chỉ đúng khi bạn chọn đủ và đúng tất cả đáp án.</p>
-            </CardContent>
-          </Card>
-          <Button variant="outline" className="w-full" onClick={() => void handleFinish()} isLoading={isFinishing}>
-            Hoàn tất và xem kết quả
-          </Button>
+        <aside className={isNavigatorCollapsed ? 'ml-auto w-12 lg:ml-0' : 'space-y-4 lg:col-span-4'}>
+          {isNavigatorCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setIsNavigatorCollapsed(false)}
+              aria-label="Mở bảng điều hướng câu hỏi"
+              title="Mở bảng điều hướng câu hỏi"
+              className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors hover:bg-neutral-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:min-h-[32rem]"
+            >
+              <PanelRightOpen className="h-4 w-4 shrink-0" />
+              <span className="[writing-mode:vertical-rl] text-xs font-semibold tracking-wide">Điều hướng câu hỏi</span>
+            </button>
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm"><ListChecks className="h-4 w-4 text-emerald-700" />Điều hướng câu hỏi</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 p-0"
+                    onClick={() => setIsNavigatorCollapsed(true)}
+                    aria-label="Thu nhỏ bảng điều hướng"
+                    title="Thu nhỏ bảng điều hướng"
+                  >
+                    <PanelRightClose className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 lg:grid-cols-5">
+                    {session.questionOrder.map((questionId, index) => {
+                      const answer = session.checkedAnswers[questionId];
+                      const flagged = session.flaggedQuestionIds.includes(questionId);
+                      const selected = (session.answers[questionId] || []).length > 0;
+                      const color = answer
+                        ? answer.isCorrect ? 'border-emerald-300 bg-emerald-100 text-emerald-900' : 'border-rose-300 bg-rose-100 text-rose-900'
+                        : flagged ? 'border-amber-300 bg-amber-50 text-amber-900'
+                          : selected ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-neutral-200 bg-white text-neutral-700';
+                      return (
+                        <button
+                          key={questionId}
+                          type="button"
+                          onClick={() => setQuestionIndex(session.id, index)}
+                          className={`relative flex h-10 items-center justify-center rounded-lg border text-sm font-bold ${color} ${index === currentIndex ? 'ring-2 ring-emerald-600 ring-offset-1' : ''}`}
+                          aria-label={`Chuyển đến câu ${index + 1}${flagged ? ', đã đánh dấu' : ''}${answer ? (answer.isCorrect ? ', đúng' : ', sai') : ''}`}
+                        >
+                          {index + 1}
+                          {flagged && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-500" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-500">
+                    <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Đúng</span>
+                    <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-rose-500" />Sai</span>
+                    <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-blue-500" />Đã chọn</span>
+                    <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-amber-500" />Đánh dấu</span>
+                  </div>
+                  <p className="text-xs text-neutral-500">Câu nhiều đáp án chỉ đúng khi bạn chọn đủ và đúng tất cả đáp án.</p>
+                </CardContent>
+              </Card>
+              <Button variant="outline" className="w-full" onClick={() => void handleFinish()} isLoading={isFinishing}>
+                Hoàn tất và xem kết quả
+              </Button>
+            </>
+          )}
         </aside>
       </div>
     </div>
