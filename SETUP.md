@@ -91,7 +91,7 @@ supabase db push --dry-run
 supabase db push
 ```
 
-Đặt `FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu cần và `ALLOWED_ORIGINS` trong Supabase Dashboard → Edge Function Secrets. Có thể dùng `supabase secrets set` nếu người vận hành được cấp quyền. Không cần đặt secrets vào Vercel. Sau khi secrets sẵn sàng, deploy các function hiện có:
+Đặt `FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `GEMINI_MODEL` nếu cần và `ALLOWED_ORIGINS` trong Supabase Dashboard → Edge Function Secrets. Có thể dùng `supabase secrets set` nếu người vận hành được cấp quyền. Không đặt các secret này vào Vercel hoặc frontend. Đổi mật khẩu dùng mẫu email đặt lại mật khẩu mặc định tại Firebase Console → Authentication → Templates → Password reset; Firebase tự xử lý liên kết, không cần Resend, API gửi mail hay tên miền riêng. Sau khi secrets sẵn sàng, deploy các function:
 
 ```powershell
 supabase functions deploy bootstrap-profile
@@ -99,6 +99,7 @@ supabase functions deploy extract-quiz-with-gemini
 supabase functions deploy manage-teacher-approvals
 supabase functions deploy request-teacher-role
 supabase functions deploy switch-account-role
+supabase functions deploy upload-account-avatar
 ```
 
 Khi chuẩn bị production, xác nhận lại project ref bằng `supabase projects list`, backup/restore point với chủ hệ thống, và kết quả `supabase db push --dry-run`. Không chạy `db push` nếu project hoặc migration list không đúng.

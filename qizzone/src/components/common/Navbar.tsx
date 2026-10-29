@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Moon, Sun, Monitor } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Moon, Sun, Monitor, Settings2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
+import { AccountSettingsModal } from "@/components/common/AccountSettingsModal";
 
 interface NavbarProps {
   onToggleMobileSidebar?: () => void;
@@ -33,6 +34,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   const setThemePreference = useThemeStore((state) => state.setPreference);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -252,6 +254,17 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                       )}
                     </div>
 
+                    <div className="border-b border-neutral-100 p-2">
+                      <button
+                        type="button"
+                        onClick={() => { setIsProfileOpen(false); setIsSettingsOpen(true); }}
+                        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                      >
+                        <Settings2 className="h-4 w-4" aria-hidden="true" />
+                        Cài đặt tài khoản
+                      </button>
+                    </div>
+
                     <div className="p-2">
                       <button
                         type="button"
@@ -288,6 +301,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
           Bạn vẫn đăng nhập và làm bài với tài khoản học sinh trong thời gian chờ duyệt. Chỉ sau khi admin chấp thuận, bạn mới có thể chuyển sang màn hình giáo viên.
         </p>
       </Modal>
+      {isSettingsOpen && <AccountSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
     </>
   );
 }

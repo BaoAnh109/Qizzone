@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, Lock, LogIn, AlertCircle, Globe2 } from "lucide-react";
+import { Mail, Lock, LogIn, AlertCircle, Globe2, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -32,6 +32,7 @@ export function Login() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   // Pre-warm dashboard chunks in idle time for instant navigation
   useEffect(() => {
@@ -150,9 +151,20 @@ export function Login() {
 
         <Input
           label="Mật khẩu"
-          type="password"
+          type={isPasswordVisible ? "text" : "password"}
           placeholder="••••••••"
           leftIcon={<Lock className="h-4 w-4" />}
+          rightIcon={(
+            <button
+              type="button"
+              aria-label={isPasswordVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-pressed={isPasswordVisible}
+              onClick={() => setIsPasswordVisible(visible => !visible)}
+              className="flex h-7 w-7 items-center justify-center rounded text-neutral-500 transition hover:text-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              {isPasswordVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          )}
           error={errors.password?.message}
           autoComplete="current-password"
           {...register("password")}

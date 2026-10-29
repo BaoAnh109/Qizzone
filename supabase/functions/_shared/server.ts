@@ -81,6 +81,9 @@ export function failure(req: Request, error: unknown) {
     TEACHER_REQUEST_PENDING: [409, 'Yêu cầu cấp tài khoản giáo viên của bạn đang chờ quản trị viên duyệt.'],
     TEACHER_ACCESS_NOT_APPROVED: [403, 'Tài khoản của bạn chưa được duyệt quyền giáo viên.'],
     ROLE_SWITCH_INVALID: [400, 'Vai trò chuyển đổi không hợp lệ.'],
+    AVATAR_INVALID: [400, 'Ảnh không hợp lệ. Hãy chọn tệp JPG, PNG hoặc WebP.'],
+    AVATAR_TOO_LARGE: [413, 'Ảnh đại diện phải nhỏ hơn 2 MB.'],
+    PROFILE_NOT_FOUND: [404, 'Không tìm thấy hồ sơ tài khoản.'],
   };
   const [status, message] = messages[code] || [502, 'Dịch vụ đang gặp lỗi. Vui lòng thử lại hoặc liên hệ quản trị viên.'];
   return respond(req, { error: message }, status);
