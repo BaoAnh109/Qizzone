@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import {
   ZoomIn,
   ZoomOut,
@@ -21,6 +22,10 @@ import { renderPdfPageToCanvas } from "@/utils/parsers/pdfParser";
 export function DocumentViewer() {
   const { document, extractionResult, selectedQuestionId } = useExtractionStore();
   const toast = useToast();
+  const sanitizedRawHtml = useMemo(
+    () => document?.rawHtml ? DOMPurify.sanitize(document.rawHtml) : "",
+    [document],
+  );
 
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
@@ -196,7 +201,7 @@ export function DocumentViewer() {
           {/* Render PDF Canvas */}
           {document?.fileType === "pdf" && document.pdfDoc ? (
             <div className="flex flex-col items-center justify-center p-2">
-              <div className="rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
+              <div className="theme-document-canvas rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
                 <canvas ref={canvasRef} className="max-w-full h-auto block" />
               </div>
             </div>
@@ -204,7 +209,7 @@ export function DocumentViewer() {
             /* Render Image Viewer */
             <div className="flex flex-col items-center justify-center p-2">
               <div
-                className="overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
+                className="theme-document-canvas overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
                 style={{
                   transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
                 }}
@@ -219,13 +224,13 @@ export function DocumentViewer() {
           ) : (
             /* Render Word / Text Document */
             <div
-              className="min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
+              className="theme-document-paper min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
               style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left" }}
             >
               {document?.rawHtml ? (
                 <div
                   className="prose prose-sm max-w-none [&_u]:underline [&_u]:decoration-indigo-600 [&_u]:decoration-2 [&_strong]:text-indigo-950 [&_mark]:bg-yellow-200 [&_.text-color-red]:text-rose-600 [&_table]:border-collapse [&_table]:border [&_table]:border-neutral-300 [&_td]:border [&_td]:border-neutral-300 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-300 [&_th]:p-2"
-                  dangerouslySetInnerHTML={{ __html: document.rawHtml }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedRawHtml }}
                 />
               ) : (
                 <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">

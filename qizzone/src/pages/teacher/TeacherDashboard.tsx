@@ -25,12 +25,20 @@ import { Badge } from "@/components/ui/Badge";
 export function TeacherDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const quizzes = useQuizStore((state) => state.quizzes);
+  const allQuizzes = useQuizStore((state) => state.quizzes);
   const results = useExamSessionStore((state) => state.results);
   const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
 
+  const quizzes = user?.role === "admin"
+    ? allQuizzes
+    : allQuizzes.filter((q) => q.teacherId === user?.id);
+
+  const teacherSubmissions = user?.role === "admin"
+    ? results
+    : results.filter((r) => quizzes.some((q) => q.id === r.quizId));
+
   const publishedCount = quizzes.filter((q) => q.status === "published").length;
-  const totalSubmissions = results.length;
+  const totalSubmissions = teacherSubmissions.length;
 
   const stats = [
     {

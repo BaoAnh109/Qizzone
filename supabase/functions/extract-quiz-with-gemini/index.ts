@@ -1,12 +1,116 @@
 import { bodyJson, cors, databaseAdmin, failure, firebaseAdmin, identity, respond } from '../_shared/server.ts';
 
+const DEFAULT_MODEL = 'gemini-3.6-flash';
+const CANDIDATE_MODELS = [
+  'gemini-3.6-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+];
+const GEMINI_ATTEMPT_TIMEOUT_MS = 55_000;
+
+type GeminiResult = {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string }> };
+    finishReason?: string;
+  }>;
+};
+
+function modelCandidates(requestedModel?: string) {
+  const envModel = Deno.env.get('GEMINI_MODEL');
+  const fallbackModel = Deno.env.get('GEMINI_FALLBACK_MODEL');
+  return [...new Set([
+    requestedModel,
+    envModel,
+    DEFAULT_MODEL,
+    fallbackModel,
+    ...CANDIDATE_MODELS,
+  ].map(v => v?.trim()).filter(Boolean))] as string[];
+}
+
+function transientGeminiStatus(status: number) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+function upstreamError(status: number) {
+  if (status === 429) return new Error('RATE_LIMIT');
+  if ([401, 403].includes(status)) return new Error('GEMINI_AUTH');
+  if (status === 404) return new Error('GEMINI_MODEL_UNAVAILABLE');
+  if (status === 400) return new Error('GEMINI_BAD_REQUEST');
+  if (status === 408 || status === 504) return new Error('GEMINI_TIMEOUT');
+  if (status >= 500) return new Error('GEMINI_UNAVAILABLE');
+  return new Error('UPSTREAM_ERROR');
+}
+
+function parseGeminiJson(result: GeminiResult) {
+  const candidate = result.candidates?.[0];
+  const raw = candidate?.content?.parts?.map(part => part.text || '').join('').trim();
+  if (!raw) throw new Error(candidate?.finishReason ? 'GEMINI_EMPTY_RESPONSE' : 'UPSTREAM_ERROR');
+  try {
+    return JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+  } catch {
+    throw new Error('GEMINI_INVALID_RESPONSE');
+  }
+}
+
+async function callGemini(key: string, parts: unknown[], requestId: string, requestedModel?: string) {
+  const candidates = modelCandidates(requestedModel);
+  let lastError: Error = new Error('GEMINI_UNAVAILABLE');
+
+  for (let mIdx = 0; mIdx < candidates.length; mIdx++) {
+    const selectedModel = candidates[mIdx];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selectedModel)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } }),
+          signal: AbortSignal.timeout(GEMINI_ATTEMPT_TIMEOUT_MS),
+        });
+
+        if (response.ok) {
+          return { model: selectedModel, result: parseGeminiJson(await response.json()) };
+        }
+
+        lastError = upstreamError(response.status);
+        console.warn(JSON.stringify({ requestId, model: selectedModel, attempt: attempt + 1, upstreamStatus: response.status }));
+        if (response.status === 401 || response.status === 403 || response.status === 400) {
+          throw lastError;
+        }
+        if (!transientGeminiStatus(response.status) && response.status !== 404) {
+          break;
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('GEMINI_')) lastError = error;
+        else if (error instanceof DOMException && error.name === 'TimeoutError') lastError = new Error('GEMINI_TIMEOUT');
+        else lastError = new Error('UPSTREAM_ERROR');
+
+        console.warn(JSON.stringify({ requestId, model: selectedModel, attempt: attempt + 1, code: lastError.message }));
+        if (['GEMINI_AUTH', 'GEMINI_BAD_REQUEST'].includes(lastError.message)) throw lastError;
+      }
+
+      if (attempt === 0) {
+        const delayMs = 800 + Math.floor(Math.random() * 400);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+
+    if (mIdx < candidates.length - 1) {
+      console.info(JSON.stringify({ requestId, message: `Thử model dự phòng tiếp theo: ${candidates[mIdx + 1]}` }));
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+  }
+
+  throw lastError;
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors(req) });
   if (req.method !== 'POST') return respond(req, { error: 'Method not allowed' }, 405);
   const requestId = crypto.randomUUID();
   const startedAt = performance.now();
   let uid = 'unknown';
-  let model = 'unknown';
+  let model = DEFAULT_MODEL;
   try {
     const token = await identity(req);
     uid = token.uid;
@@ -27,23 +131,19 @@ Deno.serve(async req => {
     const { data: allowed, error } = await databaseAdmin().rpc('consume_ai_quota', { p_uid: user.uid });
     if (error) throw error;
     if (!allowed) throw new Error('RATE_LIMIT');
-    const key = Deno.env.get('GEMINI_API_KEY');
+    // `Gemini` was the original production secret name. Keep it as a
+    // compatibility fallback so existing deployments continue to work while
+    // new environments use the conventional GEMINI_API_KEY name.
+    const key = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini');
     if (!key) throw new Error('NOT_CONFIGURED');
-    model = Deno.env.get('GEMINI_MODEL') || 'gemini-2.5-flash';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } }),
-      signal: AbortSignal.timeout(55000),
-    });
-    if (!response.ok) throw new Error(response.status === 429 ? 'RATE_LIMIT' : 'UPSTREAM_ERROR');
-    const result = await response.json();
-    const raw = result.candidates?.[0]?.content?.parts?.map((p: {text?: string}) => p.text || '').join('');
-    if (!raw) throw new Error('UPSTREAM_ERROR');
+    const requestedModel = typeof body.model === 'string' ? body.model : undefined;
+    const generated = await callGemini(key, parts, requestId, requestedModel);
+    model = generated.model;
     console.info(JSON.stringify({ requestId, uid, model, durationMs: Math.round(performance.now() - startedAt), status: 'ok' }));
-    return respond(req, { result: JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, '')) });
+    return respond(req, { result: generated.result });
   } catch (error) {
     const rawCode = error instanceof Error ? error.message : 'UNKNOWN';
-    const code = ['UNAUTHORIZED', 'FORBIDDEN', 'INVALID_INPUT', 'TOO_LARGE', 'RATE_LIMIT', 'NOT_CONFIGURED', 'UPSTREAM_ERROR']
+    const code = ['UNAUTHORIZED', 'FORBIDDEN', 'INVALID_INPUT', 'TOO_LARGE', 'RATE_LIMIT', 'NOT_CONFIGURED', 'GEMINI_AUTH', 'GEMINI_MODEL_UNAVAILABLE', 'GEMINI_BAD_REQUEST', 'GEMINI_TIMEOUT', 'GEMINI_UNAVAILABLE', 'GEMINI_EMPTY_RESPONSE', 'GEMINI_INVALID_RESPONSE', 'UPSTREAM_ERROR']
       .includes(rawCode) ? rawCode : 'INTERNAL_ERROR';
     console.error(JSON.stringify({
       requestId, uid, model, durationMs: Math.round(performance.now() - startedAt),

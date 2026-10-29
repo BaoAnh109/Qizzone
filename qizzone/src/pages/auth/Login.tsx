@@ -1,43 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
+import { Mail, Lock, LogIn, AlertCircle, Globe2, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/hooks/useToast";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
-import type { UserRole } from "@/types/auth";
-
-/**
- * Resolves destination URL after login based on user role to avoid 403 forbidden redirects
- */
-function getPostLoginRedirect(role: UserRole, redirectParam: string | null): string {
-  const home = role === "admin" ? "/admin/teacher-approvals" : role === "student" ? "/student" : "/teacher";
-  if (
-    !redirectParam ||
-    redirectParam === "/login" ||
-    redirectParam === "/register" ||
-    redirectParam === "/unauthorized"
-  ) {
-    return home;
-  }
-
-  if (redirectParam.startsWith("/admin") && role !== "admin") return home;
-
-  // If redirect is for teacher route but logged-in user is a student
-  if (redirectParam.startsWith("/teacher") && role === "student") {
-    return "/student";
-  }
-
-  // If redirect is for student route but logged-in user is a teacher
-  if (redirectParam.startsWith("/student") && role !== "student") {
-    return home;
-  }
-
-  return redirectParam;
-}
+import { getPostLoginRedirect, preloadDashboardForRole } from "@/routes/navigation";
 
 function getFriendlyAuthError(message: string): string {
   if (/failed to fetch|network request failed/i.test(message)) {
@@ -52,6 +23,7 @@ export function Login() {
   const redirect = searchParams.get("redirect");
 
   const login = useAuthStore((state) => state.login);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const resetPassword = useAuthStore((state) => state.resetPassword);
   const isLoading = useAuthStore((state) => state.isLoading);
   const configurationError = useAuthStore((state) => state.configurationError);
@@ -59,6 +31,24 @@ export function Login() {
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  // Pre-warm dashboard chunks in idle time for instant navigation
+  useEffect(() => {
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(() => {
+        preloadDashboardForRole("student");
+        preloadDashboardForRole("teacher");
+      });
+    } else {
+      const timer = setTimeout(() => {
+        preloadDashboardForRole("student");
+        preloadDashboardForRole("teacher");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const {
     register,
@@ -74,18 +64,18 @@ export function Login() {
   });
 
   const handleResetPassword = async () => {
-    const email = getValues('email').trim();
+    const email = getValues("email").trim();
     if (!email) {
-      setAuthError('Nhập email trước khi yêu cầu đặt lại mật khẩu.');
+      setAuthError("Nhập email trước khi yêu cầu đặt lại mật khẩu.");
       return;
     }
     setIsResetting(true);
     setAuthError(null);
     try {
       await resetPassword(email);
-      toast.success('Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.', 'Kiểm tra hộp thư');
+      toast.success("Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.", "Kiểm tra hộp thư");
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Không thể gửi email đặt lại mật khẩu.';
+      const message = error instanceof Error ? error.message : "Không thể gửi email đặt lại mật khẩu.";
       setAuthError(message);
       toast.error(message);
     } finally {
@@ -97,6 +87,7 @@ export function Login() {
     setAuthError(null);
     try {
       const loggedUser = await login(data);
+      preloadDashboardForRole(loggedUser.role);
       toast.success(`Chào mừng ${loggedUser.fullName}.`, "Đăng nhập thành công");
 
       const destination = getPostLoginRedirect(loggedUser.role, redirect);
@@ -106,6 +97,24 @@ export function Login() {
         err instanceof Error ? err.message : "Đăng nhập thất bại, vui lòng thử lại";
       setAuthError(message);
       toast.error(message, "Đăng nhập không thành công");
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setAuthError(null);
+    setIsGoogleLoading(true);
+    try {
+      const loggedUser = await loginWithGoogle();
+      preloadDashboardForRole(loggedUser.role);
+      toast.success(`Chào mừng ${loggedUser.fullName}.`, "Đăng nhập thành công");
+      const destination = getPostLoginRedirect(loggedUser.role, redirect);
+      navigate(destination, { replace: true });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Đăng nhập Google thất bại, vui lòng thử lại";
+      setAuthError(message);
+      toast.error(message, "Đăng nhập không thành công");
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -133,7 +142,7 @@ export function Login() {
         <Input
           label="Email"
           type="email"
-          placeholder="teacher@qizzone.edu.vn"
+          placeholder="student@qizzone.edu.vn"
           leftIcon={<Mail className="h-4 w-4" />}
           error={errors.email?.message}
           autoComplete="email"
@@ -142,9 +151,20 @@ export function Login() {
 
         <Input
           label="Mật khẩu"
-          type="password"
+          type={isPasswordVisible ? "text" : "password"}
           placeholder="••••••••"
           leftIcon={<Lock className="h-4 w-4" />}
+          rightIcon={(
+            <button
+              type="button"
+              aria-label={isPasswordVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-pressed={isPasswordVisible}
+              onClick={() => setIsPasswordVisible(visible => !visible)}
+              className="flex h-7 w-7 items-center justify-center rounded text-neutral-500 transition hover:text-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              {isPasswordVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          )}
           error={errors.password?.message}
           autoComplete="current-password"
           {...register("password")}
@@ -167,10 +187,27 @@ export function Login() {
         </Button>
       </form>
 
+      <div className="relative flex items-center gap-3 text-xs text-neutral-400">
+        <span className="h-px flex-1 bg-neutral-200" />
+        <span>hoặc</span>
+        <span className="h-px flex-1 bg-neutral-200" />
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full"
+        isLoading={isGoogleLoading}
+        onClick={() => void handleGoogleLogin()}
+        leftIcon={<Globe2 className="h-4 w-4" />}
+      >
+        {isGoogleLoading ? "Đang mở Google..." : "Tiếp tục với Google"}
+      </Button>
+
       <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
         Chưa có tài khoản?{" "}
         <Link
-          to="/register"
+          to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"}
           className="font-semibold text-blue-700 hover:text-blue-800"
         >
           Tạo tài khoản

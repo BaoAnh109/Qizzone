@@ -6,7 +6,9 @@ import {
   GraduationCap,
   X,
   BookOpen,
+  History,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
@@ -45,9 +47,20 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       icon: BookOpen,
       end: true,
     },
+    {
+      label: "Lịch sử luyện tập",
+      path: "/student/practice",
+      icon: History,
+      end: true,
+    },
   ];
 
   const adminMenuItems = [
+    {
+      label: "Quản lý tài khoản",
+      path: "/admin/accounts",
+      icon: Users,
+    },
     {
       label: "Duyệt giáo viên",
       path: "/admin/teacher-approvals",
@@ -63,7 +76,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
       : studentMenuItems;
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-white">
+    <div className="theme-surface flex h-full flex-col">
       {/* Brand Logo Header */}
       <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-5">
         <NavLink to="/" className="flex items-center gap-2.5" onClick={onCloseMobile}>
@@ -129,7 +142,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
   return (
     <>
       {/* Desktop Persistent Sidebar */}
-      <aside className="hidden w-60 shrink-0 border-r border-neutral-200 bg-white lg:block">
+      <aside className="hidden w-60 shrink-0 border-r theme-border theme-surface lg:block">
         {sidebarContent}
       </aside>
 
@@ -144,7 +157,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
           />
 
           {/* Drawer Panel */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-xl">
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] theme-surface shadow-xl">
             {sidebarContent}
           </div>
         </div>

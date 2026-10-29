@@ -21,7 +21,11 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { MathRenderer } from "@/components/common/MathRenderer";
-import { exportResultsToCsv } from "@/utils/exportHelper";
+import {
+  exportQuestionAnalyticsToCsv,
+  exportResultsToCsv,
+} from "@/utils/exportHelper";
+import { calculateQuestionAnalytics } from "@/utils/questionAnalytics";
 import { useToast } from "@/hooks/useToast";
 import type { ExamResult } from "@/types/exam";
 
@@ -38,6 +42,11 @@ export function QuizResultsView() {
     if (!quizId) return [];
     return allResults.filter((r) => r.quizId === quizId);
   }, [allResults, quizId]);
+
+  const questionAnalytics = useMemo(
+    () => (quiz ? calculateQuestionAnalytics(quiz.questions, rawResults) : []),
+    [quiz, rawResults],
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "passed" | "failed">("all");
@@ -77,16 +86,16 @@ export function QuizResultsView() {
   const totalSubmissions = rawResults.length;
   const averageScore =
     totalSubmissions > 0
-      ? (rawResults.reduce((sum, r) => sum + r.score, 0) / totalSubmissions).toFixed(1)
-      : "0.0";
+      ? (rawResults.reduce((sum, r) => sum + r.score, 0) / totalSubmissions).toFixed(2)
+      : "0.00";
   const maxScore =
     totalSubmissions > 0
-      ? Math.max(...rawResults.map((r) => r.score)).toFixed(1)
-      : "0.0";
+      ? Math.max(...rawResults.map((r) => r.score)).toFixed(2)
+      : "0.00";
   const minScore =
     totalSubmissions > 0
-      ? Math.min(...rawResults.map((r) => r.score)).toFixed(1)
-      : "0.0";
+      ? Math.min(...rawResults.map((r) => r.score)).toFixed(2)
+      : "0.00";
   const passedCount = rawResults.filter((r) => r.isPassed).length;
   const passRate =
     totalSubmissions > 0
@@ -109,6 +118,23 @@ export function QuizResultsView() {
       toast.success("Đã xuất file bảng điểm CSV thành công!");
     } catch {
       toast.error("Không thể xuất file bảng điểm. Vui lòng thử lại!");
+    }
+  };
+
+  const handleExportQuestionAnalytics = () => {
+    if (!quiz || rawResults.length === 0) {
+      toast.warning("Chưa có kết quả nộp bài nào để phân tích");
+      return;
+    }
+
+    try {
+      exportQuestionAnalyticsToCsv({
+        quizTitle: quiz.title,
+        analytics: questionAnalytics,
+      });
+      toast.success("Đã xuất file phân tích câu hỏi CSV thành công!");
+    } catch {
+      toast.error("Không thể xuất file phân tích câu hỏi. Vui lòng thử lại!");
     }
   };
 
@@ -161,7 +187,7 @@ export function QuizResultsView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -181,6 +207,108 @@ export function QuizResultsView() {
           </Button>
         </div>
       </div>
+
+      {/* Question Level Analytics */}
+      <Card className="overflow-hidden border-neutral-200/90 shadow-xs">
+        <CardContent className="p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-neutral-900">Phân tích theo câu hỏi</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-neutral-500">
+                Tỷ lệ đúng tính trên lượt có dữ liệu. Với câu nhiều lựa chọn, tổng lượt chọn có thể cao hơn số bài làm. Mẫu nhỏ chỉ mang tính tham khảo.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportQuestionAnalytics}
+              disabled={rawResults.length === 0}
+              leftIcon={<Download className="h-4 w-4 text-emerald-600" />}
+              className="shrink-0 font-semibold"
+            >
+              Tải CSV theo câu
+            </Button>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-xs text-neutral-600">
+              <thead className="border-b border-neutral-200 bg-neutral-50/80 text-[11px] font-bold uppercase tracking-wider text-neutral-800">
+                <tr>
+                  <th className="px-3 py-3">Câu hỏi</th>
+                  <th className="px-3 py-3 text-center">Lượt có dữ liệu</th>
+                  <th className="px-3 py-3 text-center">Đúng</th>
+                  <th className="px-3 py-3 text-center">Bỏ trống</th>
+                  <th className="px-3 py-3">Phân bố lựa chọn</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {questionAnalytics.map((item) => (
+                  <tr key={item.questionId} className="align-top">
+                    <td className="max-w-sm px-3 py-3 font-medium text-neutral-900">
+                      <span className="mr-1 font-bold text-indigo-700">Câu {item.order}.</span>
+                      <MathRenderer content={item.content} />
+                    </td>
+                    <td className="px-3 py-3 text-center font-mono">
+                      {item.attemptCount === 0 ? "—" : item.attemptCount}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      {item.attemptCount === 0 ? (
+                        <span className="text-neutral-400">—</span>
+                      ) : (
+                        <span className="font-mono font-bold text-emerald-700">
+                          {item.correctCount}/{item.attemptCount} · {item.accuracyPercent}%
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-center font-mono">
+                      {item.attemptCount === 0 ? "—" : item.skippedCount}
+                    </td>
+                    <td className="min-w-[250px] px-3 py-3">
+                      {item.attemptCount === 0 ? (
+                        <span className="text-neutral-400">Chưa có dữ liệu câu hỏi</span>
+                      ) : item.options.length === 0 ? (
+                        <span className="text-neutral-400">Không có phương án</span>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {item.options.map((option) => {
+                            const count = item.optionCounts[option.id];
+                            const width = Math.min(
+                              100,
+                              Math.round((count / item.attemptCount) * 100),
+                            );
+                            return (
+                              <div key={option.id} className="flex items-center gap-2">
+                                <span className="w-4 shrink-0 font-mono font-bold text-neutral-700">
+                                  {option.id}
+                                </span>
+                                <span
+                                  className="w-28 shrink-0 truncate text-neutral-500"
+                                  title={option.content}
+                                >
+                                  {option.content}
+                                </span>
+                                <div className="h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-neutral-100">
+                                  <div
+                                    className="h-full rounded-full bg-indigo-500"
+                                    style={{ width: `${width}%` }}
+                                  />
+                                </div>
+                                <span className="w-6 shrink-0 text-right font-mono text-neutral-500">
+                                  {count}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Analytics Highlights */}
       <div className="grid gap-4 sm:grid-cols-4">
@@ -322,7 +450,7 @@ export function QuizResultsView() {
                       {item.studentClass || "12A1"}
                     </td>
                     <td className="py-3 px-4 text-center font-black font-mono text-sm text-indigo-700">
-                      {item.score.toFixed(1)}
+                      {item.score.toFixed(2)}
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-semibold text-neutral-800">
                       {item.correctCount} / {item.totalQuestions}
@@ -385,7 +513,7 @@ export function QuizResultsView() {
           isOpen={!!selectedResult}
           onClose={() => setSelectedResult(null)}
           title={`Bài làm của thí sinh: ${selectedResult.studentName}`}
-          description={`Điểm số: ${selectedResult.score.toFixed(1)} / 10 · Đúng ${selectedResult.correctCount}/${selectedResult.totalQuestions} câu · Nộp lúc: ${new Date(selectedResult.submittedAt).toLocaleString("vi-VN")}`}
+          description={`Điểm số: ${selectedResult.score.toFixed(2)} / 10 · Đúng ${selectedResult.correctCount}/${selectedResult.totalQuestions} câu · Nộp lúc: ${new Date(selectedResult.submittedAt).toLocaleString("vi-VN")}`}
           footer={
             <Button variant="outline" onClick={() => setSelectedResult(null)}>
               Đóng cửa sổ

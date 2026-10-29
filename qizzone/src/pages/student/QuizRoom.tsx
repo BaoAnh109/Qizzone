@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Clock,
   Send,
@@ -13,15 +13,19 @@ import {
   AlertCircle,
   ListChecks,
   RotateCcw,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
 import { useExamTimer } from "@/hooks/useExamTimer";
+import { useQuestionKeyboardShortcuts } from "@/hooks/useQuestionKeyboardShortcuts";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { QuestionFrame } from "@/components/student/QuestionFrame";
 import { SubmitConfirmModal } from "@/components/student/SubmitConfirmModal";
 import { useToast } from "@/hooks/useToast";
 import type { OptionId, Question } from "@/types/quiz";
@@ -33,6 +37,9 @@ function cleanStudentName(rawName?: string): string {
 
 export function QuizRoom() {
   const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
+  const retryMode = searchParams.get("mode");
+  const sourceResultId = searchParams.get("sourceResultId");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
@@ -47,12 +54,19 @@ export function QuizRoom() {
   const initSession = useExamSessionStore((state) => state.initSession);
   const flushSession = useExamSessionStore((state) => state.flushSession);
   const isSubmitting = useExamSessionStore((state) => state.isSubmitting);
+  const getResultById = useExamSessionStore((state) => state.getResultById);
   const saveStatus = useExamSessionStore((state) => quizId ? state.saveStatus[quizId] || 'idle' : 'idle');
 
   const toast = useToast();
 
   const quiz = quizId ? getQuizById(quizId) : undefined;
   const session = quizId ? activeSessions[quizId] : undefined;
+
+  const sourceResult = sourceResultId ? getResultById(sourceResultId) : undefined;
+  const incorrectQuestionIds = useMemo(() => {
+    if (retryMode !== "retry_incorrect" || !sourceResult) return null;
+    return sourceResult.details.filter((d) => !d.isCorrect).map((d) => d.questionId);
+  }, [retryMode, sourceResult]);
 
   // Auto-init session on mount if not exists
   useEffect(() => {
@@ -67,6 +81,7 @@ export function QuizRoom() {
 
   const currentIndex = session?.currentQuestionIndex || 0;
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [isNavigatorCollapsed, setIsNavigatorCollapsed] = useState(false);
 
   useEffect(() => {
     if (!quizId) return;
@@ -85,18 +100,27 @@ export function QuizRoom() {
 
   const questions: Question[] = useMemo(() => {
     if (!quiz) return [];
-    const order = session?.questionOrder || quiz.questions.map(question => question.id);
-    return order.flatMap(id => {
-      const question = quiz.questions.find(item => item.id === id);
+    let baseList = quiz.questions;
+    if (incorrectQuestionIds && incorrectQuestionIds.length > 0) {
+      baseList = baseList.filter((q) => incorrectQuestionIds.includes(q.id));
+    }
+    const order = session?.questionOrder
+      ? session.questionOrder.filter((id) => baseList.some((q) => q.id === id))
+      : baseList.map((question) => question.id);
+    return order.flatMap((id) => {
+      const question = baseList.find((item) => item.id === id);
       if (!question) return [];
       const optionOrder = session?.optionOrder?.[question.id];
       if (!optionOrder) return [question];
-      return [{ ...question, options: optionOrder.flatMap(optionId => {
-        const option = question.options.find(item => item.id === optionId);
-        return option ? [option] : [];
-      }) }];
+      return [{
+        ...question,
+        options: optionOrder.flatMap((optionId) => {
+          const option = question.options.find((item) => item.id === optionId);
+          return option ? [option] : [];
+        }),
+      }];
     });
-  }, [quiz, session?.questionOrder, session?.optionOrder]);
+  }, [quiz, session, incorrectQuestionIds]);
 
   const currentQuestion: Question | undefined = questions[currentIndex];
 
@@ -158,6 +182,27 @@ export function QuizRoom() {
     clearAnswer(quiz.id, currentQuestion.id);
   };
 
+  useQuestionKeyboardShortcuts({
+    optionCount: currentQuestion?.options.length || 0,
+    onOptionSelect: (index) => {
+      const option = currentQuestion?.options[index];
+      if (option) handleSelectOption(option.id);
+    },
+    onEnter: () => {
+      if (!quiz || currentIndex >= questions.length - 1) return;
+      setQuestionIndex(quiz.id, currentIndex + 1);
+    },
+    onPrevious: () => {
+      if (!quiz) return;
+      setQuestionIndex(quiz.id, Math.max(0, currentIndex - 1));
+    },
+    onNext: () => {
+      if (!quiz) return;
+      setQuestionIndex(quiz.id, Math.min(questions.length - 1, currentIndex + 1));
+    },
+    disabled: !quiz || !session || !currentQuestion || isSubmitModalOpen,
+  });
+
   if (!quiz || !session) {
     return (
       <div className="text-center py-20 space-y-4">
@@ -178,8 +223,8 @@ export function QuizRoom() {
   return (
     <div className="flex flex-col min-h-screen bg-neutral-100/60 pb-12">
       {/* Top Fixed Exam Header Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/90 shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 theme-surface-raised backdrop-blur-md border-b theme-border shadow-2xs">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
           {/* Quiz Title & Subject */}
           <div className="flex items-center gap-3 min-w-0">
             <Badge variant="secondary" size="sm" className="hidden sm:inline-flex">
@@ -250,40 +295,39 @@ export function QuizRoom() {
       </header>
 
       {/* Main Exam Body: 2 Columns (Question Area + Question Navigator) */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
+        <div className={isNavigatorCollapsed
+          ? "grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_3rem]"
+          : "grid grid-cols-1 items-start gap-6 lg:grid-cols-12"}>
           {/* LEFT: Current Question Content & Options (8 cols) */}
-          <div className="lg:col-span-8 space-y-4">
+          <div className={isNavigatorCollapsed ? "min-w-0 space-y-4" : "min-w-0 space-y-4 lg:col-span-8"}>
+            {incorrectQuestionIds && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 px-4 text-xs text-amber-900 flex items-center justify-between font-medium shadow-2xs">
+                <span>Chế độ luyện tập: Làm lại các câu sai ({questions.length} câu)</span>
+                <Badge variant="warning" size="sm">Làm lại câu sai</Badge>
+              </div>
+            )}
             {currentQuestion ? (
-              <Card className="border-neutral-200/90 shadow-sm overflow-hidden bg-white">
-                {/* Question Header */}
-                <CardHeader className="bg-neutral-50/70 border-b border-neutral-200/60 p-4 sm:p-5 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="primary" size="md">
-                      Câu {currentIndex + 1} / {questions.length}
-                    </Badge>
-                    <span className="text-xs text-neutral-400">
-                      ({currentQuestion.points || 1} điểm)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
+              <QuestionFrame
+                questionNumber={currentIndex + 1}
+                questionCount={questions.length}
+                headerMeta={(
+                  <span className="text-xs text-neutral-400">
+                    ({Number((currentQuestion.points || 1).toFixed(2))} điểm)
+                  </span>
+                )}
+                headerActions={(
+                  <>
                     <button
                       type="button"
                       onClick={handleToggleFlag}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                        isCurrentFlagged
-                          ? "bg-amber-100 border-amber-300 text-amber-950 ring-2 ring-amber-400/40 shadow-xs"
-                          : "bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300"
-                      }`}
+                      className={isCurrentFlagged
+                        ? "flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950 ring-2 ring-amber-400/40 shadow-xs transition cursor-pointer"
+                        : "flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-50 cursor-pointer"}
                     >
-                      <Flag
-                        className={`h-3.5 w-3.5 ${
-                          isCurrentFlagged
-                            ? "fill-amber-500 text-amber-600"
-                            : "text-neutral-400"
-                        }`}
-                      />
+                      <Flag className={isCurrentFlagged
+                        ? "h-3.5 w-3.5 fill-amber-500 text-amber-600"
+                        : "h-3.5 w-3.5 text-neutral-400"} />
                       <span>{isCurrentFlagged ? "Đã gắn cờ" : "Gắn cờ"}</span>
                     </button>
 
@@ -292,60 +336,17 @@ export function QuizRoom() {
                         type="button"
                         onClick={handleClearCurrent}
                         title="Bỏ chọn đáp án"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-neutral-500 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-neutral-500 transition hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Bỏ chọn</span>
                       </button>
                     )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="p-5 sm:p-7 space-y-6">
-                  {/* Question Prompt with KaTeX */}
-                  <div className="text-base sm:text-lg font-medium text-neutral-900 leading-relaxed">
-                    <MathRenderer content={currentQuestion.content} />
-                  </div>
-
-                  {/* 4 Option Buttons */}
-                  <div className="space-y-3 pt-2">
-                    {currentQuestion.options.map((opt) => {
-                      const isSelected = currentAnswers.includes(opt.id);
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleSelectOption(opt.id)}
-                          className={`flex w-full cursor-pointer items-start gap-4 rounded-lg border p-4 text-left transition-colors sm:p-5 ${
-                            isSelected
-                              ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100"
-                              : "border-neutral-200 bg-white hover:border-indigo-300 hover:bg-neutral-50/80"
-                          }`}
-                        >
-                          <span
-                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs font-bold transition sm:text-sm ${
-                              isSelected
-                                ? "bg-indigo-600 text-white shadow-2xs"
-                                : "bg-neutral-100 text-neutral-700 border border-neutral-200"
-                            }`}
-                          >
-                            {opt.id}
-                          </span>
-
-                          <div className="flex-1 pt-0.5 text-sm sm:text-base font-normal text-neutral-900">
-                            <MathRenderer content={opt.content} />
-                          </div>
-
-                          {isSelected && (
-                            <CheckCircle2 className="h-5 w-5 text-indigo-600 shrink-0 ml-auto mt-0.5" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Prev / Next Navigation Controls */}
-                  <div className="flex items-center justify-between pt-6 border-t border-neutral-100">
+                  </>
+                )}
+                prompt={<MathRenderer content={currentQuestion.content} />}
+                footer={(
+                  <div className="flex items-center justify-between border-t border-neutral-100 pt-6">
                     <Button
                       variant="outline"
                       disabled={currentIndex === 0}
@@ -370,31 +371,89 @@ export function QuizRoom() {
                         leftIcon={<Send className="h-4 w-4" />}
                         className="bg-emerald-600 hover:bg-emerald-700 font-bold"
                       >
-                        Hoàn tất & Nộp bài
+                        Hoàn tất &amp; Nộp bài
                       </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              >
+                {currentQuestion.options.map((opt, index) => {
+                  const isSelected = currentAnswers.includes(opt.id);
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleSelectOption(opt.id)}
+                      className={isSelected
+                        ? "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-blue-600 bg-blue-50 p-4 text-left ring-2 ring-blue-100 transition-colors sm:p-5"
+                        : "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-indigo-300 hover:bg-neutral-50/80 sm:p-5"}
+                    >
+                      <span
+                        className={isSelected
+                          ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs transition sm:text-sm"
+                          : "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-100 text-xs font-bold text-neutral-700 transition sm:text-sm"}
+                      >
+                        {String.fromCharCode(65 + index)}
+                      </span>
+
+                      <div className="flex-1 pt-0.5 text-sm font-normal text-neutral-900 sm:text-base">
+                        <MathRenderer content={opt.content} />
+                      </div>
+
+                      {isSelected && (
+                        <CheckCircle2 className="ml-auto mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
+                      )}
+                    </button>
+                  );
+                })}
+              </QuestionFrame>
             ) : null}
           </div>
 
           {/* RIGHT: Question Matrix Navigator (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            <Card className="border-neutral-200/90 shadow-xs bg-white">
-              <CardHeader className="pb-3 border-b border-neutral-100">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-bold flex items-center gap-1.5">
-                    <ListChecks className="h-4 w-4 text-blue-600" />
-                    <span>Danh sách câu hỏi</span>
-                  </CardTitle>
-                  <span className="text-xs font-semibold text-neutral-500">
-                    {answeredCount}/{questions.length} đã làm
-                  </span>
-                </div>
-              </CardHeader>
+          <aside id="quiz-question-navigator" className={isNavigatorCollapsed ? "ml-auto w-12 lg:ml-0" : "space-y-4 lg:col-span-4"}>
+            {isNavigatorCollapsed ? (
+              <button
+                type="button"
+                onClick={() => setIsNavigatorCollapsed(false)}
+                aria-label="Mở danh sách câu hỏi"
+                aria-controls="quiz-question-navigator"
+                aria-expanded="false"
+                title="Mở danh sách câu hỏi"
+                className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors hover:bg-neutral-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 lg:min-h-[32rem]"
+              >
+                <PanelRightOpen className="h-4 w-4 shrink-0" />
+                <span className="[writing-mode:vertical-rl] text-xs font-semibold tracking-wide">Danh sách câu hỏi</span>
+              </button>
+            ) : (
+              <Card className="border-neutral-200/90 shadow-xs bg-white">
+                <CardHeader className="pb-3 border-b border-neutral-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="flex min-w-0 items-center gap-1.5 text-sm font-bold sm:text-base">
+                      <ListChecks className="h-4 w-4 shrink-0 text-blue-600" />
+                      <span className="truncate">Danh sách câu hỏi</span>
+                    </CardTitle>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <span className="text-xs font-semibold text-neutral-500">
+                        {answeredCount}/{questions.length} đã làm
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 shrink-0 p-0"
+                        onClick={() => setIsNavigatorCollapsed(true)}
+                        aria-label="Thu nhỏ danh sách câu hỏi"
+                        aria-controls="quiz-question-navigator"
+                        aria-expanded="true"
+                        title="Thu nhỏ danh sách câu hỏi"
+                      >
+                        <PanelRightClose className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
 
-              <CardContent className="p-4 space-y-4">
+                <CardContent className="p-4 space-y-4">
                 {/* Status Legend */}
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600 pb-1 border-b border-neutral-100">
                   <div className="flex items-center gap-1.5">
@@ -412,40 +471,42 @@ export function QuizRoom() {
                 </div>
 
                 {/* Grid Matrix of Question Numbers */}
-                <div className="grid grid-cols-5 gap-2">
-                  {questions.map((q, idx) => {
-                    const isAnswered = (session.answers?.[q.id] || []).length > 0;
-                    const isFlagged = (
-                      session.flaggedQuestionIds || []
-                    ).includes(q.id);
-                    const isCurrent = idx === currentIndex;
+                <div className="max-h-[404px] overflow-y-auto pr-1">
+                  <div className="grid grid-cols-5 gap-2">
+                    {questions.map((q, idx) => {
+                      const isAnswered = (session.answers?.[q.id] || []).length > 0;
+                      const isFlagged = (
+                        session.flaggedQuestionIds || []
+                      ).includes(q.id);
+                      const isCurrent = idx === currentIndex;
 
-                    let bgClass = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
-                    if (isAnswered) {
-                      bgClass = "bg-emerald-500 text-white font-bold";
-                    }
-                    if (isFlagged) {
-                      bgClass = "bg-amber-400 text-amber-950 font-bold ring-1 ring-amber-500";
-                    }
+                      let bgClass = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
+                      if (isAnswered) {
+                        bgClass = "bg-emerald-500 text-white font-bold";
+                      }
+                      if (isFlagged) {
+                        bgClass = "bg-amber-400 text-amber-950 font-bold ring-1 ring-amber-500";
+                      }
 
-                    return (
-                      <button
-                        key={q.id || idx}
-                        type="button"
-                        onClick={() => setQuestionIndex(quiz.id, idx)}
-                        className={`h-10 w-full rounded-xl text-xs flex items-center justify-center font-mono transition cursor-pointer relative ${bgClass} ${
-                          isCurrent
-                            ? "ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-xs z-10"
-                            : ""
-                        }`}
-                      >
-                        {idx + 1}
-                        {isFlagged && (
-                          <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
-                        )}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={q.id || idx}
+                          type="button"
+                          onClick={() => setQuestionIndex(quiz.id, idx)}
+                          className={`h-10 w-full rounded-xl text-xs flex items-center justify-center font-mono transition cursor-pointer relative ${bgClass} ${
+                            isCurrent
+                              ? "ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-xs z-10"
+                              : ""
+                          }`}
+                        >
+                          {idx + 1}
+                          {isFlagged && (
+                            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Submit CTA in Sidebar */}
@@ -460,9 +521,10 @@ export function QuizRoom() {
                     Nộp bài thi ngay
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
+            )}
+          </aside>
         </div>
       </main>
 
