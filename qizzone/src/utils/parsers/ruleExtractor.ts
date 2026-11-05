@@ -142,7 +142,7 @@ export function splitOptionsFromBlock(questionBlockText: string): {
 } {
   // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
   const headerRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:)/-])(?!\d)/g;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:)/-])(?!\d)/gi;
 
   const matches: Array<{
     index: number;
@@ -192,10 +192,28 @@ export function splitOptionsFromBlock(questionBlockText: string): {
   }
 
   if (orderedMatches.length === 0) {
-    return {
-      questionPrompt: cleanMathAndHtml(questionBlockText),
-      options: [],
-    };
+    // Đúng/Sai không có nhãn A, B trong tài liệu gốc.
+    const lines = questionBlockText.split(/\r?\n/);
+    const truthOptions: ExtractedOption[] = [];
+    let firstIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      const match = line.match(/^(?:<(?:mark|strong|b|u|span)\b[^>]*>\s*)*(Đúng|Sai)(?:\s*<\/(?:mark|strong|b|u|span)>)*$/i);
+      if (!match) continue;
+      if (firstIndex === -1) firstIndex = i;
+      const truth = match[1].toLowerCase() === "đúng";
+      truthOptions.push({
+        id: truth ? "A" : "B", content: truth ? "Đúng" : "Sai",
+        rawContent: line,
+        isHighlighted: /<mark\b|background(?:-color)?\s*:/i.test(line),
+        isBold: /<(?:b|strong)\b/i.test(line),
+        isUnderline: /<u\b/i.test(line),
+      });
+    }
+    if (truthOptions.length === 2 && truthOptions[0].id !== truthOptions[1].id) {
+      return { questionPrompt: cleanMathAndHtml(lines.slice(0, firstIndex).join("\n")), options: truthOptions };
+    }
+    return { questionPrompt: cleanMathAndHtml(questionBlockText), options: [] };
   }
 
   // Prompt là toàn bộ phần trước option đầu tiên
@@ -403,6 +421,7 @@ export function parseSingleQuestionBlock(
     content: questionPrompt || `Câu hỏi ${order}`,
     options,
     correctAnswers,
+    type: options.length === 2 && options.some(o => o.content === 'Đúng') && options.some(o => o.content === 'Sai') ? 'true_false' : correctAnswers.length > 1 ? 'multiple_choice' : 'single_choice',
     explanation,
     points: 1,
     confidenceScore,

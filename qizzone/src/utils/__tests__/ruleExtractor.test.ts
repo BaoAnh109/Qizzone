@@ -95,6 +95,21 @@ D. Phương án 4
     expect(parsed?.warningFlags).toBeDefined();
   });
 
+  it("đọc lựa chọn a/b/c/d viết thường và đáp án tô vàng", () => {
+    const result = parseRawExamText("Câu 1. Virus nào?\na. Stealth\n<mark>b. Metamorphic</mark>\nc. Worm\nd. Trojan");
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].options).toHaveLength(4);
+    expect(result.questions[0].correctAnswers).toEqual(["B"]);
+  });
+
+  it("đọc dạng Đúng/Sai và dấu tô vàng", () => {
+    const result = parseRawExamText("Câu 1. Rootkit che giấu dữ liệu.\n<mark>Đúng</mark>\nSai");
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].type).toBe("true_false");
+    expect(result.questions[0].options.map(o => o.content)).toEqual(["Đúng", "Sai"]);
+    expect(result.questions[0].correctAnswers).toEqual(["A"]);
+  });
+
   it("Chiến lược 1 (Bảng đáp án cuối đề): Nhận diện chính xác 100% từ ma trận bảng đáp án", () => {
     const rawExam = `
 Câu 1: Cho hàm số $y = x^2$. Đạo hàm là:

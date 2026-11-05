@@ -11,7 +11,11 @@ export function mapExtractedQuestionsToQuizQuestions(
     id: q.id || `q-ext-${Date.now().toString(36)}-${idx}`,
     order: idx + 1,
     content: q.content,
-    type: "single_choice",
+    type: q.type ?? (
+      q.options.length === 2 && q.options.some(o => o.content === "Đúng") &&
+      q.options.some(o => o.content === "Sai") ? "true_false" :
+      q.correctAnswers.length > 1 ? "multiple_choice" : "single_choice"
+    ),
     options: q.options.map((opt) => ({
       id: opt.id,
       content: opt.content,

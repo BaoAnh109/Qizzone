@@ -55,5 +55,7 @@ describe("extractedQuestionMapper", () => {
     // Preserve the fact that no answer was present in the source.
     expect(result[1].correctAnswers).toEqual([]);
     expect(result[1].order).toBe(2);
+    expect(mapExtractedQuestionsToQuizQuestions([{ ...mockExtracted[0], type: "true_false" }])[0].type).toBe("true_false");
+    expect(mapExtractedQuestionsToQuizQuestions([{ ...mockExtracted[0], type: "multiple_choice", correctAnswers: ["A", "B"] }])[0].type).toBe("multiple_choice");
   });
 });

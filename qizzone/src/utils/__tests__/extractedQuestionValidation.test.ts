@@ -30,10 +30,11 @@ describe("extracted question validation", () => {
     expect(issues.some(issue => issue.includes("nội dung mẫu"))).toBe(true);
   });
 
-  it("rejects multiple answers until mapping supports multiple_choice", () => {
-    const issues = getExtractedQuestionIssues([{
-      ...validQuestion, correctAnswers: ["A", "B"],
-    }]);
-    expect(issues.some(issue => issue.includes("nhiều đáp án"))).toBe(true);
+  it("accepts multiple_choice with more than one correct answer", () => {
+    expect(getExtractedQuestionIssues([{ ...validQuestion, type: "multiple_choice", correctAnswers: ["A", "B"] }])).toEqual([]);
+  });
+  it("rejects single_choice with multiple correct answers", () => {
+    const issues = getExtractedQuestionIssues([{ ...validQuestion, type: "single_choice", correctAnswers: ["A", "B"] }]);
+    expect(issues.some(issue => issue.includes("nhiều đáp án đúng"))).toBe(true);
   });
 }

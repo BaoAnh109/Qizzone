@@ -1,4 +1,4 @@
-import type { OptionId } from "./quiz";
+import type { OptionId, QuestionType } from "./quiz";
 
 export type DetectionStrategy =
   | "answer_table"     // Bảng đáp án cuối đề (1.A 2.B 3.C)
@@ -28,6 +28,7 @@ export interface ExtractedQuestion {
   order: number;
   content: string; // Câu hỏi chuẩn KaTeX
   options: ExtractedOption[];
+  type?: QuestionType;
   correctAnswers: OptionId[];
   explanation?: string;
   points: number;

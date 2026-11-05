@@ -35,10 +35,18 @@ export function getExtractedQuestionIssues(questions: readonly ExtractedQuestion
       issues.push(`${label}: đáp án đúng không tồn tại trong các phương án.`);
     }
 
-    // The current mapper produces single-choice questions only. Do not silently
-    // publish a multi-answer question as single-choice until type support exists.
-    if (question.correctAnswers.length > 1) {
-      issues.push(`${label}: có nhiều đáp án; cần hỗ trợ loại câu multiple_choice trước khi lưu.`);
+    const inferredType = question.type ?? (
+      question.options.length === 2 && question.options.some(o => o.content === "Đúng") &&
+      question.options.some(o => o.content === "Sai") ? "true_false" :
+      question.correctAnswers.length > 1 ? "multiple_choice" : "single_choice"
+    );
+    if (inferredType !== "multiple_choice" && question.correctAnswers.length > 1) {
+      issues.push(`${label}: loại câu không hỗ trợ nhiều đáp án đúng.`);
+    }
+    if (inferredType === "true_false" &&
+        (question.options.length !== 2 || !question.options.some(o => o.content === "Đúng") ||
+         !question.options.some(o => o.content === "Sai"))) {
+      issues.push(`${label}: câu Đúng/Sai phải có đủ hai lựa chọn Đúng và Sai.`);
     }
   });
 
