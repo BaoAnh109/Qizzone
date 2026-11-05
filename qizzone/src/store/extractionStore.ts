@@ -92,6 +92,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
             correctAnswers: [answer],
             detectionStrategy: "manual" as DetectionStrategy,
             confidenceScore: 1.0,
+            warningFlags: q.warningFlags?.filter((flag) => !flag.includes("Chưa có đáp án")),
           };
         }
         return q;
@@ -114,11 +115,16 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
           const next: OptionId[] = current.includes(answer)
             ? current.filter((a) => a !== answer)
             : [...current, answer];
+          const warnings = (q.warningFlags || []).filter((flag) => !flag.includes("Chưa có đáp án"));
+          if (next.length === 0) {
+            warnings.push("Chưa có đáp án (Cần chọn đáp án trước khi lưu đề)");
+          }
           return {
             ...q,
-            correctAnswers: next.length > 0 ? next : [("A" as OptionId)],
+            correctAnswers: next,
             detectionStrategy: "manual" as DetectionStrategy,
-            confidenceScore: 1.0,
+            confidenceScore: next.length > 0 ? 1.0 : 0,
+            warningFlags: warnings.length > 0 ? warnings : undefined,
           };
         }
         return q;
@@ -167,10 +173,11 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
           { id: "C", content: "Lựa chọn C", rawContent: "C. Lựa chọn C" },
           { id: "D", content: "Lựa chọn D", rawContent: "D. Lựa chọn D" },
         ],
-        correctAnswers: ["A"],
+        correctAnswers: [],
         points: 1,
-        confidenceScore: 1.0,
+        confidenceScore: 0,
         detectionStrategy: "manual",
+        warningFlags: ["Chưa có đáp án (Cần hoàn thiện câu hỏi mới trước khi lưu đề)"],
         rawTextSegment: "Câu hỏi thêm mới thủ công",
       };
 

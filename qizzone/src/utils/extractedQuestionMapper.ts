@@ -16,7 +16,8 @@ export function mapExtractedQuestionsToQuizQuestions(
       id: opt.id,
       content: opt.content,
     })),
-    correctAnswers: q.correctAnswers && q.correctAnswers.length > 0 ? q.correctAnswers : ["A"],
+    // Do not manufacture a correct answer when extraction has no evidence.
+    correctAnswers: [...q.correctAnswers],
     explanation: q.explanation || "",
     points: q.points || 1,
   }));

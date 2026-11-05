@@ -52,8 +52,8 @@ describe("extractedQuestionMapper", () => {
     expect(result[0].points).toBe(2);
     expect(result[0].explanation).toBe("Lời giải chi tiết câu 1");
 
-    // Fallback default answer if empty
-    expect(result[1].correctAnswers).toEqual(["A"]);
+    // Preserve the fact that no answer was present in the source.
+    expect(result[1].correctAnswers).toEqual([]);
     expect(result[1].order).toBe(2);
   });
 });

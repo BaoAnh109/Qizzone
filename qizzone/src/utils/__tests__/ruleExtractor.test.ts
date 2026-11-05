@@ -81,6 +81,20 @@ D. Phương án 4
     expect(result.questions[0].warningFlags?.[0]).toContain("Chưa có đáp án");
   });
 
+  it("không tạo phương án giả nếu tài liệu thiếu các lựa chọn", () => {
+    const parsed = parseSingleQuestionBlock("Câu hỏi thiếu phương án\nA. Một lựa chọn", 1);
+    expect(parsed?.options).toHaveLength(1);
+    expect(parsed?.options[0].content).toBe("Một lựa chọn");
+    expect(parsed?.warningFlags?.some(flag => flag.includes("ít nhất 2 lựa chọn"))).toBe(true);
+    expect(parsed?.correctAnswers).toEqual([]);
+  });
+
+  it("không tạo bất kỳ lựa chọn giả nào khi không nhận diện được A/B", () => {
+    const parsed = parseSingleQuestionBlock("Câu hỏi không có phương án hợp lệ", 2);
+    expect(parsed?.options).toHaveLength(0);
+    expect(parsed?.warningFlags).toBeDefined();
+  });
+
   it("Chiến lược 1 (Bảng đáp án cuối đề): Nhận diện chính xác 100% từ ma trận bảng đáp án", () => {
     const rawExam = `
 Câu 1: Cho hàm số $y = x^2$. Đạo hàm là:

@@ -139,5 +139,22 @@ describe("extractionStore Unit Tests", () => {
     expect(questions.length).toBe(5);
     expect(questions[4].order).toBe(5);
     expect(questions[4].detectionStrategy).toBe("manual");
+    expect(questions[4].correctAnswers).toEqual([]);
+  });
+
+  it("bỏ chọn đáp án cuối không được tự gán đáp án A", () => {
+    useExtractionStore.getState().toggleCorrectAnswer("q1", "A");
+    const question = useExtractionStore.getState().extractionResult?.questions[0];
+    expect(question?.correctAnswers).toEqual([]);
+    expect(question?.confidenceScore).toBe(0);
+    expect(question?.warningFlags).toContain("Chưa có đáp án (Cần chọn đáp án trước khi lưu đề)");
+  });
+
+  it("chọn lại một đáp án xóa cảnh báo thiếu đáp án", () => {
+    useExtractionStore.getState().toggleCorrectAnswer("q1", "A");
+    useExtractionStore.getState().setCorrectAnswer("q1", "B");
+    const question = useExtractionStore.getState().extractionResult?.questions[0];
+    expect(question?.correctAnswers).toEqual(["B"]);
+    expect(question?.warningFlags?.some(flag => flag.includes("Chưa có đáp án"))).not.toBe(true);
   });
 });

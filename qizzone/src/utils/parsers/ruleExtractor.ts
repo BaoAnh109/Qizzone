@@ -304,15 +304,10 @@ export function parseSingleQuestionBlock(
   // Tách câu hỏi và options
   const { questionPrompt, options } = splitOptionsFromBlock(questionAndOptionsText);
 
-  // Đảm bảo đủ 4 options nếu thiếu
+  // Giữ nguyên phương án thực sự tìm thấy trong tài liệu.
+  // Không tạo A/B/C/D giả: một câu thiếu phương án phải được giáo viên kiểm tra.
   if (options.length < 2) {
-    options.push(
-      { id: "A", content: "Lựa chọn A", rawContent: "A. Lựa chọn A" },
-      { id: "B", content: "Lựa chọn B", rawContent: "B. Lựa chọn B" },
-      { id: "C", content: "Lựa chọn C", rawContent: "C. Lựa chọn C" },
-      { id: "D", content: "Lựa chọn D", rawContent: "D. Lựa chọn D" }
-    );
-    warningFlags.push("Chưa bóc tách được đầy đủ các lựa chọn A, B, C, D");
+    warningFlags.push("Chưa bóc tách được ít nhất 2 lựa chọn; cần kiểm tra tài liệu gốc");
   } else if (options.length === 3) {
     warningFlags.push("Chỉ tìm thấy 3 lựa chọn (Thiếu đáp án D)");
   }

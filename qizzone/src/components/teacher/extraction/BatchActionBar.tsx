@@ -21,6 +21,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
 import { QuickAnswerKeyModal } from "./QuickAnswerKeyModal";
 import { mapExtractedQuestionsToQuizQuestions } from "@/utils/extractedQuestionMapper";
+import { getExtractedQuestionIssues } from "@/utils/extractedQuestionValidation";
 import type { DetectionStrategy } from "@/types/extractor";
 
 export function BatchActionBar() {
@@ -125,6 +126,10 @@ export function BatchActionBar() {
       toast.error("Đề thi chưa có câu hỏi nào để cấu hình");
       return;
     }
+    const issues = getExtractedQuestionIssues(questions);
+    if (issues.length > 0) {
+      toast.warning(`Có ${issues.length} vấn đề cần kiểm tra. Hãy sửa trước khi lưu hoặc xuất bản đề.`);
+    }
     const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
     navigate("/teacher/create-quiz", {
       state: {
@@ -140,6 +145,14 @@ export function BatchActionBar() {
   const handleFinalizeQuiz = async (status: "draft" | "published" = "published") => {
     if (questions.length === 0) {
       toast.error("Đề thi chưa có câu hỏi nào để lưu");
+      return;
+    }
+
+    // Current Quiz persistence schema requires a verified answer for every
+    // question, including drafts. Keep incomplete extractions in review.
+    const issues = getExtractedQuestionIssues(questions);
+    if (issues.length > 0) {
+      toast.error(`${issues[0]} Còn ${issues.length} vấn đề cần xử lý trước khi lưu.`);
       return;
     }
 
