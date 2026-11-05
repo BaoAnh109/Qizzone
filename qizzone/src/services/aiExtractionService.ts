@@ -55,6 +55,7 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
       content: question.content || `Câu hỏi ${index + 1}`,
       options,
       type,
+      needsReview: true,
       correctAnswers: answers,
       explanation: question.explanation,
       points: payload.questions?.length ? 10 / payload.questions.length : 1,
@@ -188,8 +189,9 @@ export async function solveMissingAnswersWithAI(
       ...question,
       correctAnswers: [solution.answer],
       explanation: solution.explanation,
+      needsReview: true,
       detectionStrategy: 'ai_inference' as DetectionStrategy,
-      confidenceScore: 0.96,
+      confidenceScore: 0.0,
       warningFlags: (question.warningFlags || []).filter(flag => !flag.includes('Chưa có đáp án')),
     };
   });

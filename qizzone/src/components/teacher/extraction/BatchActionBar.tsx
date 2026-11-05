@@ -128,7 +128,8 @@ export function BatchActionBar() {
     }
     const issues = getExtractedQuestionIssues(questions);
     if (issues.length > 0) {
-      toast.warning(`Có ${issues.length} vấn đề cần kiểm tra. Hãy sửa trước khi lưu hoặc xuất bản đề.`);
+      toast.warning(`Có ${issues.length} vấn đề cần kiểm tra. Hãy sửa/xác nhận trước khi chuyển sang cấu hình đề.`);
+      return;
     }
     const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
     navigate("/teacher/create-quiz", {

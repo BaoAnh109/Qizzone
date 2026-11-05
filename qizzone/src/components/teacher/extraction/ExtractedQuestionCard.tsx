@@ -188,6 +188,31 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
         </div>
       )}
 
+      {question.needsReview && (
+        <div className="flex items-center justify-between gap-3 bg-violet-50 border-b border-violet-200 px-4 py-3">
+          <span className="text-xs font-medium text-violet-950">
+            Câu do AI xử lý: kiểm tra nội dung, lựa chọn và đáp án với file gốc.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!question.content.trim() || question.options.length < 2 || question.correctAnswers.length === 0) {
+                return;
+              }
+              updateQuestion(question.id, {
+                needsReview: false,
+                warningFlags: question.warningFlags?.filter(flag =>
+                  !flag.includes("cần đối chiếu") && !flag.includes("Cần kiểm tra cấu trúc")
+                ),
+              });
+            }}
+          >
+            Xác nhận đã kiểm tra
+          </Button>
+        </div>
+      )}
+
       {/* Body */}
       <div className="p-5 space-y-4">
         {isEditing ? (

@@ -11,6 +11,9 @@ export function getExtractedQuestionIssues(questions: readonly ExtractedQuestion
   questions.forEach((question, index) => {
     const label = `Câu ${question.order || index + 1}`;
     const content = question.content.trim();
+    if (question.needsReview) {
+      issues.push(`${label}: cần xác nhận kết quả AI sau khi đối chiếu tài liệu gốc.`);
+    }
     if (!content || content.startsWith("Nhập nội dung câu hỏi mới tại đây")) {
       issues.push(`${label}: thiếu nội dung câu hỏi hợp lệ.`);
     }

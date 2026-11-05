@@ -29,6 +29,7 @@ export interface ExtractedQuestion {
   content: string; // Câu hỏi chuẩn KaTeX
   options: ExtractedOption[];
   type?: QuestionType;
+  needsReview?: boolean; // AI-restored content requires explicit human approval
   correctAnswers: OptionId[];
   explanation?: string;
   points: number;

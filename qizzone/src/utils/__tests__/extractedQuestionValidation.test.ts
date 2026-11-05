@@ -13,6 +13,12 @@ const validQuestion: ExtractedQuestion = {
 };
 
 describe("extracted question validation", () => {
+  it("requires confirmation for AI-recovered answers", () => {
+    const flagged = getExtractedQuestionIssues([{ ...validQuestion, needsReview: true }]);
+    expect(flagged.some(issue => issue.includes("cần xác nhận"))).toBe(true);
+    expect(getExtractedQuestionIssues([{ ...validQuestion, needsReview: false }])).toEqual([]);
+  });
+
   it("accepts a complete single-choice extraction", () => {
     expect(getExtractedQuestionIssues([validQuestion])).toEqual([]);
   });

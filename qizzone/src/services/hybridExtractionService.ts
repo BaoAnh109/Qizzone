@@ -30,6 +30,7 @@ export function mergeAIRecovery(base: ExtractionResult, recovered: ExtractionRes
       content: question.content.trim().length > 4 ? question.content : fromAI.content,
       options: fromAI.options,
       type: fromAI.type || question.type,
+      needsReview: true,
       correctAnswers: question.correctAnswers.filter(a => fromAI.options.some(o => o.id === a)),
       warningFlags: ["Đã khôi phục cấu trúc bằng AI; cần đối chiếu tài liệu gốc"],
       confidenceScore: 0,
@@ -121,6 +122,7 @@ export async function recoverScannedPdf(
         questions.push({
           ...q,
           order: questions.length + 1,
+          needsReview: true,
           id: `scan-${pageNo}-${q.id}`,
           warningFlags: [...(q.warningFlags || []), `PDF scan, trang ${pageNo}: cần đối chiếu câu hỏi gốc`],
         });
