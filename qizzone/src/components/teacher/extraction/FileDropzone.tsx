@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/useToast";
 import { parseDocxFile } from "@/utils/parsers/docxParser";
 import { parsePdfFile } from "@/utils/parsers/pdfParser";
 import { extractQuizWithAI } from "@/services/aiExtractionService";
+import { recoverTextExtraction, recoverScannedPdf, assertQuestionCoverage } from "@/services/hybridExtractionService";
 import { useExtractionStore } from "@/store/extractionStore";
 import {
   validateImportFile,
@@ -66,7 +67,9 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
     try {
       if (isDocx) {
         setIsProcessing(true, 50);
-        const { rawHtml, rawText, result } = await parseDocxFile(file);
+        const { rawHtml, rawText, result: parsed } = await parseDocxFile(file);
+        const result = await recoverTextExtraction(file, rawText, parsed);
+        assertQuestionCoverage(rawText, result);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -85,7 +88,11 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         handleFinishExtraction();
       } else if (isPdf) {
         setIsProcessing(true, 50);
-        const { rawText, totalPages, result, pdfDoc } = await parsePdfFile(file);
+        const { rawText, totalPages, result: parsed, pdfDoc } = await parsePdfFile(file);
+        const result = !rawText.trim() && pdfDoc
+          ? await recoverScannedPdf(file, pdfDoc, parsed)
+          : await recoverTextExtraction(file, rawText, parsed);
+        assertQuestionCoverage(rawText, result);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -158,8 +165,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         );
         handleFinishExtraction();
       }
-    } catch {
-      toast.error("Không thể phân tích tệp đề thi. Vui lòng kiểm tra lại cấu trúc file!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể phân tích tệp đề thi.");
     } finally {
       setIsProcessing(false, 0);
     }

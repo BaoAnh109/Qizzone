@@ -19,12 +19,15 @@ interface RawSolutionItem {
 
 interface AIQuestionPayload {
   order?: number; content?: string; type?: string; options?: Array<{ id?: string; content?: string }>;
-  correctAnswers?: string[]; explanation?: string; confidenceScore?: number; detectionStrategy?: string;
+  correctAnswers?: string[]; answerSource?: string; answerEvidence?: string; explanation?: string; confidenceScore?: number; detectionStrategy?: string;
 }
 
 const SYSTEM_PROMPT = `Bạn là chuyên gia bóc tách đề thi trắc nghiệm Việt Nam. Trả về JSON hợp lệ duy nhất.
-Phải giữ đủ câu hỏi, nội dung phương án, đáp án đúng nếu có trong tài liệu hoặc suy luận được, lời giải và LaTeX.
-Schema: {"title":string,"subject":string,"questions":[{"order":number,"content":string,"options":[{"id":"A|B|C|D","content":string}],"correctAnswers":["A"],"explanation":string,"confidenceScore":number,"detectionStrategy":"ai_inference"}]}`;
+Giữ nguyên văn câu hỏi, các phương án và công thức LaTeX. Không được giải câu hỏi hoặc tự suy luận đáp án đúng.
+Chỉ điền correctAnswers khi tài liệu cung cấp bằng chứng rõ ràng như bảng đáp án, ký hiệu *, gạch chân hoặc đánh dấu màu.
+Khi không có bằng chứng, correctAnswers phải là []. Không được bịa thêm lựa chọn hoặc nội dung câu hỏi.
+Với câu Đúng/Sai sử dụng type "true_false", options là A: Đúng, B: Sai; với nhiều đáp án type "multiple_choice".
+Trả về JSON: {"title":string,"subject":string,"questions":[{"order":number,"content":string,"type":"single_choice|multiple_choice|true_false","options":[{"id":"A|B|C|D","content":string}],"correctAnswers":["A"],"answerSource":"highlight|answer_table|explicit_text|unknown","answerEvidence":string,"explanation":string}]}`;
 
 function cleanJson(value: string): string {
   return value.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
@@ -38,20 +41,28 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
     const options = (question.options || []).filter(option => ['A', 'B', 'C', 'D'].includes(option.id || '')).map(option => ({
       id: option.id as OptionId, content: option.content || '', rawContent: `${option.id}. ${option.content || ''}`,
     }));
-    const answers = (question.correctAnswers || []).filter(answer => ['A', 'B', 'C', 'D'].includes(answer)) as OptionId[];
+    const evidenceAvailable = ['highlight', 'answer_table', 'explicit_text'].includes(question.answerSource || '') &&
+      typeof question.answerEvidence === 'string' && question.answerEvidence.trim().length > 0;
+    const answers = evidenceAvailable
+      ? (question.correctAnswers || []).filter(answer => ['A', 'B', 'C', 'D'].includes(answer)) as OptionId[]
+      : [];
+    const type = question.type === 'true_false' || question.type === 'multiple_choice'
+      ? question.type : 'single_choice';
     return {
       id: `q-ai-${Date.now().toString(36)}-${index}`,
       tempId: `ai-${index + 1}`,
       order: question.order || index + 1,
       content: question.content || `Câu hỏi ${index + 1}`,
       options,
+      type,
       correctAnswers: answers,
       explanation: question.explanation,
       points: payload.questions?.length ? 10 / payload.questions.length : 1,
-      confidenceScore: typeof question.confidenceScore === 'number' ? question.confidenceScore : 0.9,
-      detectionStrategy: (question.detectionStrategy || 'ai_inference') as DetectionStrategy,
+      // Model-provided confidence is not calibrated; use zero without source proof.
+      confidenceScore: evidenceAvailable ? 0.8 : 0,
+      detectionStrategy: 'ai_inference' as DetectionStrategy,
       rawTextSegment: question.content || '',
-      warningFlags: options.length < 2 || answers.length === 0 ? ['Cần kiểm tra đáp án'] : undefined,
+      warningFlags: options.length < 2 || answers.length === 0 ? ['Cần kiểm tra cấu trúc hoặc đáp án dựa trên tài liệu gốc'] : undefined,
     };
   });
   return {

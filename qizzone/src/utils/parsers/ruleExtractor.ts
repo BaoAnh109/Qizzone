@@ -140,7 +140,7 @@ export function splitOptionsFromBlock(questionBlockText: string): {
   questionPrompt: string;
   options: ExtractedOption[];
 } {
-  // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
+  // Nhận cả A-D và a-d nhưng chỉ ở vị trí nhãn lựa chọn, tránh bắt chữ trong nội dung.
   const headerRegex =
     /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:)/-])(?!\d)/gi;
 
