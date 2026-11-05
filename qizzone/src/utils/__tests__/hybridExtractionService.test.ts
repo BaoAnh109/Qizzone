@@ -12,7 +12,7 @@ const base: ExtractionResult = {fileName:"test.pdf",fileType:"pdf",fileSize:10,t
   totalQuestionsDetected:1,questions:[q],hasAnswerKeyTable:true,warningsCount:0,extractedAt:"2026-01-01"};
 describe("hybrid recovery", () => {
  it("rejects documents that contain more numbered questions than parsed",()=>{
-   expect(() => assertQuestionCoverage("Câu 1. A\\nCâu 2. B", base)).toThrow("2 đầu mục");
+   expect(() => assertQuestionCoverage("Câu 1. A\nCâu 2. B", base)).toThrow("2 đầu mục");
  });
 
  it("does not invoke fallback for missing answers alone",()=>{

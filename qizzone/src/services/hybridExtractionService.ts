@@ -19,7 +19,7 @@ export function mergeAIRecovery(base: ExtractionResult, recovered: ExtractionRes
     const fromAI = recovered.questions[index];
     if (!fromAI || quality(fromAI) <= quality(question)) return question;
     const words = (value: string) => new Set(
-      value.toLocaleLowerCase("vi").match(/[\\p{L}\\p{N}]{3,}/gu) || []
+      value.toLocaleLowerCase("vi").match(/[\p{L}\p{N}]{3,}/gu) || []
     );
     const a = words(question.content);
     const b = words(fromAI.content);
@@ -62,7 +62,7 @@ export async function recoverTextExtraction(
   base: ExtractionResult,
 ): Promise<ExtractionResult> {
   if (!text.trim()) return base;
-  const headerCount = (text.match(/(?:^|\\n)\\s*(?:Câu|Question|Bài)\\s+\\d+\\s*[.：:)]/gmi) || []).length;
+  const headerCount = (text.match(/(?:^|\n)\s*(?:Câu|Question|Bài)\s+\d+\s*[.：:)]/gmi) || []).length;
   if (!needsAIRecovery(base) && (headerCount === 0 || headerCount <= base.questions.length)) return base;
   const chunks = chunkDocument(text);
   // Avoid treating partial AI output as a complete document if many chunks exist.
@@ -143,7 +143,7 @@ export async function recoverScannedPdf(
 
 /** Guard against silent loss of numbered questions from unfamiliar layouts. */
 export function assertQuestionCoverage(text: string, result: ExtractionResult): void {
-  const count = (text.match(/(?:^|\\n)\\s*(?:Câu|Question|Bài)\\s+\\d+\\s*[.：:)]/gmi) || []).length;
+  const count = (text.match(/(?:^|\n)\s*(?:Câu|Question|Bài)\s+\d+\s*[.：:)]/gmi) || []).length;
   if (count > result.questions.length) {
     throw new Error(`Phát hiện ${count} đầu mục câu hỏi nhưng chỉ bóc tách ${result.questions.length}. Vui lòng kiểm tra/nhập lại; không lưu đề thiếu câu.`);
   }

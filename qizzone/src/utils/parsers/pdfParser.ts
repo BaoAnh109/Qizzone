@@ -59,7 +59,7 @@ export async function parsePdfFile(file: File): Promise<ParsedPdfDocument> {
     // Rasterize ONLY pages with recognizable option labels. A PDF's yellow
     // highlights are often drawn rectangles, not text styles or annotations.
     const candidates = lines.filter(line =>
-      /^\\s*(?:(?:[a-d]\\s*[.):\\-])|(?:Đúng|Sai)\\s*$)/iu.test(line.text)
+      /^\s*(?:(?:[a-d]\s*[.):\-])|(?:Đúng|Sai)\s*$)/iu.test(line.text)
     );
     const markedLines = new Set<TextLine>();
     if (candidates.length > 0 && typeof document !== "undefined") {
@@ -93,7 +93,7 @@ export async function parsePdfFile(file: File): Promise<ParsedPdfDocument> {
     pagesText.push(lines.map(line => {
       const text = line.text.trim();
       return markedLines.has(line) ? `<mark>${text}</mark>` : text;
-    }).join("\\n"));
+    }).join("\n"));
   }
 
   // Làm sạch watermark, tiêu đề trang rác và ghép liền văn bản giữa các trang
