@@ -1,0 +1,100 @@
+{
+  "id": "f06-docx-true-false",
+  "file": "f06-docx-true-false.docx",
+  "format": "docx",
+  "notes": "Dạng đúng/sai: mỗi câu là một mệnh đề, 2 lựa chọn Đúng/Sai. Pipeline hiện tại chỉ biết A-D nên đây là gap đo được, không phải lỗi fixture.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "true_false",
+      "stem": "Trái Đất quay quanh Mặt Trời.",
+      "options": [
+        {
+          "key": "A",
+          "text": "Đúng"
+        },
+        {
+          "key": "B",
+          "text": "Sai"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Phương án 'Đúng' được tô vàng; map Đúng=A, Sai=B cho schema.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "true_false",
+      "stem": "Nước sôi ở 90 độ C trong điều kiện áp suất thường.",
+      "options": [
+        {
+          "key": "A",
+          "text": "Đúng"
+        },
+        {
+          "key": "B",
+          "text": "Sai"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Phương án 'Sai' được tô vàng; map Đúng=A, Sai=B cho schema.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "true_false",
+      "stem": "Âm thanh truyền được trong chân không.",
+      "options": [
+        {
+          "key": "A",
+          "text": "Đúng"
+        },
+        {
+          "key": "B",
+          "text": "Sai"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Phương án 'Sai' được tô vàng; map Đúng=A, Sai=B cho schema.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "true_false",
+      "stem": "Quang hợp xảy ra chủ yếu ở lá cây.",
+      "options": [
+        {
+          "key": "A",
+          "text": "Đúng"
+        },
+        {
+          "key": "B",
+          "text": "Sai"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Phương án 'Đúng' được tô vàng; map Đúng=A, Sai=B cho schema.",
+      "hasImage": false
+    }
+  ]
+}

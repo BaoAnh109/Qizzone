@@ -1,0 +1,132 @@
+{
+  "id": "f19-docx-latex-special",
+  "file": "f19-docx-latex-special.docx",
+  "format": "docx",
+  "notes": "Ký tự đặc biệt dạng text thuần (x^2, ℃, ≥, ≤, ≠) và câu song ngữ Anh–Việt: parser phải giữ nguyên ký tự, không mất dấu hay cắt stem ở ký tự lạ.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Giải phương trình x^2 + 2x + 1 = 0, nghiệm của phương trình là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "x = 1"
+        },
+        {
+          "key": "B",
+          "text": "x = -1"
+        },
+        {
+          "key": "C",
+          "text": "x = 0"
+        },
+        {
+          "key": "D",
+          "text": "x = 2"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Nhiệt độ sôi của nước là 100 ℃, nhiệt độ đóng băng là 0 ℃. Hỏi chênh lệch nhiệt độ giữa hai mốc này là bao nhiêu độ?",
+      "options": [
+        {
+          "key": "A",
+          "text": "90 độ"
+        },
+        {
+          "key": "B",
+          "text": "100 độ"
+        },
+        {
+          "key": "C",
+          "text": "110 độ"
+        },
+        {
+          "key": "D",
+          "text": "0 độ"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Cho a ≥ 5 và b ≤ 3. Hỏi khẳng định nào sau đây có thể sai?",
+      "options": [
+        {
+          "key": "A",
+          "text": "a > b"
+        },
+        {
+          "key": "B",
+          "text": "a ≥ b"
+        },
+        {
+          "key": "C",
+          "text": "a = b"
+        },
+        {
+          "key": "D",
+          "text": "a ≠ b"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án C tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "What is the capital of Japan? (Thủ đô của Nhật Bản là thành phố nào?)",
+      "options": [
+        {
+          "key": "A",
+          "text": "Seoul"
+        },
+        {
+          "key": "B",
+          "text": "Tokyo"
+        },
+        {
+          "key": "C",
+          "text": "Bangkok"
+        },
+        {
+          "key": "D",
+          "text": "Beijing"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng.",
+      "hasImage": false
+    }
+  ]
+}

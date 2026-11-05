@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useExtractionStore } from "@/store/extractionStore";
+import { validateExtractedQuestions } from "@/utils/extractedQuestionMapper";
 import type { ExtractionResult } from "@/types/extractor";
 
 const mockExtraction: ExtractionResult = {
@@ -139,5 +140,107 @@ describe("extractionStore Unit Tests", () => {
     expect(questions.length).toBe(5);
     expect(questions[4].order).toBe(5);
     expect(questions[4].detectionStrategy).toBe("manual");
+  });
+
+  // Bước 05: toggleCorrectAnswer cho phép [] — không fallback ["A"].
+  it("bỏ đáp án cuối thì câu về [] kèm trạng thái cần review, không rơi về A", () => {
+    useExtractionStore.getState().toggleCorrectAnswer("q1", "A");
+    const q1 = useExtractionStore
+      .getState()
+      .extractionResult?.questions.find((q) => q.id === "q1");
+
+    expect(q1?.correctAnswers).toEqual([]);
+    expect(q1?.detectionStrategy).toBe("manual");
+    expect(q1?.confidenceScore).toBe(0);
+    expect(q1?.warningFlags).toContain("Chưa có đáp án đúng");
+  });
+
+  it("bỏ 1 trong 2 đáp án thì đáp án còn lại được giữ nguyên", () => {
+    const store = useExtractionStore.getState();
+    store.toggleCorrectAnswer("q1", "B"); // ["A", "B"]
+    useExtractionStore.getState().toggleCorrectAnswer("q1", "A"); // ["B"]
+    const q1 = useExtractionStore
+      .getState()
+      .extractionResult?.questions.find((q) => q.id === "q1");
+
+    expect(q1?.correctAnswers).toEqual(["B"]);
+    expect(q1?.warningFlags).not.toContain("Chưa có đáp án đúng");
+    expect(q1?.confidenceScore).toBe(1.0);
+  });
+
+  it("chọn lại đáp án sau khi rỗng thì gỡ cờ cần review", () => {
+    const store = useExtractionStore.getState();
+    store.toggleCorrectAnswer("q1", "A"); // []
+    useExtractionStore.getState().toggleCorrectAnswer("q1", "B"); // ["B"]
+    const q1 = useExtractionStore
+      .getState()
+      .extractionResult?.questions.find((q) => q.id === "q1");
+
+    expect(q1?.correctAnswers).toEqual(["B"]);
+    expect(q1?.warningFlags).not.toContain("Chưa có đáp án đúng");
+    expect(q1?.confidenceScore).toBe(1.0);
+  });
+
+  it("setCorrectAnswer chủ động chọn thì gỡ cờ rỗng cũ", () => {
+    const store = useExtractionStore.getState();
+    store.toggleCorrectAnswer("q1", "A"); // [] + cờ
+    useExtractionStore.getState().setCorrectAnswer("q1", "B");
+    const q1 = useExtractionStore
+      .getState()
+      .extractionResult?.questions.find((q) => q.id === "q1");
+
+    expect(q1?.correctAnswers).toEqual(["B"]);
+    expect(q1?.warningFlags).not.toContain("Chưa có đáp án đúng");
+  });
+
+  it("câu thêm tay là manual_draft: không đáp án giả, không tự xuất bản được", () => {
+    useExtractionStore.getState().addEmptyQuestion();
+    const questions =
+      useExtractionStore.getState().extractionResult?.questions || [];
+    const draft = questions[4];
+
+    expect(draft.isManualDraft).toBe(true);
+    expect(draft.correctAnswers).toEqual([]);
+    expect(draft.confidenceScore).toBe(0);
+    expect(draft.warningFlags).toContain("Câu hỏi nháp tạo thủ công");
+    expect(draft.warningFlags).toContain("Chưa có đáp án đúng");
+    // Placeholder UI vẫn được sinh để giáo viên sửa, nhưng không
+    // phải câu trích xuất hợp lệ: validator bước 04 chặn xuất bản.
+    expect(draft.options.map((o) => o.id)).toEqual(["A", "B", "C", "D"]);
+    const diagnostics = validateExtractedQuestions([draft]);
+    expect(
+      diagnostics.some(
+        (d) => d.code === "missing_answer" && d.blocksPublish === true
+      )
+    ).toBe(true);
+    expect(useExtractionStore.getState().selectedQuestionId).toBe(draft.id);
+  });
+
+  it("batch answer mapping có conflict: cùng câu ghi 2 đáp án thì lần sau thắng, ghi đè cả đáp án manual", () => {
+    useExtractionStore.getState().setCorrectAnswer("q1", "B"); // manual
+    const { updatedCount } = useExtractionStore
+      .getState()
+      .applyBatchAnswerKey("1A 1C 2B");
+    const questions =
+      useExtractionStore.getState().extractionResult?.questions || [];
+
+    expect(updatedCount).toBe(2);
+    expect(questions[0].correctAnswers).toEqual(["C"]);
+    expect(questions[0].detectionStrategy).toBe("answer_table");
+    expect(questions[0].confidenceScore).toBe(0.99);
+    expect(questions[1].correctAnswers).toEqual(["B"]);
+  });
+
+  it("batch answer mapping bỏ qua mục không hợp lệ, không crash, không cập nhật câu nào", () => {
+    const { updatedCount } = useExtractionStore
+      .getState()
+      .applyBatchAnswerKey("5Z 0A 9");
+    const questions =
+      useExtractionStore.getState().extractionResult?.questions || [];
+
+    expect(updatedCount).toBe(0);
+    questions.forEach((q) => {
+      expect(q.correctAnswers).toEqual(["A"]);
+    });
   });
 });

@@ -1,0 +1,132 @@
+{
+  "id": "f21-pdf-uneven-columns",
+  "file": "f21-pdf-uneven-columns.pdf",
+  "format": "pdf",
+  "notes": "PDF 1 trang, 2 cột KHÔNG đều (trái x=40 rộng, phải x=360 hẹp) + tiêu đề dài toàn chiều rộng ở đầu trang: thứ tự đọc đúng là theo cột (1,2 rồi 3,4), tiêu đề đứng trước.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của nước Úc là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sydney"
+        },
+        {
+          "key": "B",
+          "text": "Canberra"
+        },
+        {
+          "key": "C",
+          "text": "Melbourne"
+        },
+        {
+          "key": "D",
+          "text": "Perth"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột trái (rộng), dòng 'Đáp án: B'.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "12 nhân với 8 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "84"
+        },
+        {
+          "key": "B",
+          "text": "96"
+        },
+        {
+          "key": "C",
+          "text": "108"
+        },
+        {
+          "key": "D",
+          "text": "72"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột trái (rộng), dòng 'Đáp án: B'.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Số nào là số nguyên tố?",
+      "options": [
+        {
+          "key": "A",
+          "text": "4"
+        },
+        {
+          "key": "B",
+          "text": "6"
+        },
+        {
+          "key": "C",
+          "text": "7"
+        },
+        {
+          "key": "D",
+          "text": "9"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột phải (hẹp), dòng 'Đáp án: C'.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Một tá bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "12"
+        },
+        {
+          "key": "C",
+          "text": "20"
+        },
+        {
+          "key": "D",
+          "text": "24"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột phải (hẹp), dòng 'Đáp án: B'.",
+      "hasImage": false
+    }
+  ]
+}

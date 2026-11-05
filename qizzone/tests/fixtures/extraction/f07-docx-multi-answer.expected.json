@@ -1,0 +1,104 @@
+{
+  "id": "f07-docx-multi-answer",
+  "file": "f07-docx-multi-answer.docx",
+  "format": "docx",
+  "notes": "Dạng nhiều đáp án đúng; parser hiện tại có thể chỉ lấy 1.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "multiple_choice",
+      "stem": "Những số nào sau đây là số chẵn?",
+      "options": [
+        {
+          "key": "A",
+          "text": "2"
+        },
+        {
+          "key": "B",
+          "text": "3"
+        },
+        {
+          "key": "C",
+          "text": "4"
+        },
+        {
+          "key": "D",
+          "text": "5"
+        }
+      ],
+      "correctAnswers": [
+        "A",
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Hai đáp án A, C cùng được tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "multiple_choice",
+      "stem": "Những hành tinh nào sau đây là hành tinh đất đá?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sao Thủy"
+        },
+        {
+          "key": "B",
+          "text": "Sao Mộc"
+        },
+        {
+          "key": "C",
+          "text": "Sao Kim"
+        },
+        {
+          "key": "D",
+          "text": "Sao Thổ"
+        }
+      ],
+      "correctAnswers": [
+        "A",
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Hai đáp án A, C cùng được tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "multiple_choice",
+      "stem": "Những chất nào sau đây tan trong nước?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Muối ăn"
+        },
+        {
+          "key": "B",
+          "text": "Dầu ăn"
+        },
+        {
+          "key": "C",
+          "text": "Đường"
+        },
+        {
+          "key": "D",
+          "text": "Cát"
+        }
+      ],
+      "correctAnswers": [
+        "A",
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Hai đáp án A, C cùng được tô vàng.",
+      "hasImage": false
+    }
+  ]
+}

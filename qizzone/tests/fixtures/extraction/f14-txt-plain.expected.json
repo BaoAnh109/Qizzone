@@ -1,0 +1,95 @@
+{
+  "id": "f14-txt-plain",
+  "file": "f14-txt-plain.txt",
+  "format": "txt",
+  "notes": "Text thuần không đáp án: kỳ vọng correctAnswers=[].",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Năm nhuận có bao nhiêu ngày?",
+      "options": [
+        {
+          "key": "A",
+          "text": "365"
+        },
+        {
+          "key": "B",
+          "text": "366"
+        },
+        {
+          "key": "C",
+          "text": "364"
+        },
+        {
+          "key": "D",
+          "text": "360"
+        }
+      ],
+      "correctAnswers": [],
+      "answerOrigin": "none",
+      "page": 1,
+      "evidence": "Text thuần, không dấu hiệu đáp án.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Người đầu tiên bay vào vũ trụ là ai?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Neil Armstrong"
+        },
+        {
+          "key": "B",
+          "text": "Yuri Gagarin"
+        },
+        {
+          "key": "C",
+          "text": "Buzz Aldrin"
+        },
+        {
+          "key": "D",
+          "text": "Valentina Tereshkova"
+        }
+      ],
+      "correctAnswers": [],
+      "answerOrigin": "none",
+      "page": 1,
+      "evidence": "Text thuần, không dấu hiệu đáp án.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Số liền sau của 99 là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "98"
+        },
+        {
+          "key": "B",
+          "text": "100"
+        },
+        {
+          "key": "C",
+          "text": "101"
+        },
+        {
+          "key": "D",
+          "text": "90"
+        }
+      ],
+      "correctAnswers": [],
+      "answerOrigin": "none",
+      "page": 1,
+      "evidence": "Text thuần, không dấu hiệu đáp án.",
+      "hasImage": false
+    }
+  ]
+}

@@ -20,7 +20,8 @@ import { useToast } from "@/hooks/useToast";
 import { renderPdfPageToCanvas } from "@/utils/parsers/pdfParser";
 
 export function DocumentViewer() {
-  const { document, extractionResult, selectedQuestionId } = useExtractionStore();
+  const { document, extractionResult, hybridReview, selectedQuestionId } =
+    useExtractionStore();
   const toast = useToast();
   const sanitizedRawHtml = useMemo(
     () => document?.rawHtml ? DOMPurify.sanitize(document.rawHtml) : "",
@@ -29,6 +30,11 @@ export function DocumentViewer() {
 
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
+  // Bước 24: id câu hỏi mà lần nhảy trang gần nhất đã phục vụ (xem khối
+  // điều chỉnh trong lúc render bên dưới).
+  const [jumpedForSelection, setJumpedForSelection] = useState<string | null>(
+    null
+  );
   const [isCopied, setIsCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -36,6 +42,40 @@ export function DocumentViewer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const totalPages = document?.totalPages || 1;
+
+  // Bước 24: chọn câu trong màn review thì nhảy tới trang nguồn của
+  // câu đó (PDF, page từ V2 bước 15). Điều chỉnh trong lúc render khi
+  // lựa chọn đổi — pattern "adjusting state when a prop changes" của
+  // React: React render lại trước khi commit nên không cascade, và việc
+  // lật trang tay sau đó vẫn giữ nguyên currentPage (không bị effect
+  // giành lại). DOCX/text không giữ pagination nên không nhảy trang
+  // (trace panel đã nói rõ); bbox tọa độ không tồn tại trong dữ liệu
+  // nên không có nhảy tới bbox.
+  if (selectedQuestionId === null && jumpedForSelection !== null) {
+    setJumpedForSelection(null);
+  } else if (
+    selectedQuestionId !== null &&
+    selectedQuestionId !== jumpedForSelection &&
+    document?.fileType === "pdf" &&
+    hybridReview
+  ) {
+    setJumpedForSelection(selectedQuestionId);
+    const v1 = extractionResult?.questions.find(
+      (q) => q.id === selectedQuestionId
+    );
+    const v2 = v1
+      ? hybridReview.v2.questions.find((q) => q.order === v1.order)
+      : undefined;
+    const page = v2?.page;
+    if (
+      page !== null &&
+      page !== undefined &&
+      page >= 1 &&
+      page <= (document.totalPages || 1)
+    ) {
+      setCurrentPage(page);
+    }
+  }
 
   // Render PDF page onto canvas whenever page or zoom changes
   useEffect(() => {

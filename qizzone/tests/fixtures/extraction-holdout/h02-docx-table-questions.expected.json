@@ -1,0 +1,101 @@
+{
+  "id": "h02-docx-table-questions",
+  "file": "h02-docx-table-questions.docx",
+  "format": "docx",
+  "notes": "DOCX holdout: mỗi câu là 1 hàng bảng 3 ô (stem, phương án, đáp án).",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của nước Ý là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Venice"
+        },
+        {
+          "key": "B",
+          "text": "Roma"
+        },
+        {
+          "key": "C",
+          "text": "Milan"
+        },
+        {
+          "key": "D",
+          "text": "Napoli"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Câu trong 1 hàng bảng: ô stem, ô phương án (mỗi phương án 1 đoạn, kết thúc bằng dấu chấm), ô đáp án.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Hành tinh nào gần Mặt Trời nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Thủy tinh"
+        },
+        {
+          "key": "B",
+          "text": "Kim tinh"
+        },
+        {
+          "key": "C",
+          "text": "Hỏa tinh"
+        },
+        {
+          "key": "D",
+          "text": "Mộc tinh"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Câu trong 1 hàng bảng: ô stem, ô phương án (mỗi phương án 1 đoạn, kết thúc bằng dấu chấm), ô đáp án.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Loài chim nào không biết bay?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Bồ câu"
+        },
+        {
+          "key": "B",
+          "text": "Đại bàng"
+        },
+        {
+          "key": "C",
+          "text": "Chim sẻ"
+        },
+        {
+          "key": "D",
+          "text": "Chim cánh cụt"
+        }
+      ],
+      "correctAnswers": [
+        "D"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Câu trong 1 hàng bảng: ô stem, ô phương án (mỗi phương án 1 đoạn, kết thúc bằng dấu chấm), ô đáp án.",
+      "hasImage": false
+    }
+  ]
+}

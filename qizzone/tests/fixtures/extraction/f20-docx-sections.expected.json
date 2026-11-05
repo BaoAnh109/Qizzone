@@ -1,0 +1,132 @@
+{
+  "id": "f20-docx-sections",
+  "file": "f20-docx-sections.docx",
+  "format": "docx",
+  "notes": "DOCX 2 section với header/footer khác nhau: header/footer nằm ở part riêng, parser chỉ đọc body nên không được để chúng lọt vào stem hay option.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Sông dài nhất Việt Nam là sông nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sông Hồng"
+        },
+        {
+          "key": "B",
+          "text": "Sông Cửu Long"
+        },
+        {
+          "key": "C",
+          "text": "Sông Đồng Nai"
+        },
+        {
+          "key": "D",
+          "text": "Sông Mã"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; thuộc section 1.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Tỉnh nào có diện tích lớn nhất Việt Nam?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Nghệ An"
+        },
+        {
+          "key": "B",
+          "text": "Gia Lai"
+        },
+        {
+          "key": "C",
+          "text": "Sơn La"
+        },
+        {
+          "key": "D",
+          "text": "Thanh Hóa"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án A tô vàng; thuộc section 1.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Đơn vị đo khối lượng trong hệ SI là gì?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Gam"
+        },
+        {
+          "key": "B",
+          "text": "Kilôgam"
+        },
+        {
+          "key": "C",
+          "text": "Tấn"
+        },
+        {
+          "key": "D",
+          "text": "Tạ"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; thuộc section 2.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Tốc độ ánh sáng trong chân không xấp xỉ bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "300 km/giây"
+        },
+        {
+          "key": "B",
+          "text": "3000 km/giây"
+        },
+        {
+          "key": "C",
+          "text": "300000 km/giây"
+        },
+        {
+          "key": "D",
+          "text": "30000 km/giây"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án C tô vàng; thuộc section 2.",
+      "hasImage": false
+    }
+  ]
+}

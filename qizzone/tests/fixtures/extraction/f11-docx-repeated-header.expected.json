@@ -1,0 +1,132 @@
+{
+  "id": "f11-docx-repeated-header",
+  "file": "f11-docx-repeated-header.docx",
+  "format": "docx",
+  "notes": "Header lặp giữa các câu: parser phải bỏ qua, không trộn header vào stem/option của câu trước.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Lực nào giữ các hành tinh quay quanh Mặt Trời?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Lực ma sát"
+        },
+        {
+          "key": "B",
+          "text": "Lực hấp dẫn"
+        },
+        {
+          "key": "C",
+          "text": "Lực đẩy"
+        },
+        {
+          "key": "D",
+          "text": "Lực kéo"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; dòng header lặp đứng trước mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Đơn vị đo cường độ dòng điện là gì?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Vôn"
+        },
+        {
+          "key": "B",
+          "text": "Oát"
+        },
+        {
+          "key": "C",
+          "text": "Ampe"
+        },
+        {
+          "key": "D",
+          "text": "Ôm"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án C tô vàng; dòng header lặp đứng trước mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Quá trình cây xanh tạo ra oxi gọi là gì?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Hô hấp"
+        },
+        {
+          "key": "B",
+          "text": "Quang hợp"
+        },
+        {
+          "key": "C",
+          "text": "Thoát hơi nước"
+        },
+        {
+          "key": "D",
+          "text": "Thụ phấn"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; dòng header lặp đứng trước mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Nhiệt độ sôi của nước ở áp suất thường là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "80 độ C"
+        },
+        {
+          "key": "B",
+          "text": "90 độ C"
+        },
+        {
+          "key": "C",
+          "text": "100 độ C"
+        },
+        {
+          "key": "D",
+          "text": "120 độ C"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án C tô vàng; dòng header lặp đứng trước mỗi câu.",
+      "hasImage": false
+    }
+  ]
+}

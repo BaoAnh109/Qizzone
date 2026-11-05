@@ -1,0 +1,132 @@
+{
+  "id": "f10-pdf-scan",
+  "file": "f10-pdf-scan.pdf",
+  "format": "pdf",
+  "notes": "PDF chỉ có ảnh (không text layer): parser hiện tại không có OCR nên kỳ vọng đo được gap này (0 câu), không phải lỗi fixture.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của Thái Lan là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Hà Nội"
+        },
+        {
+          "key": "B",
+          "text": "Bangkok"
+        },
+        {
+          "key": "C",
+          "text": "Jakarta"
+        },
+        {
+          "key": "D",
+          "text": "Manila"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Chỉ có trong ảnh scan, không có text layer.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "9 + 6 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "13"
+        },
+        {
+          "key": "B",
+          "text": "14"
+        },
+        {
+          "key": "C",
+          "text": "15"
+        },
+        {
+          "key": "D",
+          "text": "16"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Chỉ có trong ảnh scan, không có text layer.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Nước nào sau đây nằm ở châu Phi?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Ai Cập"
+        },
+        {
+          "key": "B",
+          "text": "Ấn Độ"
+        },
+        {
+          "key": "C",
+          "text": "Peru"
+        },
+        {
+          "key": "D",
+          "text": "Fiji"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Chỉ có trong ảnh scan, không có text layer.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Một năm thường có bao nhiêu tháng?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "11"
+        },
+        {
+          "key": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "text": "13"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Chỉ có trong ảnh scan, không có text layer.",
+      "hasImage": false
+    }
+  ]
+}

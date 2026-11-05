@@ -1,0 +1,132 @@
+{
+  "id": "f22-pdf-two-pages",
+  "file": "f22-pdf-two-pages.pdf",
+  "format": "pdf",
+  "notes": "PDF 2 trang, mỗi trang 2 câu: kiểm tra gắn page đúng trang cho câu ở trang 2 (không dồn hết về trang 1).",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thành phố nào là thủ đô của Hàn Quốc?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Busan"
+        },
+        {
+          "key": "B",
+          "text": "Seoul"
+        },
+        {
+          "key": "C",
+          "text": "Incheon"
+        },
+        {
+          "key": "D",
+          "text": "Daegu"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Trang 1.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "5 mũ 2 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "25"
+        },
+        {
+          "key": "C",
+          "text": "15"
+        },
+        {
+          "key": "D",
+          "text": "20"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Trang 1.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Con vật nào sau đây đẻ con và nuôi con bằng sữa?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Cá mập"
+        },
+        {
+          "key": "B",
+          "text": "Cá heo"
+        },
+        {
+          "key": "C",
+          "text": "Rùa"
+        },
+        {
+          "key": "D",
+          "text": "Ếch"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 2,
+      "evidence": "Trang 2.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Một tháng thường có khoảng bao nhiêu ngày?",
+      "options": [
+        {
+          "key": "A",
+          "text": "7"
+        },
+        {
+          "key": "B",
+          "text": "14"
+        },
+        {
+          "key": "C",
+          "text": "30"
+        },
+        {
+          "key": "D",
+          "text": "365"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 2,
+      "evidence": "Trang 2.",
+      "hasImage": false
+    }
+  ]
+}

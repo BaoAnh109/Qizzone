@@ -1,0 +1,5 @@
+fixture,format,expected,got,missing,extra,duplicates,stemMismatch,optionsMismatch,answerMismatch,stemExactMatch,optionsExactMatch,fullyOk,latencyMs,error,pdfFallback,pageMatch,pageTotal,ocrNeeded,chunkComplete,chunkPartial,chunkFailed
+h01-docx-inline-options,docx,3,3,0,0,0,0,0,0,3,3,3,107,,false,0,0,false,1,0,0
+h02-docx-table-questions,docx,3,3,0,0,0,0,0,0,3,0,3,14,,false,0,0,false,1,0,0
+h03-pdf-mid-note,pdf,4,4,0,0,0,0,0,0,4,4,4,569,,false,4,4,false,1,0,0
+h04-docx-roman,docx,3,3,0,0,0,0,0,0,3,3,3,7,,false,0,0,false,1,0,0

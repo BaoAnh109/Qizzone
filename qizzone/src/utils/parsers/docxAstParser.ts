@@ -9,6 +9,41 @@ export function parseXmlString(xmlString: string): Document {
   return new XmldomParser().parseFromString(xmlString, "text/xml") as unknown as Document;
 }
 
+/**
+ * Bước 32 (PLAN_MAIN): chống zip bomb ở tầng client. Giới hạn 25 MiB ở
+ * fileImportValidation chỉ chặn kích thước file nén; một zip nén tốt có
+ * thể nở ra hàng GiB khi giải nén (JSZip/mammoth giải nén trong bộ nhớ
+ * của tab trình duyệt). Guard này cộng kích thước CHƯA nén ghi trong
+ * central directory của zip (đọc được mà không cần giải nén nội dung)
+ * và chặn trước khi bất kỳ entry nào được giải nén. Ngưỡng 200 MiB cho
+ * phép tài liệu ảnh nặng hợp lệ nở ~8 lần so với cap nén, trong khi
+ * bomb thực tế thường nở hàng trăm–hàng nghìn lần.
+ */
+export const MAX_DOCX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024;
+
+export class DocxUncompressedSizeError extends Error {
+  constructor(totalBytes: number) {
+    super(
+      `DOCX_UNCOMPRESSED_SIZE_LIMIT: tổng kích thước chưa nén ${totalBytes} byte vượt ngưỡng ${MAX_DOCX_UNCOMPRESSED_BYTES} byte`
+    );
+    this.name = "DocxUncompressedSizeError";
+  }
+}
+
+export function assertDocxUncompressedSize(zip: JSZip): void {
+  let total = 0;
+  for (const entry of Object.values(zip.files)) {
+    const size = (entry as unknown as { _data?: { uncompressedSize?: number } })
+      ._data?.uncompressedSize;
+    if (typeof size === "number" && size > 0) {
+      total += size;
+      if (total > MAX_DOCX_UNCOMPRESSED_BYTES) {
+        throw new DocxUncompressedSizeError(total);
+      }
+    }
+  }
+}
+
 export interface DocxRunStyle {
   isBold?: boolean;
   isUnderline?: boolean;
@@ -64,6 +99,8 @@ export interface ParsedDocxAst {
  */
 export async function parseDocxDirectAst(arrayBuffer: ArrayBuffer): Promise<ParsedDocxAst> {
   const zip = await JSZip.loadAsync(arrayBuffer);
+  // Bước 32: chặn zip bomb trước khi giải nén bất kỳ entry nào.
+  assertDocxUncompressedSize(zip);
 
   // 1. Đọc relationships để trích xuất hình ảnh (word/_rels/document.xml.rels)
   const relsFile = zip.file("word/_rels/document.xml.rels");
@@ -206,6 +243,20 @@ function parseParagraphElement(
         });
         paragraphImages.push(imagesMap[rId]);
       }
+    } else if (nodeName === "mc:alternatecontent" || nodeName === "w:pict") {
+      // Bước 14: Word thật thường bọc DrawingML trong
+      // mc:AlternateContent (mc:Choice > w:drawing) và ảnh VML cũ trong
+      // w:pict (v:imagedata). extractImageIdFromDrawing tìm descendant
+      // nên bắt được cả hai dạng mà không cần duyệt sâu thủ công.
+      const rId = extractImageIdFromDrawing(elem);
+      if (rId && imagesMap[rId]) {
+        runs.push({
+          text: ` [Hình ảnh] `,
+          style: {},
+          imageId: rId,
+        });
+        paragraphImages.push(imagesMap[rId]);
+      }
     }
   }
 
@@ -231,6 +282,14 @@ function parseParagraphElement(
       segmentHtml = `<span class="text-color-red" style="color:#e11d48">${segmentHtml}</span>`;
     }
 
+    // Bước 14: run mang ảnh thì kèm marker để ruleExtractor gắn ảnh vào
+    // đúng câu hỏi (qua extractedImages: rId -> data URL). Marker bị
+    // cleanMathAndHtml lược bỏ khỏi nội dung chữ nên stem không nhiễm
+    // thẻ, còn text vẫn giữ placeholder " [Hình ảnh] " cho fullText.
+    if (r.imageId) {
+      segmentHtml += `<img data-image-id="${escapeHtml(r.imageId)}" alt="Hình ảnh">`;
+    }
+
     html += segmentHtml;
   }
 
@@ -252,6 +311,7 @@ function parseRunElement(
   const style: DocxRunStyle = {};
   let text = "";
   let imageId: string | undefined = undefined;
+  let hasMath = false;
 
   const rPr = rElem.getElementsByTagName("w:rPr")[0];
   if (rPr) {
@@ -340,6 +400,25 @@ function parseRunElement(
         imageId = rId;
         text += " [Hình ảnh] ";
       }
+    } else if (name === "m:omath" || name === "m:omathpara") {
+      // Bước 14: công thức OMML inline nằm TRONG w:r — dạng Word và
+      // python-docx vẫn viết (trước đây chỉ xử lý m:omath là con trực
+      // tiếp của w:p nên phân số trong run bị bỏ mất, vd f08). Chuyển
+      // sang LaTeX $...$ ngay trong run nên định dạng của run (bold,
+      // highlight...) vẫn bao quanh công thức như văn bản thường.
+      const latex = convertOmmlToLatex(childElem);
+      if (latex.trim().length > 0) {
+        text += `$${latex.trim()}$`;
+        hasMath = true;
+      }
+    } else if (name === "mc:alternatecontent" || name === "w:pict") {
+      // Bước 14: ảnh bọc trong run — xem chú thích ở
+      // parseParagraphElement (AlternateContent/VML).
+      const rId = extractImageIdFromDrawing(childElem);
+      if (rId && imagesMap[rId]) {
+        imageId = rId;
+        text += " [Hình ảnh] ";
+      }
     }
   }
 
@@ -347,6 +426,7 @@ function parseRunElement(
     text,
     style,
     imageId,
+    isMath: hasMath || undefined,
   };
 }
 
@@ -377,11 +457,20 @@ function parseTableElement(
   imagesMap: Record<string, string>
 ): DocxTable {
   const rows: DocxTableRow[] = [];
-  const trElems = Array.from(tblElem.getElementsByTagName("w:tr"));
+  // Bước 14: chỉ lấy w:tr/w:tc là con TRỰC TIẾP. Dùng getElementsByTagName
+  // (tìm descendant) sẽ đếm trùng hàng/cột của bảng lồng trong ô, làm
+  // lệch cấu trúc bảng và có thể phá phát hiện bảng đáp án. Ô chứa bảng
+  // lồng vẫn được flatten thành text của ô qua w:p descendant bên dưới.
+  const directChildren = (parent: Element, tag: string): Element[] =>
+    Array.from(parent.childNodes).filter(
+      (n): n is Element =>
+        n.nodeType === 1 && (n as Element).nodeName.toLowerCase() === tag
+    );
+  const trElems = directChildren(tblElem, "w:tr");
 
   for (const tr of trElems) {
     const cells: DocxTableCell[] = [];
-    const tcElems = Array.from(tr.getElementsByTagName("w:tc"));
+    const tcElems = directChildren(tr, "w:tc");
 
     for (const tc of tcElems) {
       const pElems = Array.from(tc.getElementsByTagName("w:p"));

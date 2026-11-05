@@ -36,8 +36,13 @@ import { Badge } from "@/components/ui/Badge";
 import { MathEditorPreview } from "@/components/common/MathEditorPreview";
 import { MathRenderer } from "@/components/common/MathRenderer";
 import { useToast } from "@/hooks/useToast";
+import {
+  validateQuestionsForSave,
+  formatSaveIssues,
+} from "@/lib/validations/quizSave";
 import { QuizCreationEntry } from "@/components/teacher/QuizCreationEntry";
 import type { OptionId, Question, QuizSettings } from "@/types/quiz";
+import type { PublishGuardSummary } from "@/services/extraction/publishGuard";
 
 interface CreateQuizLocationState {
   initialQuestions?: Question[];
@@ -45,6 +50,14 @@ interface CreateQuizLocationState {
   initialSubject?: string;
   initialDescription?: string;
   initialStep?: 1 | 2 | 3;
+  /**
+   * Bước 25: guard summary từ màn review (BatchActionBar). CreateQuiz chỉ
+   * chặn xuất bản theo docBlockerMessages (cấp tài liệu, không bị sửa câu
+   * ở đây làm mất hiệu lực); blocker per-question không chặn ở đây vì có
+   * thể đã stale sau khi giáo viên sửa câu, và validation live (bước 08)
+   * kiểm tra lại câu hỏi hiện tại.
+   */
+  extractionGuard?: PublishGuardSummary;
 }
 
 const POPULAR_SUBJECTS = [
@@ -238,7 +251,13 @@ export function CreateQuiz() {
         { id: "C", content: "Đáp án C" },
         { id: "D", content: "Đáp án D" },
       ],
-      correctAnswers: ["A"],
+      // Bước 05: câu thêm tay không gán sẵn ["A"] — options trên chỉ
+      // là placeholder để giáo viên sửa, đáp án đúng phải do giáo
+      // viên chọn. handleSaveQuiz sẵn chặn lưu khi correctAnswers rỗng
+      // (toast "Vui lòng chọn đáp án đúng") nên câu này không thể vô
+      // tình lọt vào đề. Không đổi câu mẫu dòng ~206: đáp án A ở đó là
+      // đáp án thật của ví dụ parabol kèm lời giải, không phải default giả.
+      correctAnswers: [],
       explanation: "",
       points: 1,
     };
@@ -344,7 +363,13 @@ export function CreateQuiz() {
       return;
     }
 
-    // Check questions validity
+    // Bước 08: validation tách theo trạng thái — trước đây vòng lặp
+    // này chặn cả lưu nháp khi thiếu đáp án, mâu thuẫn với đường
+    // BatchActionBar (cho lưu nháp qua) và chặn sai chỗ (không kiểm
+    // tra số phương án, nên câu 1 phương án + đáp án vẫn xuất bản
+    // được). Nay: nội dung trống thì chặn ở mọi trạng thái; thiếu
+    // đáp án/phương án thì chỉ chặn xuất bản, lưu nháp chỉ cảnh báo
+    // (nháp không phải đề cho học sinh làm).
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.content.trim()) {
@@ -352,10 +377,36 @@ export function CreateQuiz() {
         setCurrentStep(1);
         return;
       }
-      if (!q.correctAnswers || q.correctAnswers.length === 0) {
-        toast.error(`Vui lòng chọn đáp án đúng cho câu hỏi ${i + 1}`);
+    }
+    if (status === "published") {
+      const { blockers } = validateQuestionsForSave(questions, "published");
+      if (blockers.length > 0) {
+        toast.error(
+          `Không thể xuất bản: ${blockers.length} vấn đề cần sửa. ${formatSaveIssues(blockers)}`
+        );
         setCurrentStep(1);
         return;
+      }
+      // Bước 25: vấn đề cấp tài liệu từ màn review (gate failed, trang
+      // scan chưa xử lý) không bị sửa câu ở đây làm mất hiệu lực nên vẫn
+      // chặn xuất bản. Blocker per-question không chặn ở đây (có thể đã
+      // stale; validation live ở trên đã kiểm tra lại câu hiện tại).
+      const docBlockers = locationState?.extractionGuard?.docBlockerMessages ?? [];
+      if (docBlockers.length > 0) {
+        toast.error(
+          `Không thể xuất bản: tài liệu bóc tách có ${docBlockers.length} vấn đề cấp tài liệu chưa xử lý. ${docBlockers.slice(0, 3).join(" ")}`
+        );
+        setCurrentStep(1);
+        return;
+      }
+    } else {
+      const { warnings } = validateQuestionsForSave(questions, "draft");
+      const extractionWarnings =
+        locationState?.extractionGuard?.warningMessages ?? [];
+      if (warnings.length > 0 || extractionWarnings.length > 0) {
+        toast.warning(
+          `Lưu nháp với ${warnings.length + extractionWarnings.length} vấn đề chưa đủ điều kiện xuất bản — cần sửa trước khi xuất bản.`
+        );
       }
     }
 

@@ -1,0 +1,101 @@
+{
+  "id": "h01-docx-inline-options",
+  "file": "h01-docx-inline-options.docx",
+  "format": "docx",
+  "notes": "DOCX holdout: 4 phương án inline chung 1 đoạn với stem, cách nhau 1 space, không dấu câu cuối phương án.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của nước Pháp là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Berlin"
+        },
+        {
+          "key": "B",
+          "text": "Paris"
+        },
+        {
+          "key": "C",
+          "text": "Madrid"
+        },
+        {
+          "key": "D",
+          "text": "Roma"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Phương án inline chung 1 đoạn, đáp án bằng dòng 'Đáp án: X' cuối mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Hành tinh nào gần Mặt Trời nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Kim tinh"
+        },
+        {
+          "key": "B",
+          "text": "Thủy tinh"
+        },
+        {
+          "key": "C",
+          "text": "Hỏa tinh"
+        },
+        {
+          "key": "D",
+          "text": "Mộc tinh"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Phương án inline chung 1 đoạn, đáp án bằng dòng 'Đáp án: X' cuối mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Số nào chia hết cho cả 2 và 3?",
+      "options": [
+        {
+          "key": "A",
+          "text": "14"
+        },
+        {
+          "key": "B",
+          "text": "21"
+        },
+        {
+          "key": "C",
+          "text": "24"
+        },
+        {
+          "key": "D",
+          "text": "35"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Phương án inline chung 1 đoạn, đáp án bằng dòng 'Đáp án: X' cuối mỗi câu.",
+      "hasImage": false
+    }
+  ]
+}

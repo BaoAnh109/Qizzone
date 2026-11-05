@@ -1,0 +1,132 @@
+{
+  "id": "f03-docx-underline",
+  "file": "f03-docx-underline.docx",
+  "format": "docx",
+  "notes": "Đáp án chỉ có bằng chứng gạch chân.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Đại dương lớn nhất trên Trái Đất là đại dương nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Đại Tây Dương"
+        },
+        {
+          "key": "B",
+          "text": "Ấn Độ Dương"
+        },
+        {
+          "key": "C",
+          "text": "Thái Bình Dương"
+        },
+        {
+          "key": "D",
+          "text": "Bắc Băng Dương"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "underline",
+      "page": 1,
+      "evidence": "Chỉ đáp án C được gạch chân.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Căn bậc hai của 144 là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "11"
+        },
+        {
+          "key": "B",
+          "text": "12"
+        },
+        {
+          "key": "C",
+          "text": "13"
+        },
+        {
+          "key": "D",
+          "text": "14"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "underline",
+      "page": 1,
+      "evidence": "Chỉ đáp án B được gạch chân.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Chất khí nào chiếm tỉ lệ lớn nhất trong không khí?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Oxi"
+        },
+        {
+          "key": "B",
+          "text": "Nitơ"
+        },
+        {
+          "key": "C",
+          "text": "Cacbon đioxit"
+        },
+        {
+          "key": "D",
+          "text": "Heli"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "underline",
+      "page": 1,
+      "evidence": "Chỉ đáp án B được gạch chân.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Năm nào con người lần đầu đặt chân lên Mặt Trăng?",
+      "options": [
+        {
+          "key": "A",
+          "text": "1959"
+        },
+        {
+          "key": "B",
+          "text": "1969"
+        },
+        {
+          "key": "C",
+          "text": "1975"
+        },
+        {
+          "key": "D",
+          "text": "1981"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "underline",
+      "page": 1,
+      "evidence": "Chỉ đáp án B được gạch chân.",
+      "hasImage": false
+    }
+  ]
+}

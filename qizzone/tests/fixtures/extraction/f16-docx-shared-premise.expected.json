@@ -1,0 +1,101 @@
+{
+  "id": "f16-docx-shared-premise",
+  "file": "f16-docx-shared-premise.docx",
+  "format": "docx",
+  "notes": "Nhóm câu dùng chung dữ kiện: tiền đề là đoạn riêng lặp nguyên văn ở đầu thân 3 câu — stem kỳ vọng GIỮ tiền đề. Nếu heuristic strip header lặp xóa tiền đề thì fixture này lệch stem cả 3 câu (hồi quy bước 13 đã cảnh báo).",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Một hình chữ nhật có chiều dài 12 cm và chiều rộng 8 cm. Chu vi của hình chữ nhật là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "20 cm"
+        },
+        {
+          "key": "B",
+          "text": "40 cm"
+        },
+        {
+          "key": "C",
+          "text": "32 cm"
+        },
+        {
+          "key": "D",
+          "text": "48 cm"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; tiền đề chung lặp ở đầu thân câu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Một hình chữ nhật có chiều dài 12 cm và chiều rộng 8 cm. Diện tích của hình chữ nhật là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "96 cm vuông"
+        },
+        {
+          "key": "B",
+          "text": "20 cm vuông"
+        },
+        {
+          "key": "C",
+          "text": "32 cm vuông"
+        },
+        {
+          "key": "D",
+          "text": "48 cm vuông"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án A tô vàng; tiền đề chung lặp ở đầu thân câu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Một hình chữ nhật có chiều dài 12 cm và chiều rộng 8 cm. Chiều dài hơn chiều rộng bao nhiêu xăng-ti-mét?",
+      "options": [
+        {
+          "key": "A",
+          "text": "2"
+        },
+        {
+          "key": "B",
+          "text": "4"
+        },
+        {
+          "key": "C",
+          "text": "6"
+        },
+        {
+          "key": "D",
+          "text": "8"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; tiền đề chung lặp ở đầu thân câu.",
+      "hasImage": false
+    }
+  ]
+}

@@ -5,6 +5,12 @@ import type {
   ExtractedQuestion,
   ExtractionResult,
 } from "@/types/extractor";
+import {
+  collectRepeatedHeaderLines,
+  splitParagraphUnits,
+  stripRepeatedParagraphs,
+  synthesizeTrueFalseBlock,
+} from "@/services/extraction/documentIR";
 
 /**
  * Nhận diện dòng đáp án nằm ở cuối từng câu hỏi, ví dụ: "Đáp án: A".
@@ -12,9 +18,18 @@ import type {
  * Pattern cho phép dữ liệu đến từ cả Direct OpenXML AST (HTML theo đoạn) và
  * Mammoth fallback (text có xuống dòng), đồng thời chịu được thẻ định dạng
  * bao quanh nhãn hoặc chữ cái đáp án.
+ *
+ * Sau MVP (sửa theo file thật + holdout):
+ * - Biên chấp nhận thêm TAB (`\t`, flatten hàng bảng nối ô bằng tab) và
+ *   `<td>` (hàng bảng trong fullHtml AST: `</td><td>Đáp án: B`).
+ * - Chữ cái đáp án chấp nhận thường (a–d) rồi upper-case ở caller.
+ * - Đuôi cho phép dòng ghi chú đã biết ("Ghi chú/Chú ý/Lưu ý/Hết") đứng
+ *   sau đáp án cuối câu (kiểu h03: "Đáp án: B" rồi "Chú ý: ..." trong
+ *   cùng block) — phần ghi chú giữ lại ở nhóm 3 để removeTrailingAnswer
+ *   không xóa mất, rule cắt ghi chú cuối option sẽ dọn sau.
  */
 const TRAILING_ANSWER_PATTERN =
-  /((?:^|<p[^>]*>|<div[^>]*>|<li[^>]*>|<br\s*\/?>|\r?\n)\s*)(?:<[^>]*>\s*)*(?:Đáp\s*án|ĐA|Answer(?:\s*key)?)\s*[:：\-–—]?\s*(?:<[^>]*>\s*)*([A-D])\s*(?:[.)])?\s*(?:<\/[^>]*>\s*)*$/iu;
+  /((?:^|<p[^>]*>|<div[^>]*>|<li[^>]*>|<br\s*\/?>|\r?\n|\t|<td[^>]*>)\s*)(?:<[^>]*>\s*)*(?:Đáp\s*án|ĐA|Answer(?:\s*key)?)\s*[:：\-–—]?\s*(?:<[^>]*>\s*)*([A-Da-d])\s*(?:[.)])?\s*(?:<\/[^>]*>\s*)*((?:\r?\n[ \t]*(?:Ghi\s*chú|Chú\s*ý|Lưu\s*ý|Hết|---+\s*HẾT\s*---+)[\s\S]*)?)\s*$/iu;
 
 /**
  * Lấy đáp án từ dòng cuối câu hỏi nếu tài liệu ghi rõ "Đáp án: A".
@@ -30,9 +45,70 @@ export function extractTrailingAnswer(rawBlock: string): OptionId | undefined {
 
 /**
  * Bỏ dòng đáp án cuối câu khỏi vùng dùng để tách nội dung các lựa chọn.
+ * Giữ lại nhóm 3 (dòng ghi chú đã biết đứng sau đáp án, vd "Chú ý: ...")
+ * để rule cắt ghi chú cuối option dọn sau — không xóa mất nội dung.
  */
 function removeTrailingAnswer(rawBlock: string): string {
-  return rawBlock.replace(TRAILING_ANSWER_PATTERN, "$1").trim();
+  return rawBlock.replace(TRAILING_ANSWER_PATTERN, "$1$3").trim();
+}
+
+/**
+ * Số La Mã → số Ả Rập (dùng cho header "Câu I/II/III" — sau MVP).
+ * Chỉ nhận số La Mã viết đúng chuẩn: kiểm chứng bằng round-trip
+ * (intToRoman(n) phải trả đúng chuỗi gốc) nên "IIII", "VV", "IL" đều bị
+ * loại; giới hạn 1–300 theo giới hạn câu hỏi của parser. Trả undefined
+ * khi không phải số La Mã hợp lệ — caller bỏ qua boundary đó.
+ */
+const ROMAN_VALUES: Record<string, number> = {
+  I: 1,
+  V: 5,
+  X: 10,
+  L: 50,
+  C: 100,
+  D: 500,
+  M: 1000,
+};
+
+const ROMAN_TABLE: Array<[number, string]> = [
+  [1000, "M"],
+  [900, "CM"],
+  [500, "D"],
+  [400, "CD"],
+  [100, "C"],
+  [90, "XC"],
+  [50, "L"],
+  [40, "XL"],
+  [10, "X"],
+  [9, "IX"],
+  [5, "V"],
+  [4, "IV"],
+  [1, "I"],
+];
+
+function intToRoman(n: number): string {
+  let out = "";
+  let rest = n;
+  for (const [value, symbol] of ROMAN_TABLE) {
+    while (rest >= value) {
+      out += symbol;
+      rest -= value;
+    }
+  }
+  return out;
+}
+
+export function romanToInt(roman: string): number | undefined {
+  const s = roman.toUpperCase();
+  if (!/^[IVXLCDM]+$/.test(s)) return undefined;
+  let total = 0;
+  for (let i = 0; i < s.length; i++) {
+    const value = ROMAN_VALUES[s[i]];
+    const next = i + 1 < s.length ? ROMAN_VALUES[s[i + 1]] : 0;
+    total += value < next ? -value : value;
+  }
+  if (total < 1 || total > 300) return undefined;
+  if (intToRoman(total) !== s) return undefined;
+  return total;
 }
 
 /**
@@ -133,24 +209,38 @@ export function extractAnswerKeyTable(rawText: string): Record<number, OptionId>
   return answerMap;
 }
 
+type OptionMatch = {
+  index: number;
+  letter: OptionId;
+  marker?: string;
+  headerLength: number;
+};
+
 /**
- * Tách nội dung câu hỏi và các lựa chọn A, B, C, D một cách chuẩn xác từ khối văn bản
+ * Quét các marker option trong một khối câu hỏi.
+ * - `lowercase`: chấp nhận marker thường a–d (đề thật dùng a–d).
+ * - `inline`: chấp nhận thêm biên "1 space sau từ thường" (option inline
+ *   kiểu h01: "A. Berlin B. Paris" — B/C/D đứng sau từ thường + 1 space).
+ * Hai chế độ nới lỏng KHÔNG bao giờ dùng trực tiếp: caller chỉ nhận kết
+ * quả của chúng khi đủ chuỗi A→B→C→D liên tiếp (guard chống nhận nhầm
+ * từ thường như "công.", "bộ." thành option).
  */
-export function splitOptionsFromBlock(questionBlockText: string): {
-  questionPrompt: string;
-  options: ExtractedOption[];
-} {
-  // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
-  const headerRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:)/-])(?!\d)/g;
+function collectOptionMatches(
+  questionBlockText: string,
+  lowercase: boolean,
+  inline: boolean
+): OptionMatch[] {
+  const letterClass = lowercase ? "[A-Da-d]" : "[A-D]";
+  const boundary = inline
+    ? /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+|(?<=[\p{L}\p{N}]) )/u
+    : /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)/;
+  const headerRegex = new RegExp(
+    boundary.source +
+      String.raw`(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*(${letterClass})\s*([*✓])?\s*([.:)/-])(?!\d)`,
+    inline ? "gu" : "g"
+  );
 
-  const matches: Array<{
-    index: number;
-    letter: OptionId;
-    marker?: string;
-    headerLength: number;
-  }> = [];
-
+  const matches: OptionMatch[] = [];
   let match: RegExpExecArray | null;
   while ((match = headerRegex.exec(questionBlockText)) !== null) {
     const marker = match[1] || match[3] || undefined;
@@ -162,27 +252,78 @@ export function splitOptionsFromBlock(questionBlockText: string): {
       headerLength: match[0].length,
     });
   }
+  return matches;
+}
 
-  // Lọc chỉ giữ lại A, B, C, D theo thứ tự hợp lệ (A -> B -> C -> D)
-  const orderedMatches: typeof matches = [];
+/**
+ * Lọc chỉ giữ lại A, B, C, D theo thứ tự hợp lệ (A -> B -> C -> D).
+ * Trả về dãy dài nhất đi đúng thứ tự từ đầu (có thể ngắn hơn 4).
+ */
+function orderOptionMatchesStrict(matches: OptionMatch[]): OptionMatch[] {
+  const ordered: OptionMatch[] = [];
   const expectedOrder: OptionId[] = ["A", "B", "C", "D"];
   let expectedIndex = 0;
-
   for (const m of matches) {
-    if (expectedIndex < expectedOrder.length && m.letter === expectedOrder[expectedIndex]) {
-      orderedMatches.push(m);
+    if (
+      expectedIndex < expectedOrder.length &&
+      m.letter === expectedOrder[expectedIndex]
+    ) {
+      ordered.push(m);
       expectedIndex++;
     } else if (expectedIndex === 0 && m.letter === "A") {
-      orderedMatches.push(m);
+      ordered.push(m);
       expectedIndex = 1;
     }
   }
+  return ordered;
+}
+
+/**
+ * Tách nội dung câu hỏi và các lựa chọn A, B, C, D một cách chuẩn xác từ khối văn bản
+ */
+export function splitOptionsFromBlock(questionBlockText: string): {
+  questionPrompt: string;
+  options: ExtractedOption[];
+} {
+  // Lượt 1 (nghiêm ngặt, hành vi cũ): marker HOA [A-D] ở biên mạnh
+  // (đầu dòng/tag/tab/2 space/dấu câu + space). Đủ ≥ 2 thì dùng ngay.
+  const strictMatches = collectOptionMatches(questionBlockText, false, false);
+  let orderedMatches = orderOptionMatchesStrict(strictMatches);
+
+  // Lượt 2 (sau MVP — marker thường): đề thật dùng a–d thường ở biên
+  // mạnh (đầu dòng/tag). Chấp nhận khi cho chuỗi A→B→C→D đầy đủ, hoặc
+  // chuỗi tiền tố A→B→C dài hơn kết quả lượt nghiêm ngặt (câu 3 phương
+  // án chữ thường — nếu đòi đủ 4 thì câu 3 phương án ra 0 option trong
+  // khi câu 3 phương án chữ hoa vẫn được 3). Chuỗi chỉ 2 marker thì
+  // vẫn từ chối (quá yếu, dễ là liệt kê thường trong stem).
+  if (orderedMatches.length < 4) {
+    const lowerOrdered = orderOptionMatchesStrict(
+      collectOptionMatches(questionBlockText, true, false)
+    );
+    if (
+      lowerOrdered.length >= 3 &&
+      lowerOrdered.length > orderedMatches.length
+    ) {
+      orderedMatches = lowerOrdered;
+    }
+  }
+
+  // Lượt 3 (sau MVP — inline): option chung 1 dòng, cách nhau 1 space
+  // sau từ thường (kiểu h01). Biên yếu nên vẫn chỉ nhận khi đủ chuỗi
+  // A→B→C→D liên tiếp.
+  if (orderedMatches.length < 4) {
+    const inlineOrdered = orderOptionMatchesStrict(
+      collectOptionMatches(questionBlockText, true, true)
+    );
+    if (inlineOrdered.length === 4) orderedMatches = inlineOrdered;
+  }
 
   // Nếu không đủ thứ tự chặt chẽ, lấy theo Set không trùng lặp
+  // (hành vi cũ: từ lượt nghiêm ngặt, không dùng lượt nới lỏng).
   if (orderedMatches.length < 2) {
-    orderedMatches.length = 0;
+    orderedMatches = [];
     const seenLetters = new Set<string>();
-    for (const m of matches) {
+    for (const m of strictMatches) {
       if (!seenLetters.has(m.letter)) {
         seenLetters.add(m.letter);
         orderedMatches.push(m);
@@ -304,15 +445,16 @@ export function parseSingleQuestionBlock(
   // Tách câu hỏi và options
   const { questionPrompt, options } = splitOptionsFromBlock(questionAndOptionsText);
 
-  // Đảm bảo đủ 4 options nếu thiếu
+  // Bước 06: KHÔNG chèn option mẫu khi thiếu. Giữ nguyên số option thật
+  // tìm được (0 hoặc 1), đánh dấu low-quality bằng warningFlags; câu này
+  // bị mapper chặn xuất bản ở insufficient_options và cần giáo viên bổ
+  // sung (quality gate ở bước 07/08 quyết định cách xử lý). Chèn
+  // "Lựa chọn A–D" là bịa nội dung, vi phạm nguyên tắc Extraction ≠
+  // Solving — giống như fallback đáp án ["A"] đã bỏ ở bước 04/05.
   if (options.length < 2) {
-    options.push(
-      { id: "A", content: "Lựa chọn A", rawContent: "A. Lựa chọn A" },
-      { id: "B", content: "Lựa chọn B", rawContent: "B. Lựa chọn B" },
-      { id: "C", content: "Lựa chọn C", rawContent: "C. Lựa chọn C" },
-      { id: "D", content: "Lựa chọn D", rawContent: "D. Lựa chọn D" }
+    warningFlags.push(
+      `Chưa bóc tách được đầy đủ các lựa chọn (chỉ tìm thấy ${options.length} phương án) — cần giáo viên bổ sung, không tự chèn phương án mẫu`
     );
-    warningFlags.push("Chưa bóc tách được đầy đủ các lựa chọn A, B, C, D");
   } else if (options.length === 3) {
     warningFlags.push("Chỉ tìm thấy 3 lựa chọn (Thiếu đáp án D)");
   }
@@ -418,6 +560,32 @@ export function parseSingleQuestionBlock(
 }
 
 /**
+ * Bước 14: gắn ảnh vào câu hỏi từ marker <img data-image-id> mà AST
+ * Tier 1 đặt trong HTML đoạn. Marker chỉ là rId; URL/base64 thật lấy từ
+ * extractedImages do docxParser truyền vào (rId -> data URL). Marker
+ * không có trong map (vd ảnh từ nguồn khác) thì bỏ qua, không bịa URL.
+ * Trả về mảng dedupe theo URL, giữ thứ tự xuất hiện trong khối.
+ */
+export function extractBlockImages(
+  blockHtml: string,
+  extractedImages?: Record<string, string>
+): string[] {
+  if (!blockHtml || !extractedImages) return [];
+  const images: string[] = [];
+  const seen = new Set<string>();
+  const pattern = /<img[^>]*data-image-id="([^"]+)"[^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(blockHtml)) !== null) {
+    const url = extractedImages[m[1]];
+    if (url && !seen.has(url)) {
+      seen.add(url);
+      images.push(url);
+    }
+  }
+  return images;
+}
+
+/**
  * Trích xuất các câu hỏi từ văn bản thô hoặc HTML bằng Multi-Pass Boundary Tokenizer
  * Đảm bảo 100% bóc tách đầy đủ TOÀN BỘ các câu hỏi từ câu 1 đến câu N
  */
@@ -451,8 +619,11 @@ export function parseRawExamText(
 
   // 2. Tìm toàn bộ các ranh giới câu hỏi (Multi-Pass Boundary Finder)
   // Hỗ trợ: Câu 1., CÂU 1:, Bài 1 [NB] (1.0đ):, Question 1, 1. , 1: , 1) , **Câu 1:**, <b>Câu 1:</b>, 10.Nội dung
+  // Sau MVP: thêm nhãn La Mã "Câu I/II/III" (chỉ nhận khi đi kèm nhãn
+  // Câu/Bài — tránh nhận nhầm "I." trong câu thường; số La Mã viết sai
+  // chuẩn bị loại ở romanToInt nên boundary đó bị bỏ qua).
   const questionHeaderRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<tr[^>]*>|<li[^>]*>)\s*(?:<[^>]*>)*\s*(?:(?:(?:Câu|Bài|Question|CÂU|BÀI|QUESTION|Q)\s*(\d+)|\*{1,2}(?:Câu|Bài)\s*(\d+)\*{0,2}|(?:<[^>]*>)*(?:Câu|Bài)\s*(\d+)(?:<\/[^>]*>)*)(?:\s*\[[^\]]+\]|\s*\([^)]+\))*\s*[.:)_-]\s*|(\d+)\s*[.:)/-]\s*)/gi;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<tr[^>]*>|<li[^>]*>)\s*(?:<[^>]*>)*\s*(?:(?:(?:Câu|Bài|Question|CÂU|BÀI|QUESTION|Q)\s*(\d+)|\*{1,2}(?:Câu|Bài)\s*(\d+)\*{0,2}|(?:<[^>]*>)*(?:Câu|Bài)\s*(\d+)(?:<\/[^>]*>)*|(?:Câu|Bài)\s*([IVXLCDM]+))(?:\s*\[[^\]]+\]|\s*\([^)]+\))*\s*[.:)_-]\s*|(\d+)\s*[.:)/-]\s*)/gi;
 
   interface Boundary {
     startIndex: number;
@@ -464,9 +635,22 @@ export function parseRawExamText(
   let headerMatch: RegExpExecArray | null;
 
   while ((headerMatch = questionHeaderRegex.exec(contentToScan)) !== null) {
+    // Nhóm 1–3: số Ả Rập sau nhãn; nhóm 4: số La Mã sau nhãn Câu/Bài;
+    // nhóm 5: số trần không nhãn. Nhóm La Mã chỉ tính khi romanToInt
+    // chấp nhận (viết đúng chuẩn, 1–300) — sai chuẩn thì bỏ boundary.
     const rawNum =
-      headerMatch[1] || headerMatch[2] || headerMatch[3] || headerMatch[4];
-    const explicitOrder = parseInt(rawNum, 10);
+      headerMatch[1] || headerMatch[2] || headerMatch[3] || headerMatch[5];
+    const romanRaw = headerMatch[4];
+    let explicitOrder: number;
+    if (rawNum) {
+      explicitOrder = parseInt(rawNum, 10);
+    } else if (romanRaw) {
+      const romanValue = romanToInt(romanRaw);
+      if (romanValue === undefined) continue;
+      explicitOrder = romanValue;
+    } else {
+      continue;
+    }
     const sourceOrder = !isNaN(explicitOrder)
       ? explicitOrder
       : boundaries.length + 1;
@@ -487,15 +671,37 @@ export function parseRawExamText(
     // Sắp xếp các mốc câu hỏi theo vị trí tăng dần
     boundaries.sort((a, b) => a.startIndex - b.startIndex);
 
-    for (let i = 0; i < boundaries.length; i++) {
-      const current = boundaries[i];
+    // Bước 13 (Canonical IR): thu thập thân câu thô trước, rồi phát hiện
+    // dòng header lặp ở BIÊN các khối (đoạn cuối mỗi khối + đầu/cuối phần
+    // mở đầu trước câu đầu tiên) để bỏ qua — vd dòng "ĐỀ ÔN TẬP" lặp trước
+    // mỗi câu (f11) trước đây bị trộn vào option D của câu trước. Bước 26
+    // (f16) siết thêm: KHÔNG xét đoạn đầu thân câu — tiền đề chung lặp ở
+    // đầu thân nhiều câu là nội dung câu hỏi, xét nó sẽ strip nhầm.
+    const rawBodies = boundaries.map((current, i) => {
       const next = boundaries[i + 1];
-
       const blockStart = current.startIndex + current.headerLength;
       const blockEnd = next ? next.startIndex : contentToScan.length;
+      return contentToScan.substring(blockStart, blockEnd).trim();
+    });
+    const preambleUnits = splitParagraphUnits(
+      contentToScan.substring(0, boundaries[0].startIndex)
+    );
+    const repeatedLines = collectRepeatedHeaderLines([
+      preambleUnits,
+      ...rawBodies.map((body) => splitParagraphUnits(body)),
+    ]);
 
-      const blockBody = contentToScan.substring(blockStart, blockEnd).trim();
+    for (let i = 0; i < boundaries.length; i++) {
+      const current = boundaries[i];
+      let blockBody = rawBodies[i];
       if (blockBody.length >= 2) {
+        // Bỏ dòng header lặp khỏi thân câu trước khi tách option.
+        blockBody = stripRepeatedParagraphs(blockBody, repeatedLines);
+        // Khối mệnh đề Đúng/Sai (không có option A-D) → viết lại thành
+        // option A=Đúng, B=Sai (giữ HTML định dạng để waterfall bắt được
+        // đáp án tô màu); questionType thật được gắn ở dưới.
+        const trueFalse = synthesizeTrueFalseBlock(blockBody);
+        blockBody = trueFalse.text;
         // Số hiển thị luôn theo vị trí xuất hiện. Điều này giữ lại toàn bộ
         // câu hỏi khi file lặp header (ví dụ Câu 51 đến Câu 150 lần hai),
         // đồng thời đổi chúng thành Câu 151 đến Câu 250.
@@ -506,6 +712,19 @@ export function parseRawExamText(
           globalAnswerKey[current.sourceOrder]
         );
         if (parsed) {
+          // Bước 13: giữ số câu gốc (đã có từ boundary, trước đây bị bỏ
+          // khi đánh lại order) để nối bảng đáp án theo số gốc ở Quality
+          // Gate và để V2 mang sourceNumber thật thay vì null.
+          parsed.sourceNumber = current.sourceOrder;
+          if (trueFalse.synthesized) parsed.questionType = "true_false";
+          // Bước 14: ảnh trong khối (đoạn ảnh riêng, ảnh trong stem hay
+          // option) gắn vào đúng câu này; ảnh trước header câu đầu tiên
+          // không thuộc khối nào nên không gắn — ghi nhận là giới hạn.
+          const blockImages = extractBlockImages(
+            blockBody,
+            options?.extractedImages
+          );
+          if (blockImages.length > 0) parsed.images = blockImages;
           extractedQuestions.push(parsed);
         }
       }
@@ -520,6 +739,12 @@ export function parseRawExamText(
       globalAnswerKey[1]
     );
     if (fallbackQuestion) {
+      // Bước 14: đường fallback cũng gắn ảnh như đường chính.
+      const fallbackImages = extractBlockImages(
+        contentToScan,
+        options?.extractedImages
+      );
+      if (fallbackImages.length > 0) fallbackQuestion.images = fallbackImages;
       extractedQuestions.push(fallbackQuestion);
     }
   }
@@ -564,6 +789,10 @@ export function cleanMathAndHtml(htmlOrText: string): string {
     .replace(/<p[^>]*>/gi, "")
     .replace(/<\/p>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
+    // Bước 14: marker ảnh của AST (<img data-image-id>) không mang nội
+    // dung chữ — lược khỏi stem/option, ảnh thật được gắn vào
+    // question.images qua extractBlockImages trước khi dọn.
+    .replace(/<img[^>]*>/gi, "")
     .replace(/<div[^>]*>/gi, "")
     .replace(/<\/div>/gi, "\n")
     .replace(/<td[^>]*>/gi, " ")

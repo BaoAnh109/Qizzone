@@ -1,0 +1,132 @@
+{
+  "id": "f12-docx-noncontinuous",
+  "file": "f12-docx-noncontinuous.docx",
+  "format": "docx",
+  "notes": "Số câu không liên tục (2, 5, 9, 14): ground truth giữ cả label gốc và order theo thứ tự xuất hiện; runner so theo order.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Số nào sau đây chia hết cho 3?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "11"
+        },
+        {
+          "key": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "text": "14"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Nhãn gốc Câu 2 (thứ tự xuất hiện 1); đáp án C tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 5",
+      "type": "single_choice",
+      "stem": "Thủ đô của Lào là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Viêng Chăn"
+        },
+        {
+          "key": "B",
+          "text": "Phnom Penh"
+        },
+        {
+          "key": "C",
+          "text": "Yangon"
+        },
+        {
+          "key": "D",
+          "text": "Bangkok"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Nhãn gốc Câu 5 (thứ tự xuất hiện 2); đáp án A tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 9",
+      "type": "single_choice",
+      "stem": "Âm 'a' trong tiếng Việt là nguyên âm hay phụ âm?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Phụ âm"
+        },
+        {
+          "key": "B",
+          "text": "Nguyên âm"
+        },
+        {
+          "key": "C",
+          "text": "Thanh điệu"
+        },
+        {
+          "key": "D",
+          "text": "Dấu câu"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Nhãn gốc Câu 9 (thứ tự xuất hiện 3); đáp án B tô vàng.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 14",
+      "type": "single_choice",
+      "stem": "Một hình vuông có cạnh 5 cm thì chu vi bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10 cm"
+        },
+        {
+          "key": "B",
+          "text": "15 cm"
+        },
+        {
+          "key": "C",
+          "text": "20 cm"
+        },
+        {
+          "key": "D",
+          "text": "25 cm"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Nhãn gốc Câu 14 (thứ tự xuất hiện 4); đáp án C tô vàng.",
+      "hasImage": false
+    }
+  ]
+}

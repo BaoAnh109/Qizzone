@@ -1,0 +1,132 @@
+{
+  "id": "h03-pdf-mid-note",
+  "file": "h03-pdf-mid-note.pdf",
+  "format": "pdf",
+  "notes": "PDF holdout: 2 cột + dòng chú thích toàn chiều rộng ở GIỮA trang (không thuộc về bất kỳ câu nào).",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của nước Ý là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Venice"
+        },
+        {
+          "key": "B",
+          "text": "Roma"
+        },
+        {
+          "key": "C",
+          "text": "Milan"
+        },
+        {
+          "key": "D",
+          "text": "Napoli"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột trái, khối trên.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "7 nhân 6 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "36"
+        },
+        {
+          "key": "B",
+          "text": "42"
+        },
+        {
+          "key": "C",
+          "text": "48"
+        },
+        {
+          "key": "D",
+          "text": "54"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột phải, khối trên.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Kim loại nào dẫn điện tốt nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sắt"
+        },
+        {
+          "key": "B",
+          "text": "Nhôm"
+        },
+        {
+          "key": "C",
+          "text": "Đồng"
+        },
+        {
+          "key": "D",
+          "text": "Chì"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột trái, khối dưới.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Năm nhuận có mấy ngày?",
+      "options": [
+        {
+          "key": "A",
+          "text": "365"
+        },
+        {
+          "key": "B",
+          "text": "366"
+        },
+        {
+          "key": "C",
+          "text": "364"
+        },
+        {
+          "key": "D",
+          "text": "360"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột phải, khối dưới.",
+      "hasImage": false
+    }
+  ]
+}

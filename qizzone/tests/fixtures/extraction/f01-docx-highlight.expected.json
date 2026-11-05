@@ -1,0 +1,132 @@
+{
+  "id": "f01-docx-highlight",
+  "file": "f01-docx-highlight.docx",
+  "format": "docx",
+  "notes": "Đáp án chỉ có bằng chứng tô vàng, không có dòng đáp án riêng.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của nước Pháp là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Berlin"
+        },
+        {
+          "key": "B",
+          "text": "Paris"
+        },
+        {
+          "key": "C",
+          "text": "Madrid"
+        },
+        {
+          "key": "D",
+          "text": "Roma"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B được tô vàng toàn bộ dòng lựa chọn.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "7 × 8 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "54"
+        },
+        {
+          "key": "B",
+          "text": "56"
+        },
+        {
+          "key": "C",
+          "text": "64"
+        },
+        {
+          "key": "D",
+          "text": "48"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B được tô vàng toàn bộ dòng lựa chọn.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Hành tinh nào gần Mặt Trời nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sao Kim"
+        },
+        {
+          "key": "B",
+          "text": "Trái Đất"
+        },
+        {
+          "key": "C",
+          "text": "Sao Thủy"
+        },
+        {
+          "key": "D",
+          "text": "Sao Hỏa"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án C được tô vàng toàn bộ dòng lựa chọn.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Nước nào có diện tích lớn nhất thế giới?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Canada"
+        },
+        {
+          "key": "B",
+          "text": "Trung Quốc"
+        },
+        {
+          "key": "C",
+          "text": "Hoa Kỳ"
+        },
+        {
+          "key": "D",
+          "text": "Nga"
+        }
+      ],
+      "correctAnswers": [
+        "D"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án D được tô vàng toàn bộ dòng lựa chọn.",
+      "hasImage": false
+    }
+  ]
+}

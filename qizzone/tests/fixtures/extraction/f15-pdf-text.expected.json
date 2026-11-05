@@ -1,0 +1,132 @@
+{
+  "id": "f15-pdf-text",
+  "file": "f15-pdf-text.pdf",
+  "format": "pdf",
+  "notes": "PDF text layer 1 cột, trường hợp PDF cơ bản kỳ vọng parser làm được.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của Hàn Quốc là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Busan"
+        },
+        {
+          "key": "B",
+          "text": "Seoul"
+        },
+        {
+          "key": "C",
+          "text": "Incheon"
+        },
+        {
+          "key": "D",
+          "text": "Daegu"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "PDF text layer 1 cột, dòng 'Đáp án: B'.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "3 mũ 2 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "6"
+        },
+        {
+          "key": "B",
+          "text": "9"
+        },
+        {
+          "key": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "text": "3"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "PDF text layer 1 cột, dòng 'Đáp án: B'.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Loài vật nào sau đây là động vật có vú?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Cá mập"
+        },
+        {
+          "key": "B",
+          "text": "Cá heo"
+        },
+        {
+          "key": "C",
+          "text": "Cá sấu"
+        },
+        {
+          "key": "D",
+          "text": "Ếch"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "PDF text layer 1 cột, dòng 'Đáp án: B'.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Một tuần có bao nhiêu ngày?",
+      "options": [
+        {
+          "key": "A",
+          "text": "5"
+        },
+        {
+          "key": "B",
+          "text": "6"
+        },
+        {
+          "key": "C",
+          "text": "7"
+        },
+        {
+          "key": "D",
+          "text": "8"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "PDF text layer 1 cột, dòng 'Đáp án: C'.",
+      "hasImage": false
+    }
+  ]
+}

@@ -5,7 +5,9 @@ import {
   parseSingleQuestionBlock,
   parseRawExamText,
   cleanMathAndHtml,
+  romanToInt,
 } from "@/utils/parsers/ruleExtractor";
+import { validateExtractedQuestions } from "@/utils/extractedQuestionMapper";
 
 describe("Rule-Based Multi-Strategy Answer Detection Unit Tests", () => {
   it("Bóc tách đầy đủ tất cả các câu hỏi đơn giản (3 câu liên tiếp)", () => {
@@ -262,6 +264,76 @@ A. 10    B. 20    *C. 30    D. 40
     expect(cleaned).toBe("Giải phương trình $x^2 - 4 = 0$ có nghiệm $x = \\pm 2$");
   });
 
+  it("Bước 06: câu không tách được option nào thì giữ options [] — không chèn option giả", () => {
+    const rawBlock = `
+Câu 1: Giải thích vì sao nước sôi ở 100 độ C trong điều kiện áp suất thường?
+`;
+
+    const parsed = parseSingleQuestionBlock(rawBlock, 1);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.options).toEqual([]);
+    expect(
+      parsed?.options.some((opt) => opt.content.includes("Lựa chọn"))
+    ).toBe(false);
+    expect(parsed?.correctAnswers).toEqual([]);
+    expect(parsed?.warningFlags?.join(" ")).toContain(
+      "Chưa bóc tách được đầy đủ các lựa chọn"
+    );
+  });
+
+  it("Bước 06: câu chỉ tách được 1 option thì giữ đúng 1 option thật, không chèn thêm 3 option mẫu", () => {
+    const rawBlock = `
+Câu 1: Chọn đáp án đúng:
+A. Phương án duy nhất tìm được
+`;
+
+    const parsed = parseSingleQuestionBlock(rawBlock, 1);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.options.length).toBe(1);
+    expect(parsed?.options[0].content).toBe("Phương án duy nhất tìm được");
+    expect(
+      parsed?.options.some((opt) => opt.content.includes("Lựa chọn"))
+    ).toBe(false);
+    expect(parsed?.warningFlags?.join(" ")).toContain(
+      "Chưa bóc tách được đầy đủ các lựa chọn"
+    );
+  });
+
+  it("Bước 06: câu Đúng/Sai không có header A–D thì không bị nhét option giả (kiểu Đúng/Sai thật thuộc bước 12)", () => {
+    const rawBlock = `
+Câu 1: Trái Đất quay quanh Mặt Trời.
+Đúng
+Sai
+`;
+
+    const parsed = parseSingleQuestionBlock(rawBlock, 1);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.options).toEqual([]);
+    expect(
+      parsed?.options.some((opt) => opt.content.includes("Lựa chọn"))
+    ).toBe(false);
+    // Chưa triển khai type true_false ở bước này — chỉ khẳng định không
+    // bịa option; việc nhận diện Đúng/Sai thành options thuộc bước 12.
+    expect(parsed?.warningFlags?.join(" ")).toContain(
+      "Chưa bóc tách được đầy đủ các lựa chọn"
+    );
+  });
+
+  it("Bước 06: câu thiếu option đi qua mapper thì bị chặn xuất bản ở insufficient_options", () => {
+    const rawBlock = `
+Câu 1: Giải thích vì sao nước sôi ở 100 độ C trong điều kiện áp suất thường?
+`;
+
+    const parsed = parseSingleQuestionBlock(rawBlock, 1);
+    expect(parsed).not.toBeNull();
+    const diagnostics = validateExtractedQuestions(parsed ? [parsed] : []);
+    const blocker = diagnostics.find(
+      (d) => d.code === "insufficient_options"
+    );
+    expect(blocker).toBeDefined();
+    expect(blocker?.blocksPublish).toBe(true);
+  });
+
   it("Hàm extractAnswerKeyTable quét chính xác bảng đáp án đa định dạng", () => {
     const text1 = "BẢNG ĐÁP ÁN: 1.A 2.B 3.C 4.D 5.A";
     const map1 = extractAnswerKeyTable(text1);
@@ -276,5 +348,178 @@ A. 10    B. 20    *C. 30    D. 40
     expect(map2[1]).toBe("C");
     expect(map2[2]).toBe("D");
     expect(map2[3]).toBe("A");
+  });
+});
+
+describe("Sửa parser luật theo file thật + holdout (sau MVP)", () => {
+  it("Marker thường a–d ở đầu dòng, đủ chuỗi a→b→c→d: tách đủ 4 option (file ATTT)", () => {
+    const rawExam = `
+Câu 1: Virus có khả năng viết lại toàn bộ mã được gọi là:
+a. Stealth
+b. Metamorphic
+c. Polymorphic
+d. Encrypted
+
+Câu 2: Một hệ thống có 100 người dùng thì cần:
+a. 4.950 khóa
+b. 200 khóa
+c. 10.000 khóa
+d. 100 khóa
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(2);
+    for (const q of result.questions) {
+      expect(q.options.map((o) => o.id)).toEqual(["A", "B", "C", "D"]);
+    }
+    expect(result.questions[0].options[1].content).toBe("Metamorphic");
+    expect(result.questions[1].options[0].content).toBe("4.950 khóa");
+  });
+
+  it("Marker thường KHÔNG đủ chuỗi a→b→c→d thì không nhận (guard chống nhận nhầm từ thường)", () => {
+    const rawExam = `
+Câu 1: Tìm a. b. c. trong đoạn văn này?
+a. Phương án một
+b. Phương án hai
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(1);
+    // Chỉ có a,b thường, không đủ chuỗi 4 → lượt nới lỏng bị từ chối,
+    // fallback nghiêm ngặt cũng không thấy marker hoa → 0 option.
+    expect(result.questions[0].options.length).toBe(0);
+  });
+
+  it("Câu 3 phương án chữ thường (a→b→c) vẫn tách đủ 3 option — đối xứng với chữ hoa", () => {
+    const rawExam = `
+Câu 1: Đâu là màu cơ bản?
+a. Đỏ
+b. Xanh
+c. Vàng
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(1);
+    expect(result.questions[0].options.map((o) => o.id)).toEqual([
+      "A",
+      "B",
+      "C",
+    ]);
+    expect(result.questions[0].options[2].content).toBe("Vàng");
+  });
+
+  it("Inline option h01: 4 phương án chung 1 dòng, cách nhau 1 space sau từ thường", () => {
+    const rawExam = `
+Câu 1: Thủ đô của nước Pháp là gì? A. Berlin B. Paris C. Madrid D. Roma
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(1);
+    expect(result.questions[0].options.map((o) => o.id)).toEqual([
+      "A",
+      "B",
+      "C",
+      "D",
+    ]);
+    expect(result.questions[0].options.map((o) => o.content)).toEqual([
+      "Berlin",
+      "Paris",
+      "Madrid",
+      "Roma",
+    ]);
+  });
+
+  it("Inline option KHÔNG đủ chuỗi 4 thì không nhận (guard)", () => {
+    const rawExam = `
+Câu 1: Thủ đô của nước Pháp là gì? A. Berlin B. Paris
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(1);
+    // Lượt nghiêm ngặt chỉ thấy A (sau "?"), lượt inline chỉ đủ A,B
+    // → không đủ chuỗi 4 nên bị từ chối, fallback giữ đúng 1 option A.
+    expect(result.questions[0].options.map((o) => o.id)).toEqual(["A"]);
+  });
+
+  it("extractTrailingAnswer nhận đáp án sau TAB (h02) và sau thẻ <td> (hàng bảng AST)", () => {
+    expect(extractTrailingAnswer("Napoli.\tĐáp án: B")).toBe("B");
+    expect(
+      extractTrailingAnswer("Napoli.</td><td>Đáp án: B</td></tr>")
+    ).toBe("B");
+    expect(extractTrailingAnswer("Đáp án: b")).toBe("B");
+  });
+
+  it("extractTrailingAnswer nhận đáp án khi có dòng ghi chú sau nó (h03), và đáp án không dính vào option cuối", () => {
+    expect(extractTrailingAnswer("54\nĐáp án: B\nChú ý: đây là ghi chú")).toBe(
+      "B"
+    );
+    const block = `Thủ đô của nước Pháp là gì?
+A. Berlin
+B. Paris
+C. Madrid
+D. 54
+Đáp án: B
+Chú ý: đây chỉ là ghi chú`;
+    const parsed = parseSingleQuestionBlock(block, 1);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.correctAnswers).toEqual(["B"]);
+    expect(parsed?.options[3].content).toBe("54");
+  });
+
+  it("Nhãn La Mã Câu I/II/III tách thành 3 câu, giữ số gốc 1/2/3 (h04)", () => {
+    const rawExam = `
+Câu I. Thủ đô của Việt Nam là?
+A. Hà Nội
+B. Huế
+C. Đà Nẵng
+D. Hải Phòng
+
+Câu II. Đâu là một ngôn ngữ lập trình?
+A. HTML
+B. CSS
+C. TypeScript
+D. JPEG
+
+Câu III. 1 + 1 bằng mấy?
+A. 1
+B. 2
+C. 3
+D. 4
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(3);
+    expect(result.questions.map((q) => q.sourceNumber)).toEqual([1, 2, 3]);
+    expect(result.questions[1].options[2].content).toBe("TypeScript");
+  });
+
+  it("Số La Mã viết sai chuẩn (IIII) không tạo header giả — fallback gộp 1 câu", () => {
+    const rawExam = `
+Câu IIII. Hỏi gì?
+A. 1
+B. 2
+C. 3
+D. 4
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(1);
+  });
+
+  it("Số La Mã trần không nhãn (I.) không tạo header — chỉ nhận khi có nhãn Câu/Bài", () => {
+    const rawExam = `
+I. Hỏi gì?
+A. 1
+B. 2
+C. 3
+D. 4
+`;
+    const result = parseRawExamText(rawExam);
+    expect(result.questions.length).toBe(1);
+  });
+
+  it("romanToInt: đúng chuẩn thì đổi, sai chuẩn/vượt giới hạn thì undefined", () => {
+    expect(romanToInt("I")).toBe(1);
+    expect(romanToInt("iv")).toBe(4);
+    expect(romanToInt("XIV")).toBe(14);
+    expect(romanToInt("XCIX")).toBe(99);
+    expect(romanToInt("IIII")).toBeUndefined();
+    expect(romanToInt("VV")).toBeUndefined();
+    expect(romanToInt("IL")).toBeUndefined();
+    expect(romanToInt("MMMD")).toBeUndefined();
+    expect(romanToInt("ABC")).toBeUndefined();
   });
 });

@@ -1,0 +1,132 @@
+{
+  "id": "f05-docx-answer-table",
+  "file": "f05-docx-answer-table.docx",
+  "format": "docx",
+  "notes": "Đáp án chỉ nằm trong bảng cuối file, thân câu không có dấu hiệu.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "5 × 9 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "40"
+        },
+        {
+          "key": "B",
+          "text": "45"
+        },
+        {
+          "key": "C",
+          "text": "54"
+        },
+        {
+          "key": "D",
+          "text": "35"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_table",
+      "page": 1,
+      "evidence": "Bảng đáp án cuối file: Câu 1 = B.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Thủ đô của Nhật Bản là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Seoul"
+        },
+        {
+          "key": "B",
+          "text": "Bắc Kinh"
+        },
+        {
+          "key": "C",
+          "text": "Tokyo"
+        },
+        {
+          "key": "D",
+          "text": "Bangkok"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_table",
+      "page": 1,
+      "evidence": "Bảng đáp án cuối file: Câu 2 = C.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Nước sôi ở nhiệt độ bao nhiêu trong điều kiện áp suất thường?",
+      "options": [
+        {
+          "key": "A",
+          "text": "90 độ C"
+        },
+        {
+          "key": "B",
+          "text": "95 độ C"
+        },
+        {
+          "key": "C",
+          "text": "100 độ C"
+        },
+        {
+          "key": "D",
+          "text": "110 độ C"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_table",
+      "page": 1,
+      "evidence": "Bảng đáp án cuối file: Câu 3 = C.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Ai vẽ bức Mona Lisa?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Van Gogh"
+        },
+        {
+          "key": "B",
+          "text": "Picasso"
+        },
+        {
+          "key": "C",
+          "text": "Da Vinci"
+        },
+        {
+          "key": "D",
+          "text": "Monet"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_table",
+      "page": 1,
+      "evidence": "Bảng đáp án cuối file: Câu 4 = C.",
+      "hasImage": false
+    }
+  ]
+}

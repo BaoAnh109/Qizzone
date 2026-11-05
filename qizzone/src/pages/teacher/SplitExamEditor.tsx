@@ -4,18 +4,48 @@ import { DocumentViewer } from "@/components/teacher/extraction/DocumentViewer";
 import { ResizableSplitter } from "@/components/teacher/extraction/ResizableSplitter";
 import { ExtractedQuestionCard } from "@/components/teacher/extraction/ExtractedQuestionCard";
 import { BatchActionBar } from "@/components/teacher/extraction/BatchActionBar";
+import { ReviewProgressPanel } from "@/components/teacher/extraction/ReviewProgressPanel";
 import { useExtractionStore } from "@/store/extractionStore";
+import { buildReviewDisplay } from "@/services/extraction/reviewDisplay";
+import { buildSourceTraces } from "@/services/extraction/sourceTrace";
+import { buildReviewProgress } from "@/services/extraction/reviewProgress";
 
 export function SplitExamEditor() {
   const {
     extractionResult,
+    hybridReview,
     splitterRatio,
     selectedQuestionId,
     filterStrategy,
+    filterReviewStatus,
     searchQuery,
   } = useExtractionStore();
 
-  // Filter questions based on detection strategy and search query
+  // Bước 23: display model từ hybridReview (V2 + gate + evidence +
+  // reconcile), key theo order hiển thị để truyền xuống từng card.
+  // Bước 24: từ cùng hybridReview build thêm trace đối chiếu nguồn và
+  // tiến trình thật (chunk + trạng thái câu + aiNeeded).
+  const reviewDisplay = useMemo(() => {
+    if (!hybridReview) return null;
+    return buildReviewDisplay(hybridReview);
+  }, [hybridReview]);
+
+  const displayByOrder = useMemo(() => {
+    if (!reviewDisplay) return null;
+    return new Map(reviewDisplay.questions.map((d) => [d.order, d]));
+  }, [reviewDisplay]);
+
+  const traceByOrder = useMemo(() => {
+    if (!hybridReview || !extractionResult) return null;
+    return buildSourceTraces(hybridReview, extractionResult.questions);
+  }, [hybridReview, extractionResult]);
+
+  const reviewProgress = useMemo(() => {
+    if (!hybridReview || !reviewDisplay) return null;
+    return buildReviewProgress(hybridReview, reviewDisplay.summary);
+  }, [hybridReview, reviewDisplay]);
+
+  // Filter questions based on detection strategy, review status and search query
   const filteredQuestions = useMemo(() => {
     if (!extractionResult) return [];
 
@@ -33,9 +63,24 @@ export function SplitExamEditor() {
         matchesStrategy = q.detectionStrategy === filterStrategy;
       }
 
-      return matchesSearch && matchesStrategy;
+      // Bước 23: lọc theo trạng thái hiển thị. Khi chưa có hybridReview
+      // thì không có dữ liệu phân loại nên bỏ qua bộ lọc này (không làm
+      // rỗng danh sách vì thiếu dữ liệu).
+      let matchesReviewStatus = true;
+      if (filterReviewStatus !== "all" && displayByOrder) {
+        matchesReviewStatus =
+          displayByOrder.get(q.order)?.status === filterReviewStatus;
+      }
+
+      return matchesSearch && matchesStrategy && matchesReviewStatus;
     });
-  }, [extractionResult, filterStrategy, searchQuery]);
+  }, [
+    extractionResult,
+    filterStrategy,
+    filterReviewStatus,
+    searchQuery,
+    displayByOrder,
+  ]);
 
   return (
     <div className="space-y-6 pb-16">
@@ -56,6 +101,9 @@ export function SplitExamEditor() {
       ) : (
         /* Split-Screen 2-Column Editor */
         <div className="space-y-4">
+          {/* Bước 24: tiến trình thật (chunk + trạng thái câu + OCR). */}
+          {reviewProgress && <ReviewProgressPanel progress={reviewProgress} />}
+
           <BatchActionBar />
 
           <div className="flex h-[calc(100vh-210px)] min-h-[600px] flex-col gap-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100/50 md:flex-row">
@@ -91,6 +139,8 @@ export function SplitExamEditor() {
                     key={q.id}
                     question={q}
                     isSelected={q.id === selectedQuestionId}
+                    display={displayByOrder?.get(q.order)}
+                    trace={traceByOrder?.get(q.order)}
                   />
                 ))
               ) : (

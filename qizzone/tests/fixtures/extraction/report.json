@@ -1,0 +1,2921 @@
+{
+  "generatedAt": "2026-11-05T09:23:10.561Z",
+  "parser": "rule+docxAst/pdfjs hien tai (khong Gemini, khong OCR)",
+  "note": "Buoc 02 la do, buoc 03 moi dong bang baseline. Test khong fail khi parser lech ground truth.",
+  "totals": {
+    "fixtures": 22,
+    "expectedQuestions": 80,
+    "gotQuestions": 76,
+    "missing": 4,
+    "extra": 0,
+    "duplicates": 0,
+    "stemMismatch": 0,
+    "optionsMismatch": 0,
+    "answerMismatch": 3,
+    "errors": 0,
+    "fullyOkQuestions": 73,
+    "stemExactMatch": 76,
+    "optionsExactMatch": 76,
+    "latencyMsTotal": 1902,
+    "latencyMsMax": 597,
+    "gateStatusCounts": {
+      "complete": 21,
+      "partial": 0,
+      "needs_review": 0,
+      "failed": 1
+    },
+    "evidenceVerdictCounts": {
+      "valid": 76,
+      "downgraded": 0,
+      "conflict": 0,
+      "invalid": 0,
+      "unchecked": 28
+    },
+    "sourceNumber": {
+      "match": 76,
+      "total": 76
+    },
+    "page": {
+      "match": 16,
+      "total": 16
+    },
+    "ocrNeededFixtures": 1,
+    "chunks": {
+      "complete": 22,
+      "partial": 0,
+      "failed": 1,
+      "total": 23
+    },
+    "reconciled": {
+      "answerMismatch": 0,
+      "fullyOkQuestions": 76,
+      "resolved": 3,
+      "unresolved": 0,
+      "pruned": 0
+    }
+  },
+  "rates": {
+    "questionRecall": 0.95,
+    "questionPrecision": 1,
+    "fullyOkRate": 0.9125,
+    "reviewRate": 0.0875,
+    "stemNormalizedMatchRate": 1,
+    "optionsNormalizedMatchRate": 1,
+    "answerMatchRate": 0.9605263157894737,
+    "stemExactMatchRate": 1,
+    "optionsExactMatchRate": 1,
+    "hallucinationProxyRate": 0,
+    "placeholderQuestions": 0
+  },
+  "cost": {
+    "apiCalls": 0,
+    "tokens": 0,
+    "currency": "VND",
+    "amount": 0
+  },
+  "geminiBaseline": null,
+  "geminiBaselineReason": "Chua do: PLAN_MAIN chi cho do Gemini khi co consent/quota; hien chua co, nen khong goi API that.",
+  "fixtures": [
+    {
+      "id": "f01-docx-highlight",
+      "file": "f01-docx-highlight.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của nước Pháp là thành phố nào?",
+          "gotOptions": {
+            "A": "Berlin",
+            "B": "Paris",
+            "C": "Madrid",
+            "D": "Roma"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "7 × 8 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "54",
+            "B": "56",
+            "C": "64",
+            "D": "48"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Hành tinh nào gần Mặt Trời nhất?",
+          "gotOptions": {
+            "A": "Sao Kim",
+            "B": "Trái Đất",
+            "C": "Sao Thủy",
+            "D": "Sao Hỏa"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Nước nào có diện tích lớn nhất thế giới?",
+          "gotOptions": {
+            "A": "Canada",
+            "B": "Trung Quốc",
+            "C": "Hoa Kỳ",
+            "D": "Nga"
+          },
+          "gotAnswers": [
+            "D"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 227,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f02-docx-bold",
+      "file": "f02-docx-bold.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Ai là tác giả của Truyện Kiều?",
+          "gotOptions": {
+            "A": "Nguyễn Du",
+            "B": "Hồ Xuân Hương",
+            "C": "Nguyễn Trãi",
+            "D": "Bà Huyện Thanh Quan"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "distinct_bold",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Số nguyên tố nhỏ nhất là số nào?",
+          "gotOptions": {
+            "A": "0",
+            "B": "1",
+            "C": "2",
+            "D": "3"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "distinct_bold",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Kim loại nào dẫn điện tốt nhất trong các kim loại sau?",
+          "gotOptions": {
+            "A": "Sắt",
+            "B": "Nhôm",
+            "C": "Đồng",
+            "D": "Bạc"
+          },
+          "gotAnswers": [
+            "D"
+          ],
+          "gotStrategy": "distinct_bold",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "1 giờ có bao nhiêu giây?",
+          "gotOptions": {
+            "A": "60",
+            "B": "360",
+            "C": "3600",
+            "D": "600"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "distinct_bold",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 74,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f03-docx-underline",
+      "file": "f03-docx-underline.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Đại dương lớn nhất trên Trái Đất là đại dương nào?",
+          "gotOptions": {
+            "A": "Đại Tây Dương",
+            "B": "Ấn Độ Dương",
+            "C": "Thái Bình Dương",
+            "D": "Bắc Băng Dương"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "underline",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Căn bậc hai của 144 là bao nhiêu?",
+          "gotOptions": {
+            "A": "11",
+            "B": "12",
+            "C": "13",
+            "D": "14"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "underline",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Chất khí nào chiếm tỉ lệ lớn nhất trong không khí?",
+          "gotOptions": {
+            "A": "Oxi",
+            "B": "Nitơ",
+            "C": "Cacbon đioxit",
+            "D": "Heli"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "underline",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Năm nào con người lần đầu đặt chân lên Mặt Trăng?",
+          "gotOptions": {
+            "A": "1959",
+            "B": "1969",
+            "C": "1975",
+            "D": "1981"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "underline",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 18,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f04-docx-answer-line",
+      "file": "f04-docx-answer-line.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Tổng của 15 và 27 là bao nhiêu?",
+          "gotOptions": {
+            "A": "32",
+            "B": "42",
+            "C": "52",
+            "D": "40"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Sông Hồng chảy qua thủ đô nào?",
+          "gotOptions": {
+            "A": "Hà Nội",
+            "B": "Huế",
+            "C": "Đà Nẵng",
+            "D": "Cần Thơ"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Tam giác có tổng ba góc trong bằng bao nhiêu độ?",
+          "gotOptions": {
+            "A": "90",
+            "B": "180",
+            "C": "270",
+            "D": "360"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Ngôn ngữ chính thức của Brazil là tiếng gì?",
+          "gotOptions": {
+            "A": "Tây Ban Nha",
+            "B": "Bồ Đào Nha",
+            "C": "Pháp",
+            "D": "Anh"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 75,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f05-docx-answer-table",
+      "file": "f05-docx-answer-table.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "5 × 9 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "40",
+            "B": "45",
+            "C": "54",
+            "D": "35"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_table",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Thủ đô của Nhật Bản là thành phố nào?",
+          "gotOptions": {
+            "A": "Seoul",
+            "B": "Bắc Kinh",
+            "C": "Tokyo",
+            "D": "Bangkok"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_table",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Nước sôi ở nhiệt độ bao nhiêu trong điều kiện áp suất thường?",
+          "gotOptions": {
+            "A": "90 độ C",
+            "B": "95 độ C",
+            "C": "100 độ C",
+            "D": "110 độ C"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_table",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Ai vẽ bức Mona Lisa?",
+          "gotOptions": {
+            "A": "Van Gogh",
+            "B": "Picasso",
+            "C": "Da Vinci",
+            "D": "Monet"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_table",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 10,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f06-docx-true-false",
+      "file": "f06-docx-true-false.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Trái Đất quay quanh Mặt Trời.",
+          "gotOptions": {
+            "A": "Đúng",
+            "B": "Sai"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Nước sôi ở 90 độ C trong điều kiện áp suất thường.",
+          "gotOptions": {
+            "A": "Đúng",
+            "B": "Sai"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Âm thanh truyền được trong chân không.",
+          "gotOptions": {
+            "A": "Đúng",
+            "B": "Sai"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Quang hợp xảy ra chủ yếu ở lá cây.",
+          "gotOptions": {
+            "A": "Đúng",
+            "B": "Sai"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 72,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f07-docx-multi-answer",
+      "file": "f07-docx-multi-answer.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 3,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "answers_mismatch",
+          "gotStem": "Những số nào sau đây là số chẵn?",
+          "gotOptions": {
+            "A": "2",
+            "B": "3",
+            "C": "4",
+            "D": "5"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [
+            "answers"
+          ],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "answers_mismatch",
+          "gotStem": "Những hành tinh nào sau đây là hành tinh đất đá?",
+          "gotOptions": {
+            "A": "Sao Thủy",
+            "B": "Sao Mộc",
+            "C": "Sao Kim",
+            "D": "Sao Thổ"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [
+            "answers"
+          ],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "answers_mismatch",
+          "gotStem": "Những chất nào sau đây tan trong nước?",
+          "gotOptions": {
+            "A": "Muối ăn",
+            "B": "Dầu ăn",
+            "C": "Đường",
+            "D": "Cát"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [
+            "answers"
+          ],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 5,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 3,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f08-docx-image-formula",
+      "file": "f08-docx-image-formula.docx",
+      "format": "docx",
+      "expected": 2,
+      "got": 2,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Nhìn hình, tam giác ABC có bao nhiêu cạnh?\n\n [Hình ảnh]",
+          "gotOptions": {
+            "A": "2",
+            "B": "3",
+            "C": "4",
+            "D": "5"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 1,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Tính giá trị của phân số $\\frac{1}{2}$ cộng $\\frac{1}{4}$?",
+          "gotOptions": {
+            "A": "1/4",
+            "B": "1/2",
+            "C": "3/4",
+            "D": "1"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 9,
+      "stemExactMatch": 2,
+      "optionsExactMatch": 2,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 2,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 1,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 2,
+      "sourceNumberTotal": 2,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 2,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f09-pdf-two-column",
+      "file": "f09-pdf-two-column.pdf",
+      "format": "pdf",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của Úc là thành phố nào?",
+          "gotOptions": {
+            "A": "Sydney",
+            "B": "Canberra",
+            "C": "Melbourne",
+            "D": "Perth"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "12 x 6 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "60",
+            "B": "66",
+            "C": "72",
+            "D": "84"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Nguyên tố nào nhẹ nhất?",
+          "gotOptions": {
+            "A": "Heli",
+            "B": "Hiđrô",
+            "C": "Oxi",
+            "D": "Nitơ"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Một tá bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "10",
+            "B": "12",
+            "C": "20",
+            "D": "24"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        }
+      ],
+      "latencyMs": 597,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 4,
+      "pageTotal": 4,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f10-pdf-scan",
+      "file": "f10-pdf-scan.pdf",
+      "format": "pdf",
+      "expected": 4,
+      "got": 0,
+      "missing": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "missing",
+          "gotStem": "",
+          "gotOptions": {},
+          "gotAnswers": [],
+          "gotStrategy": "",
+          "gotImages": 0,
+          "mismatches": [
+            "missing"
+          ],
+          "stemExact": false,
+          "optionsExact": false,
+          "gotSourceNumber": null,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "missing",
+          "gotStem": "",
+          "gotOptions": {},
+          "gotAnswers": [],
+          "gotStrategy": "",
+          "gotImages": 0,
+          "mismatches": [
+            "missing"
+          ],
+          "stemExact": false,
+          "optionsExact": false,
+          "gotSourceNumber": null,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "missing",
+          "gotStem": "",
+          "gotOptions": {},
+          "gotAnswers": [],
+          "gotStrategy": "",
+          "gotImages": 0,
+          "mismatches": [
+            "missing"
+          ],
+          "stemExact": false,
+          "optionsExact": false,
+          "gotSourceNumber": null,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "missing",
+          "gotStem": "",
+          "gotOptions": {},
+          "gotAnswers": [],
+          "gotStrategy": "",
+          "gotImages": 0,
+          "mismatches": [
+            "missing"
+          ],
+          "stemExact": false,
+          "optionsExact": false,
+          "gotSourceNumber": null,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 79,
+      "stemExactMatch": 0,
+      "optionsExactMatch": 0,
+      "gateStatus": "failed",
+      "gateIssueCodes": [
+        "no_questions"
+      ],
+      "evidenceValid": 0,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 0,
+      "sourceNumberTotal": 0,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": true,
+      "ocrPages": [
+        1
+      ],
+      "chunkComplete": 0,
+      "chunkPartial": 0,
+      "chunkFailed": 1,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 0,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f11-docx-repeated-header",
+      "file": "f11-docx-repeated-header.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Lực nào giữ các hành tinh quay quanh Mặt Trời?",
+          "gotOptions": {
+            "A": "Lực ma sát",
+            "B": "Lực hấp dẫn",
+            "C": "Lực đẩy",
+            "D": "Lực kéo"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Đơn vị đo cường độ dòng điện là gì?",
+          "gotOptions": {
+            "A": "Vôn",
+            "B": "Oát",
+            "C": "Ampe",
+            "D": "Ôm"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Quá trình cây xanh tạo ra oxi gọi là gì?",
+          "gotOptions": {
+            "A": "Hô hấp",
+            "B": "Quang hợp",
+            "C": "Thoát hơi nước",
+            "D": "Thụ phấn"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Nhiệt độ sôi của nước ở áp suất thường là bao nhiêu?",
+          "gotOptions": {
+            "A": "80 độ C",
+            "B": "90 độ C",
+            "C": "100 độ C",
+            "D": "120 độ C"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 20,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f12-docx-noncontinuous",
+      "file": "f12-docx-noncontinuous.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Số nào sau đây chia hết cho 3?",
+          "gotOptions": {
+            "A": "10",
+            "B": "11",
+            "C": "12",
+            "D": "14"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 5",
+          "status": "ok",
+          "gotStem": "Thủ đô của Lào là thành phố nào?",
+          "gotOptions": {
+            "A": "Viêng Chăn",
+            "B": "Phnom Penh",
+            "C": "Yangon",
+            "D": "Bangkok"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 5,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 9",
+          "status": "ok",
+          "gotStem": "Âm &#039;a&#039; trong tiếng Việt là nguyên âm hay phụ âm?",
+          "gotOptions": {
+            "A": "Phụ âm",
+            "B": "Nguyên âm",
+            "C": "Thanh điệu",
+            "D": "Dấu câu"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 9,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 14",
+          "status": "ok",
+          "gotStem": "Một hình vuông có cạnh 5 cm thì chu vi bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "10 cm",
+            "B": "15 cm",
+            "C": "20 cm",
+            "D": "25 cm"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 14,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 89,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f13-docx-no-answer",
+      "file": "f13-docx-no-answer.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của Canada là thành phố nào?",
+          "gotOptions": {
+            "A": "Toronto",
+            "B": "Vancouver",
+            "C": "Ottawa",
+            "D": "Montreal"
+          },
+          "gotAnswers": [],
+          "gotStrategy": "ai_inference",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "9 × 7 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "56",
+            "B": "63",
+            "C": "72",
+            "D": "81"
+          },
+          "gotAnswers": [],
+          "gotStrategy": "ai_inference",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Đại dương nhỏ nhất là đại dương nào?",
+          "gotOptions": {
+            "A": "Ấn Độ Dương",
+            "B": "Bắc Băng Dương",
+            "C": "Đại Tây Dương",
+            "D": "Nam Đại Dương"
+          },
+          "gotAnswers": [],
+          "gotStrategy": "ai_inference",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 13,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f14-txt-plain",
+      "file": "f14-txt-plain.txt",
+      "format": "txt",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Năm nhuận có bao nhiêu ngày?",
+          "gotOptions": {
+            "A": "365",
+            "B": "366",
+            "C": "364",
+            "D": "360"
+          },
+          "gotAnswers": [],
+          "gotStrategy": "ai_inference",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Người đầu tiên bay vào vũ trụ là ai?",
+          "gotOptions": {
+            "A": "Neil Armstrong",
+            "B": "Yuri Gagarin",
+            "C": "Buzz Aldrin",
+            "D": "Valentina Tereshkova"
+          },
+          "gotAnswers": [],
+          "gotStrategy": "ai_inference",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Số liền sau của 99 là bao nhiêu?",
+          "gotOptions": {
+            "A": "98",
+            "B": "100",
+            "C": "101",
+            "D": "90"
+          },
+          "gotAnswers": [],
+          "gotStrategy": "ai_inference",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 1,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f15-pdf-text",
+      "file": "f15-pdf-text.pdf",
+      "format": "pdf",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của Hàn Quốc là thành phố nào?",
+          "gotOptions": {
+            "A": "Busan",
+            "B": "Seoul",
+            "C": "Incheon",
+            "D": "Daegu"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "3 mũ 2 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "6",
+            "B": "9",
+            "C": "12",
+            "D": "3"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Loài vật nào sau đây là động vật có vú?",
+          "gotOptions": {
+            "A": "Cá mập",
+            "B": "Cá heo",
+            "C": "Cá sấu",
+            "D": "Ếch"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Một tuần có bao nhiêu ngày?",
+          "gotOptions": {
+            "A": "5",
+            "B": "6",
+            "C": "7",
+            "D": "8"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        }
+      ],
+      "latencyMs": 230,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 4,
+      "pageTotal": 4,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f16-docx-shared-premise",
+      "file": "f16-docx-shared-premise.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Một hình chữ nhật có chiều dài 12 cm và chiều rộng 8 cm.\n\nChu vi của hình chữ nhật là bao nhiêu?",
+          "gotOptions": {
+            "A": "20 cm",
+            "B": "40 cm",
+            "C": "32 cm",
+            "D": "48 cm"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Một hình chữ nhật có chiều dài 12 cm và chiều rộng 8 cm.\n\nDiện tích của hình chữ nhật là bao nhiêu?",
+          "gotOptions": {
+            "A": "96 cm vuông",
+            "B": "20 cm vuông",
+            "C": "32 cm vuông",
+            "D": "48 cm vuông"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Một hình chữ nhật có chiều dài 12 cm và chiều rộng 8 cm.\n\nChiều dài hơn chiều rộng bao nhiêu xăng-ti-mét?",
+          "gotOptions": {
+            "A": "2",
+            "B": "4",
+            "C": "6",
+            "D": "8"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 15,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f17-docx-table-in-stem",
+      "file": "f17-docx-table-in-stem.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Bảng sau ghi số sản phẩm bán được trong ba tháng đầu năm.\n\n Tháng  Số sản phẩm \n\n\n Tháng 1  120 \n\n\n Tháng 2  150 \n\n\n Tháng 3  90 \n\n\nTháng nào bán được nhiều sản phẩm nhất?",
+          "gotOptions": {
+            "A": "Tháng 1",
+            "B": "Tháng 2",
+            "C": "Tháng 3",
+            "D": "Tháng 4"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Bảng sau ghi điểm kiểm tra của ba bạn.\n\n Bạn  Điểm \n\n\n An  8 \n\n\n Bình  9 \n\n\n Chi  7 \n\n\nBạn nào có điểm kiểm tra cao nhất?",
+          "gotOptions": {
+            "A": "An",
+            "B": "Bình",
+            "C": "Chi",
+            "D": "Dũng"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Bảng sau ghi số tiết học mỗi tuần của ba môn học.\n\n Môn học  Số tiết \n\n\n Toán  4 \n\n\n Văn  3 \n\n\n Tiếng Anh  3 \n\n\nMôn học nào có số tiết nhiều nhất trong một tuần?",
+          "gotOptions": {
+            "A": "Toán",
+            "B": "Văn",
+            "C": "Tiếng Anh",
+            "D": "Lịch sử"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 16,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f18-docx-long-stem",
+      "file": "f18-docx-long-stem.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Một người đi xe đạp từ nhà đến trường với vận tốc 12 km mỗi giờ.\n\nQuãng đường từ nhà đến trường dài 6 km.\n\nHỏi người đó đi hết bao nhiêu phút để đến trường?",
+          "gotOptions": {
+            "A": "20 phút",
+            "B": "30 phút",
+            "C": "40 phút",
+            "D": "60 phút"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Cho hai số tự nhiên a và b.\n\nBiết a lớn hơn b 5 đơn vị và tổng của hai số bằng 25.\n\nHỏi số bé trong hai số đó bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "8",
+            "B": "10",
+            "C": "12",
+            "D": "15"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Một lớp học có 40 học sinh.\n\nTrong đó số học sinh nữ chiếm một nửa số học sinh của lớp.\n\nHỏi lớp học có bao nhiêu học sinh nam?",
+          "gotOptions": {
+            "A": "10",
+            "B": "20",
+            "C": "25",
+            "D": "30"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 61,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 3,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f19-docx-latex-special",
+      "file": "f19-docx-latex-special.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Giải phương trình x^2 + 2x + 1 = 0, nghiệm của phương trình là bao nhiêu?",
+          "gotOptions": {
+            "A": "x = 1",
+            "B": "x = -1",
+            "C": "x = 0",
+            "D": "x = 2"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Nhiệt độ sôi của nước là 100 ℃, nhiệt độ đóng băng là 0 ℃. Hỏi chênh lệch nhiệt độ giữa hai mốc này là bao nhiêu độ?",
+          "gotOptions": {
+            "A": "90 độ",
+            "B": "100 độ",
+            "C": "110 độ",
+            "D": "0 độ"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Cho a ≥ 5 và b ≤ 3. Hỏi khẳng định nào sau đây có thể sai?",
+          "gotOptions": {
+            "A": "a > b",
+            "B": "a ≥ b",
+            "C": "a = b",
+            "D": "a ≠ b"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "What is the capital of Japan? (Thủ đô của Nhật Bản là thành phố nào?)",
+          "gotOptions": {
+            "A": "Seoul",
+            "B": "Tokyo",
+            "C": "Bangkok",
+            "D": "Beijing"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 3,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f20-docx-sections",
+      "file": "f20-docx-sections.docx",
+      "format": "docx",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Sông dài nhất Việt Nam là sông nào?",
+          "gotOptions": {
+            "A": "Sông Hồng",
+            "B": "Sông Cửu Long",
+            "C": "Sông Đồng Nai",
+            "D": "Sông Mã"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Tỉnh nào có diện tích lớn nhất Việt Nam?",
+          "gotOptions": {
+            "A": "Nghệ An",
+            "B": "Gia Lai",
+            "C": "Sơn La",
+            "D": "Thanh Hóa"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Đơn vị đo khối lượng trong hệ SI là gì?",
+          "gotOptions": {
+            "A": "Gam",
+            "B": "Kilôgam",
+            "C": "Tấn",
+            "D": "Tạ"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Tốc độ ánh sáng trong chân không xấp xỉ bao nhiêu?",
+          "gotOptions": {
+            "A": "300 km/giây",
+            "B": "3000 km/giây",
+            "C": "300000 km/giây",
+            "D": "30000 km/giây"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "highlight_color",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 3,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 0,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f21-pdf-uneven-columns",
+      "file": "f21-pdf-uneven-columns.pdf",
+      "format": "pdf",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của nước Úc là thành phố nào?",
+          "gotOptions": {
+            "A": "Sydney",
+            "B": "Canberra",
+            "C": "Melbourne",
+            "D": "Perth"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "12 nhân với 8 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "84",
+            "B": "96",
+            "C": "108",
+            "D": "72"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Số nào là số nguyên tố?",
+          "gotOptions": {
+            "A": "4",
+            "B": "6",
+            "C": "7",
+            "D": "9"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Một tá bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "10",
+            "B": "12",
+            "C": "20",
+            "D": "24"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        }
+      ],
+      "latencyMs": 106,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 4,
+      "pageTotal": 4,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "f22-pdf-two-pages",
+      "file": "f22-pdf-two-pages.pdf",
+      "format": "pdf",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thành phố nào là thủ đô của Hàn Quốc?",
+          "gotOptions": {
+            "A": "Busan",
+            "B": "Seoul",
+            "C": "Incheon",
+            "D": "Daegu"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "5 mũ 2 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "10",
+            "B": "25",
+            "C": "15",
+            "D": "20"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Con vật nào sau đây đẻ con và nuôi con bằng sữa?",
+          "gotOptions": {
+            "A": "Cá mập",
+            "B": "Cá heo",
+            "C": "Rùa",
+            "D": "Ếch"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": 2,
+          "pageOk": true
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Một tháng thường có khoảng bao nhiêu ngày?",
+          "gotOptions": {
+            "A": "7",
+            "B": "14",
+            "C": "30",
+            "D": "365"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": 2,
+          "pageOk": true
+        }
+      ],
+      "latencyMs": 179,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 4,
+      "pageTotal": 4,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 2,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 2,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    }
+  ]
+}

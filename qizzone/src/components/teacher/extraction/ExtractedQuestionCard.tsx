@@ -14,13 +14,40 @@ import { MathRenderer } from "@/components/common/MathRenderer";
 import { useExtractionStore } from "@/store/extractionStore";
 import type { ExtractedQuestion, DetectionStrategy } from "@/types/extractor";
 import type { OptionId } from "@/types/quiz";
+import type {
+  QuestionReviewDisplay,
+  ReviewDisplayStatus,
+} from "@/services/extraction/reviewDisplay";
+import type { QuestionSourceTrace } from "@/services/extraction/sourceTrace";
+import { SourceTracePanel } from "@/components/teacher/extraction/SourceTracePanel";
 
 interface Props {
   question: ExtractedQuestion;
   isSelected?: boolean;
+  /**
+   * Bước 23: display model từ hybridReview (V2 + gate + evidence +
+   * reconcile). Khi có, card hiển thị trạng thái xác minh + nguồn bằng
+   * chứng + lý do từ display thay vì số confidence tự khai của V1.
+   * Khi vắng mặt (kết quả cũ, chưa qua orchestrator), card giữ hành vi
+   * cũ nhưng KHÔNG hiển thị số tin cậy nào — số đó không đo được.
+   */
+  display?: QuestionReviewDisplay;
+  /**
+   * Bước 24: trace đối chiếu nguồn của câu (từ hybridReview). Khi card
+   * đang được chọn (click) thì panel trace hiện ra; khi vắng mặt thì
+   * card giữ hành vi cũ (không có dữ liệu đối chiếu).
+   */
+  trace?: QuestionSourceTrace;
 }
 
-export function ExtractedQuestionCard({ question, isSelected }: Props) {
+const REVIEW_STATUS_BADGE: Record<ReviewDisplayStatus, string> = {
+  verified: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  likely: "bg-sky-100 text-sky-800 border-sky-200",
+  needs_review: "bg-amber-100 text-amber-800 border-amber-200",
+  invalid: "bg-rose-100 text-rose-800 border-rose-200",
+};
+
+export function ExtractedQuestionCard({ question, isSelected, display, trace }: Props) {
   const {
     setSelectedQuestionId,
     setCorrectAnswer,
@@ -126,11 +153,29 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
             </span>
           )}
 
-          {/* Confidence Badge */}
-          {question.confidenceScore > 0 && (
-            <span className="text-[11px] font-mono font-semibold text-neutral-500">
-              Tin cậy: {Math.round(question.confidenceScore * 100)}%
-            </span>
+          {/* Bước 23: trạng thái xác minh + nguồn bằng chứng từ display.
+              Số % chỉ hiển thị khi là % waterfall của nguồn thắng; nguồn
+              không có % (giáo viên xác nhận, AI gợi ý) thì không có số.
+              Badge "Tin cậy: X%" cũ (đọc confidenceScore tự khai của V1,
+              vd 0.96 cố định của solving) đã gỡ hẳn — không hiển thị số
+              không đo được dưới bất kỳ dạng nào. */}
+          {display && (
+            <>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${REVIEW_STATUS_BADGE[display.status]}`}
+              >
+                <span>{display.statusLabel}</span>
+              </span>
+              <span className="text-[11px] font-semibold text-neutral-500">
+                {display.answerSourceLabel
+                  ? `Nguồn: ${display.answerSourceLabel}${
+                      display.answerConfidencePercent !== null
+                        ? ` · ${display.answerConfidencePercent}%`
+                        : ""
+                    }`
+                  : "Chưa có bằng chứng"}
+              </span>
+            </>
           )}
         </div>
 
@@ -180,12 +225,29 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
         </div>
       </div>
 
-      {/* Warnings bar */}
-      {question.warningFlags && question.warningFlags.length > 0 && (
-        <div className="bg-amber-50 px-4 py-2 border-b border-amber-100 flex items-center gap-2 text-xs font-medium text-amber-900">
-          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-          <span>{question.warningFlags.join(" · ")}</span>
-        </div>
+      {/* Warnings bar — bước 23: khi có display thì hiển thị lý do +
+          hành động gợi ý từ display (đã bao gồm cờ V1 qua V2 warnings,
+          dedup) thay cho thanh cờ V1, tránh trùng lặp hai thanh. */}
+      {display ? (
+        display.reasons.length > 0 && (
+          <div className="bg-amber-50 px-4 py-2 border-b border-amber-100 flex items-center gap-2 text-xs font-medium text-amber-900">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>
+              {display.reasons.join(" · ")}
+              {display.suggestedAction
+                ? ` — Gợi ý: ${display.suggestedAction}`
+                : ""}
+            </span>
+          </div>
+        )
+      ) : (
+        question.warningFlags &&
+        question.warningFlags.length > 0 && (
+          <div className="bg-amber-50 px-4 py-2 border-b border-amber-100 flex items-center gap-2 text-xs font-medium text-amber-900">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>{question.warningFlags.join(" · ")}</span>
+          </div>
+        )
       )}
 
       {/* Body */}
@@ -312,6 +374,9 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
           </div>
         )}
       </div>
+
+      {/* Bước 24: click chọn câu thì hiện panel đối chiếu nguồn. */}
+      {isSelected && trace && <SourceTracePanel trace={trace} />}
     </div>
   );
 }

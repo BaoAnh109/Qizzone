@@ -1,0 +1,132 @@
+{
+  "id": "f02-docx-bold",
+  "file": "f02-docx-bold.docx",
+  "format": "docx",
+  "notes": "Đáp án chỉ có bằng chứng in đậm duy nhất.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Ai là tác giả của Truyện Kiều?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Nguyễn Du"
+        },
+        {
+          "key": "B",
+          "text": "Hồ Xuân Hương"
+        },
+        {
+          "key": "C",
+          "text": "Nguyễn Trãi"
+        },
+        {
+          "key": "D",
+          "text": "Bà Huyện Thanh Quan"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "bold",
+      "page": 1,
+      "evidence": "Chỉ đáp án A được in đậm.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Số nguyên tố nhỏ nhất là số nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "0"
+        },
+        {
+          "key": "B",
+          "text": "1"
+        },
+        {
+          "key": "C",
+          "text": "2"
+        },
+        {
+          "key": "D",
+          "text": "3"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "bold",
+      "page": 1,
+      "evidence": "Chỉ đáp án C được in đậm.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Kim loại nào dẫn điện tốt nhất trong các kim loại sau?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sắt"
+        },
+        {
+          "key": "B",
+          "text": "Nhôm"
+        },
+        {
+          "key": "C",
+          "text": "Đồng"
+        },
+        {
+          "key": "D",
+          "text": "Bạc"
+        }
+      ],
+      "correctAnswers": [
+        "D"
+      ],
+      "answerOrigin": "bold",
+      "page": 1,
+      "evidence": "Chỉ đáp án D được in đậm.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "1 giờ có bao nhiêu giây?",
+      "options": [
+        {
+          "key": "A",
+          "text": "60"
+        },
+        {
+          "key": "B",
+          "text": "360"
+        },
+        {
+          "key": "C",
+          "text": "3600"
+        },
+        {
+          "key": "D",
+          "text": "600"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "bold",
+      "page": 1,
+      "evidence": "Chỉ đáp án C được in đậm.",
+      "hasImage": false
+    }
+  ]
+}

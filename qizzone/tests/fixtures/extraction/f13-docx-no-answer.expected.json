@@ -1,0 +1,95 @@
+{
+  "id": "f13-docx-no-answer",
+  "file": "f13-docx-no-answer.docx",
+  "format": "docx",
+  "notes": "Trường hợp không đáp án: kỳ vọng correctAnswers=[] (cấm fallback ['A'] — bước 04 của PLAN_MAIN).",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của Canada là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Toronto"
+        },
+        {
+          "key": "B",
+          "text": "Vancouver"
+        },
+        {
+          "key": "C",
+          "text": "Ottawa"
+        },
+        {
+          "key": "D",
+          "text": "Montreal"
+        }
+      ],
+      "correctAnswers": [],
+      "answerOrigin": "none",
+      "page": 1,
+      "evidence": "Không có dấu hiệu đáp án nào trong nguồn.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "9 × 7 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "56"
+        },
+        {
+          "key": "B",
+          "text": "63"
+        },
+        {
+          "key": "C",
+          "text": "72"
+        },
+        {
+          "key": "D",
+          "text": "81"
+        }
+      ],
+      "correctAnswers": [],
+      "answerOrigin": "none",
+      "page": 1,
+      "evidence": "Không có dấu hiệu đáp án nào trong nguồn.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Đại dương nhỏ nhất là đại dương nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Ấn Độ Dương"
+        },
+        {
+          "key": "B",
+          "text": "Bắc Băng Dương"
+        },
+        {
+          "key": "C",
+          "text": "Đại Tây Dương"
+        },
+        {
+          "key": "D",
+          "text": "Nam Đại Dương"
+        }
+      ],
+      "correctAnswers": [],
+      "answerOrigin": "none",
+      "page": 1,
+      "evidence": "Không có dấu hiệu đáp án nào trong nguồn.",
+      "hasImage": false
+    }
+  ]
+}

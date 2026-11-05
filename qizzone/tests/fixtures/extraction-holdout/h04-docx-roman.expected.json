@@ -1,0 +1,101 @@
+{
+  "id": "h04-docx-roman",
+  "file": "h04-docx-roman.docx",
+  "format": "docx",
+  "notes": "DOCX holdout: nhãn câu bằng số La Mã (I, II, III).",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu I",
+      "type": "single_choice",
+      "stem": "Nước nào có diện tích lớn nhất thế giới?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Canada"
+        },
+        {
+          "key": "B",
+          "text": "Trung Quốc"
+        },
+        {
+          "key": "C",
+          "text": "Nga"
+        },
+        {
+          "key": "D",
+          "text": "Hoa Kỳ"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Nhãn câu bằng số La Mã, đáp án bằng dòng 'Đáp án: X' cuối mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu II",
+      "type": "single_choice",
+      "stem": "Ngôn ngữ nào được nói nhiều nhất thế giới?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Tiếng Trung"
+        },
+        {
+          "key": "B",
+          "text": "Tiếng Anh"
+        },
+        {
+          "key": "C",
+          "text": "Tiếng Hindi"
+        },
+        {
+          "key": "D",
+          "text": "Tiếng Tây Ban Nha"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Nhãn câu bằng số La Mã, đáp án bằng dòng 'Đáp án: X' cuối mỗi câu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu III",
+      "type": "single_choice",
+      "stem": "Đại dương nào lớn nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Ấn Độ Dương"
+        },
+        {
+          "key": "B",
+          "text": "Đại Tây Dương"
+        },
+        {
+          "key": "C",
+          "text": "Bắc Băng Dương"
+        },
+        {
+          "key": "D",
+          "text": "Thái Bình Dương"
+        }
+      ],
+      "correctAnswers": [
+        "D"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Nhãn câu bằng số La Mã, đáp án bằng dòng 'Đáp án: X' cuối mỗi câu.",
+      "hasImage": false
+    }
+  ]
+}

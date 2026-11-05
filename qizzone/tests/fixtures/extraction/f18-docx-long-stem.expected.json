@@ -1,0 +1,101 @@
+{
+  "id": "f18-docx-long-stem",
+  "file": "f18-docx-long-stem.docx",
+  "format": "docx",
+  "notes": "Stem dài nhiều đoạn văn: parser phải nối đủ các đoạn trước lựa chọn đầu tiên thành stem, không cắt mất đoạn.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Một người đi xe đạp từ nhà đến trường với vận tốc 12 km mỗi giờ. Quãng đường từ nhà đến trường dài 6 km. Hỏi người đó đi hết bao nhiêu phút để đến trường?",
+      "options": [
+        {
+          "key": "A",
+          "text": "20 phút"
+        },
+        {
+          "key": "B",
+          "text": "30 phút"
+        },
+        {
+          "key": "C",
+          "text": "40 phút"
+        },
+        {
+          "key": "D",
+          "text": "60 phút"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: B' cuối câu; stem dài 3 đoạn.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Cho hai số tự nhiên a và b. Biết a lớn hơn b 5 đơn vị và tổng của hai số bằng 25. Hỏi số bé trong hai số đó bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "8"
+        },
+        {
+          "key": "B",
+          "text": "10"
+        },
+        {
+          "key": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "text": "15"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: B' cuối câu; stem dài 3 đoạn.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Một lớp học có 40 học sinh. Trong đó số học sinh nữ chiếm một nửa số học sinh của lớp. Hỏi lớp học có bao nhiêu học sinh nam?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "20"
+        },
+        {
+          "key": "C",
+          "text": "25"
+        },
+        {
+          "key": "D",
+          "text": "30"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: B' cuối câu; stem dài 3 đoạn.",
+      "hasImage": false
+    }
+  ]
+}

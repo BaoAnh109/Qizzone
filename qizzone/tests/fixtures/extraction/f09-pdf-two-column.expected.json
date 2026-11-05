@@ -1,0 +1,132 @@
+{
+  "id": "f09-pdf-two-column",
+  "file": "f09-pdf-two-column.pdf",
+  "format": "pdf",
+  "notes": "PDF 1 trang, 2 cột: thứ tự đọc đúng là theo cột (1,2 rồi 3,4). Parser hiện tại gom dòng theo tọa độ Y nên có thể trộn cột.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Thủ đô của Úc là thành phố nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Sydney"
+        },
+        {
+          "key": "B",
+          "text": "Canberra"
+        },
+        {
+          "key": "C",
+          "text": "Melbourne"
+        },
+        {
+          "key": "D",
+          "text": "Perth"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột trái, dòng 'Đáp án: B' cuối câu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "12 x 6 bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "60"
+        },
+        {
+          "key": "B",
+          "text": "66"
+        },
+        {
+          "key": "C",
+          "text": "72"
+        },
+        {
+          "key": "D",
+          "text": "84"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột trái, dòng 'Đáp án: C' cuối câu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Nguyên tố nào nhẹ nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Heli"
+        },
+        {
+          "key": "B",
+          "text": "Hiđrô"
+        },
+        {
+          "key": "C",
+          "text": "Oxi"
+        },
+        {
+          "key": "D",
+          "text": "Nitơ"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột phải, dòng 'Đáp án: B' cuối câu.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Một tá bằng bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "12"
+        },
+        {
+          "key": "C",
+          "text": "20"
+        },
+        {
+          "key": "D",
+          "text": "24"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Cột phải, dòng 'Đáp án: B' cuối câu.",
+      "hasImage": false
+    }
+  ]
+}

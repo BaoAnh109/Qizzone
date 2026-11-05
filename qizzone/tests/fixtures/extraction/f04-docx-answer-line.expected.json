@@ -1,0 +1,132 @@
+{
+  "id": "f04-docx-answer-line",
+  "file": "f04-docx-answer-line.docx",
+  "format": "docx",
+  "notes": "Đáp án nằm ở dòng cuối mỗi câu, không tô màu/in đậm/gạch chân.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Tổng của 15 và 27 là bao nhiêu?",
+      "options": [
+        {
+          "key": "A",
+          "text": "32"
+        },
+        {
+          "key": "B",
+          "text": "42"
+        },
+        {
+          "key": "C",
+          "text": "52"
+        },
+        {
+          "key": "D",
+          "text": "40"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: B' ở cuối câu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Sông Hồng chảy qua thủ đô nào?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Hà Nội"
+        },
+        {
+          "key": "B",
+          "text": "Huế"
+        },
+        {
+          "key": "C",
+          "text": "Đà Nẵng"
+        },
+        {
+          "key": "D",
+          "text": "Cần Thơ"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: A' ở cuối câu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Tam giác có tổng ba góc trong bằng bao nhiêu độ?",
+      "options": [
+        {
+          "key": "A",
+          "text": "90"
+        },
+        {
+          "key": "B",
+          "text": "180"
+        },
+        {
+          "key": "C",
+          "text": "270"
+        },
+        {
+          "key": "D",
+          "text": "360"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: B' ở cuối câu.",
+      "hasImage": false
+    },
+    {
+      "order": 4,
+      "label": "Câu 4",
+      "type": "single_choice",
+      "stem": "Ngôn ngữ chính thức của Brazil là tiếng gì?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Tây Ban Nha"
+        },
+        {
+          "key": "B",
+          "text": "Bồ Đào Nha"
+        },
+        {
+          "key": "C",
+          "text": "Pháp"
+        },
+        {
+          "key": "D",
+          "text": "Anh"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Dòng 'Đáp án: B' ở cuối câu.",
+      "hasImage": false
+    }
+  ]
+}

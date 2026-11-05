@@ -1,0 +1,565 @@
+{
+  "generatedAt": "2026-11-05T09:23:16.475Z",
+  "parser": "rule+docxAst/pdfjs hien tai (khong Gemini, khong OCR)",
+  "note": "Buoc 27 la do HOLDOUT (template unseen), khong phai benchmark chinh. Test khong fail khi parser lech ground truth; KHONG sua code theo holdout.",
+  "holdout": true,
+  "totals": {
+    "fixtures": 4,
+    "expectedQuestions": 13,
+    "gotQuestions": 13,
+    "missing": 0,
+    "extra": 0,
+    "duplicates": 0,
+    "stemMismatch": 0,
+    "optionsMismatch": 0,
+    "answerMismatch": 0,
+    "errors": 0,
+    "fullyOkQuestions": 13,
+    "stemExactMatch": 13,
+    "optionsExactMatch": 10,
+    "latencyMsTotal": 697,
+    "latencyMsMax": 569,
+    "gateStatusCounts": {
+      "complete": 4,
+      "partial": 0,
+      "needs_review": 0,
+      "failed": 0
+    },
+    "evidenceVerdictCounts": {
+      "valid": 13,
+      "downgraded": 0,
+      "conflict": 0,
+      "invalid": 0,
+      "unchecked": 13
+    },
+    "sourceNumber": {
+      "match": 10,
+      "total": 13
+    },
+    "page": {
+      "match": 4,
+      "total": 4
+    },
+    "ocrNeededFixtures": 0,
+    "chunks": {
+      "complete": 4,
+      "partial": 0,
+      "failed": 0,
+      "total": 4
+    },
+    "reconciled": {
+      "answerMismatch": 0,
+      "fullyOkQuestions": 10,
+      "resolved": 0,
+      "unresolved": 0,
+      "pruned": 0
+    }
+  },
+  "rates": {
+    "questionRecall": 1,
+    "questionPrecision": 1,
+    "fullyOkRate": 1,
+    "reviewRate": 0,
+    "stemNormalizedMatchRate": 1,
+    "optionsNormalizedMatchRate": 1,
+    "answerMatchRate": 1,
+    "stemExactMatchRate": 1,
+    "optionsExactMatchRate": 0.7692307692307693,
+    "hallucinationProxyRate": 0,
+    "placeholderQuestions": 0
+  },
+  "cost": {
+    "apiCalls": 0,
+    "tokens": 0,
+    "currency": "VND",
+    "amount": 0
+  },
+  "geminiBaseline": null,
+  "geminiBaselineReason": "Chua do: PLAN_MAIN chi cho do Gemini khi co consent/quota; hien chua co, nen khong goi API that.",
+  "fixtures": [
+    {
+      "id": "h01-docx-inline-options",
+      "file": "h01-docx-inline-options.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của nước Pháp là thành phố nào?",
+          "gotOptions": {
+            "A": "Berlin",
+            "B": "Paris",
+            "C": "Madrid",
+            "D": "Roma"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Hành tinh nào gần Mặt Trời nhất?",
+          "gotOptions": {
+            "A": "Kim tinh",
+            "B": "Thủy tinh",
+            "C": "Hỏa tinh",
+            "D": "Mộc tinh"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Số nào chia hết cho cả 2 và 3?",
+          "gotOptions": {
+            "A": "14",
+            "B": "21",
+            "C": "24",
+            "D": "35"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 107,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 3,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "h02-docx-table-questions",
+      "file": "h02-docx-table-questions.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của nước Ý là thành phố nào?",
+          "gotOptions": {
+            "A": "Venice.",
+            "B": "Roma.",
+            "C": "Milan.",
+            "D": "Napoli."
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": false,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "Hành tinh nào gần Mặt Trời nhất?",
+          "gotOptions": {
+            "A": "Thủy tinh.",
+            "B": "Kim tinh.",
+            "C": "Hỏa tinh.",
+            "D": "Mộc tinh."
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": false,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Loài chim nào không biết bay?",
+          "gotOptions": {
+            "A": "Bồ câu.",
+            "B": "Đại bàng.",
+            "C": "Chim sẻ.",
+            "D": "Chim cánh cụt."
+          },
+          "gotAnswers": [
+            "D"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": false,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 14,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 0,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 3,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 3,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 0,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "h03-pdf-mid-note",
+      "file": "h03-pdf-mid-note.pdf",
+      "format": "pdf",
+      "expected": 4,
+      "got": 4,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu 1",
+          "status": "ok",
+          "gotStem": "Thủ đô của nước Ý là thành phố nào?",
+          "gotOptions": {
+            "A": "Venice",
+            "B": "Roma",
+            "C": "Milan",
+            "D": "Napoli"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 2,
+          "label": "Câu 2",
+          "status": "ok",
+          "gotStem": "7 nhân 6 bằng bao nhiêu?",
+          "gotOptions": {
+            "A": "36",
+            "B": "42",
+            "C": "48",
+            "D": "54"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 3,
+          "label": "Câu 3",
+          "status": "ok",
+          "gotStem": "Kim loại nào dẫn điện tốt nhất?",
+          "gotOptions": {
+            "A": "Sắt",
+            "B": "Nhôm",
+            "C": "Đồng",
+            "D": "Chì"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        },
+        {
+          "order": 4,
+          "label": "Câu 4",
+          "status": "ok",
+          "gotStem": "Năm nhuận có mấy ngày?",
+          "gotOptions": {
+            "A": "365",
+            "B": "366",
+            "C": "364",
+            "D": "360"
+          },
+          "gotAnswers": [
+            "B"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 4,
+          "sourceNumberOk": true,
+          "gotPage": 1,
+          "pageOk": true
+        }
+      ],
+      "latencyMs": 569,
+      "stemExactMatch": 4,
+      "optionsExactMatch": 4,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 4,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 4,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 4,
+      "sourceNumberTotal": 4,
+      "pageMatch": 4,
+      "pageTotal": 4,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 4,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    },
+    {
+      "id": "h04-docx-roman",
+      "file": "h04-docx-roman.docx",
+      "format": "docx",
+      "expected": 3,
+      "got": 3,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "stemMismatch": 0,
+      "optionsMismatch": 0,
+      "answerMismatch": 0,
+      "error": null,
+      "pdfFallback": false,
+      "perQuestion": [
+        {
+          "order": 1,
+          "label": "Câu I",
+          "status": "ok",
+          "gotStem": "Nước nào có diện tích lớn nhất thế giới?",
+          "gotOptions": {
+            "A": "Canada",
+            "B": "Trung Quốc",
+            "C": "Nga",
+            "D": "Hoa Kỳ"
+          },
+          "gotAnswers": [
+            "C"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 1,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 2,
+          "label": "Câu II",
+          "status": "ok",
+          "gotStem": "Ngôn ngữ nào được nói nhiều nhất thế giới?",
+          "gotOptions": {
+            "A": "Tiếng Trung",
+            "B": "Tiếng Anh",
+            "C": "Tiếng Hindi",
+            "D": "Tiếng Tây Ban Nha"
+          },
+          "gotAnswers": [
+            "A"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 2,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        },
+        {
+          "order": 3,
+          "label": "Câu III",
+          "status": "ok",
+          "gotStem": "Đại dương nào lớn nhất?",
+          "gotOptions": {
+            "A": "Ấn Độ Dương",
+            "B": "Đại Tây Dương",
+            "C": "Bắc Băng Dương",
+            "D": "Thái Bình Dương"
+          },
+          "gotAnswers": [
+            "D"
+          ],
+          "gotStrategy": "answer_at_end",
+          "gotImages": 0,
+          "mismatches": [],
+          "stemExact": true,
+          "optionsExact": true,
+          "gotSourceNumber": 3,
+          "sourceNumberOk": false,
+          "gotPage": null,
+          "pageOk": false
+        }
+      ],
+      "latencyMs": 7,
+      "stemExactMatch": 3,
+      "optionsExactMatch": 3,
+      "gateStatus": "complete",
+      "gateIssueCodes": [],
+      "evidenceValid": 3,
+      "evidenceDowngraded": 0,
+      "evidenceConflict": 0,
+      "evidenceInvalid": 0,
+      "evidenceUnchecked": 3,
+      "evidenceIssueCodes": [],
+      "sourceNumberMatch": 0,
+      "sourceNumberTotal": 3,
+      "pageMatch": 0,
+      "pageTotal": 0,
+      "ocrNeeded": false,
+      "ocrPages": [],
+      "chunkComplete": 1,
+      "chunkPartial": 0,
+      "chunkFailed": 0,
+      "chunkTotal": 1,
+      "reconciledAnswerMismatch": 0,
+      "reconciledFullyOk": 3,
+      "reconciledResolved": 0,
+      "reconciledUnresolved": 0,
+      "reconciledPruned": 0
+    }
+  ]
+}

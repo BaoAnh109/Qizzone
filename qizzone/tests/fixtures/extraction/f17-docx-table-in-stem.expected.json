@@ -1,0 +1,101 @@
+{
+  "id": "f17-docx-table-in-stem",
+  "file": "f17-docx-table-in-stem.docx",
+  "format": "docx",
+  "notes": "Bảng dữ liệu nằm TRONG thân câu (không phải bảng đáp án cuối file): parser phải giữ nội dung bảng trong stem và không nhận nhầm bảng này thành bảng đáp án.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Bảng sau ghi số sản phẩm bán được trong ba tháng đầu năm. Tháng Số sản phẩm Tháng 1 120 Tháng 2 150 Tháng 3 90 Tháng nào bán được nhiều sản phẩm nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Tháng 1"
+        },
+        {
+          "key": "B",
+          "text": "Tháng 2"
+        },
+        {
+          "key": "C",
+          "text": "Tháng 3"
+        },
+        {
+          "key": "D",
+          "text": "Tháng 4"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; thân câu chứa bảng dữ liệu.",
+      "hasImage": false
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Bảng sau ghi điểm kiểm tra của ba bạn. Bạn Điểm An 8 Bình 9 Chi 7 Bạn nào có điểm kiểm tra cao nhất?",
+      "options": [
+        {
+          "key": "A",
+          "text": "An"
+        },
+        {
+          "key": "B",
+          "text": "Bình"
+        },
+        {
+          "key": "C",
+          "text": "Chi"
+        },
+        {
+          "key": "D",
+          "text": "Dũng"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; thân câu chứa bảng dữ liệu.",
+      "hasImage": false
+    },
+    {
+      "order": 3,
+      "label": "Câu 3",
+      "type": "single_choice",
+      "stem": "Bảng sau ghi số tiết học mỗi tuần của ba môn học. Môn học Số tiết Toán 4 Văn 3 Tiếng Anh 3 Môn học nào có số tiết nhiều nhất trong một tuần?",
+      "options": [
+        {
+          "key": "A",
+          "text": "Toán"
+        },
+        {
+          "key": "B",
+          "text": "Văn"
+        },
+        {
+          "key": "C",
+          "text": "Tiếng Anh"
+        },
+        {
+          "key": "D",
+          "text": "Lịch sử"
+        }
+      ],
+      "correctAnswers": [
+        "A"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án A tô vàng; thân câu chứa bảng dữ liệu.",
+      "hasImage": false
+    }
+  ]
+}

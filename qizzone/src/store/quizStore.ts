@@ -3,6 +3,7 @@ import type { Quiz } from '@/types/quiz';
 import { quizService, type QuizInput } from '@/services/quizService';
 import { errorMessage } from '@/lib/cloud';
 import { useAuthStore } from '@/store/authStore';
+import { assertPublishable } from '@/lib/validations/quizSave';
 
 let loadVersion = 0;
 let inFlightQuizLoad: Promise<void> | null = null;
@@ -55,6 +56,12 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   getQuizById: id => get().quizzes.find(q => q.id === id),
   getQuizByCode: code => get().quizzes.find(q => q.code.toUpperCase() === code.trim().toUpperCase() || q.id.toLowerCase() === code.trim().toLowerCase()),
   createQuiz: async data => {
+    // Bước 08 (choke point): mọi đường tạo đề đều qua đây — xuất bản
+    // thì bắt buộc câu hỏi hợp lệ, nháp thì cho qua (chỉ cảnh báo ở UI).
+    // Không có đường nào vòng qua được guard này để xuất bản lén.
+    if (data.status === 'published') {
+      assertPublishable(data.questions);
+    }
     const id = await quizService.save(data);
     await get().load();
     const saved = get().getQuizById(id);
@@ -67,6 +74,12 @@ export const useQuizStore = create<QuizState>((set, get) => ({
     const user = useAuthStore.getState().user;
     if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
       throw new Error('Bạn không có quyền chỉnh sửa đề thi của giáo viên khác.');
+    }
+    // Bước 08: cập nhật mà đích đến là published cũng phải qua gate —
+    // không sửa đề nháp thiếu đáp án rồi lật sang published ở tầng dưới.
+    const merged = { ...existing, ...data };
+    if (merged.status === 'published') {
+      assertPublishable(merged.questions);
     }
     await quizService.save({ ...existing, ...data }, id);
     await get().load();
@@ -102,6 +115,13 @@ export const useQuizStore = create<QuizState>((set, get) => ({
       throw new Error('Bạn không có quyền thay đổi trạng thái đề thi của giáo viên khác.');
     }
     const status = existing.status === 'published' ? 'closed' : 'published';
+    // Bước 08: ĐÂY LÀ LỖ HỔNG XUẤT BẢN trước bước này — QuizList và nút
+    // "xuất bản ngay" ở JoinByLink đều gọi hàm này mà không kiểm tra
+    // gì, nên đề nháp thiếu đáp án vẫn xuất bản được. Đóng đề (về
+    // closed) thì không cần kiểm tra; mở xuất bản thì bắt buộc gate.
+    if (status === 'published') {
+      assertPublishable(existing.questions);
+    }
     await quizService.setStatus(id, status);
     await get().load();
     return get().getQuizById(id)!;

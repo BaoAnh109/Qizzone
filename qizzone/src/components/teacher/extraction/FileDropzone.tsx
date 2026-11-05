@@ -12,12 +12,28 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
+import { AI_CONFIG } from "@/config/aiConfig";
 import { parseDocxFile } from "@/utils/parsers/docxParser";
 import { parsePdfFile } from "@/utils/parsers/pdfParser";
 import { extractQuizWithAI } from "@/services/aiExtractionService";
+import { isAiParserV2Enabled } from "@/services/extraction/featureFlag";
+import {
+  runHybridOrFallback,
+  type HybridRunOutcome,
+} from "@/services/extraction/rollback";
+import {
+  buildExtractionTelemetryEvent,
+  categorizeExtractionError,
+  logExtractionTelemetry,
+  type ExtractionErrorCategory,
+  type ExtractionSourceType,
+} from "@/services/extraction/telemetry";
+import type { HybridInput } from "@/services/extraction/hybridOrchestrator";
+import type { ExtractionResult } from "@/types/extractor";
 import { useExtractionStore } from "@/store/extractionStore";
 import {
   validateImportFile,
+  validateImportFileSignature,
   validatePastedTextSize,
 } from "@/utils/fileImportValidation";
 
@@ -32,6 +48,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   const {
     setDocument,
     setExtractionResult,
+    setHybridReview,
+    setHybridInput,
     isProcessing,
     processProgress,
     setIsProcessing,
@@ -41,6 +59,10 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   const [pastedText, setPastedText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // Bước 33: flag V2 (VITE_AI_PARSER_V2_ENABLED, mặc định OFF). Đọc một
+  // lần mỗi render — flag là biến build-time nên không đổi trong phiên.
+  const flagEnabled = isAiParserV2Enabled();
+
   const handleFinishExtraction = () => {
     if (onSuccess) {
       onSuccess();
@@ -49,10 +71,60 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
     }
   };
 
+  /**
+   * Bước 33: chạy Hybrid Orchestrator có rollback + ghi telemetry.
+   * Flag OFF (mặc định) hoặc orchestrator lỗi → hybrid null, store cũng
+   * xóa hybridInput cũ để review UI rơi về đúng đường V1 (không giữ
+   * metadata V2 dở dang). V1 trong store không bao giờ bị hàm này đổi.
+   */
+  const applyHybridOutcome = (
+    input: HybridInput,
+    flagEnabled: boolean
+  ): HybridRunOutcome => {
+    const run = runHybridOrFallback(input, flagEnabled);
+    setHybridInput(run.hybrid ? input : null);
+    setHybridReview(run.hybrid);
+    return run;
+  };
+
+  const emitExtractionTelemetry = (args: {
+    sourceType: ExtractionSourceType;
+    v1: ExtractionResult | null;
+    hybridRun: HybridRunOutcome | null;
+    totalPages?: number | null;
+    model?: string | null;
+    errorCategory?: ExtractionErrorCategory;
+    latencyMs: number;
+  }) => {
+    logExtractionTelemetry(
+      buildExtractionTelemetryEvent({
+        sourceType: args.sourceType,
+        flagEnabled,
+        v1: args.v1,
+        hybrid: args.hybridRun?.hybrid ?? null,
+        model: args.model ?? null,
+        totalPages: args.totalPages ?? null,
+        latencyMs: args.latencyMs,
+        errorCategory: args.errorCategory,
+        rolledBack: args.hybridRun?.rolledBack ?? false,
+        fallbackReason: args.hybridRun?.fallbackReason ?? null,
+      })
+    );
+  };
+
   const processFile = async (file: File) => {
     const validationError = validateImportFile(file);
     if (validationError) {
       toast.error(validationError);
+      return;
+    }
+
+    // Bước 32: chặn file giả mạo extension bằng magic bytes trước khi
+    // parser chạm vào nội dung. Chạy trước setIsProcessing để lỗi này
+    // không để lại trạng thái đang xử lý dở dang.
+    const signatureError = await validateImportFileSignature(file);
+    if (signatureError) {
+      toast.error(signatureError);
       return;
     }
 
@@ -63,10 +135,19 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
 
     setIsProcessing(true, 20);
 
+    // Bước 33: đo latency toàn lần trích xuất + loại lỗi để telemetry ở
+    // catch dùng đúng (mỗi nhánh set failureSource/failureCategory TRƯỚC
+    // khi gọi bước có thể lỗi).
+    const startedAt = Date.now();
+    let failureSource: ExtractionSourceType = "docx";
+    let failureCategory: ExtractionErrorCategory = "unknown";
+
     try {
       if (isDocx) {
         setIsProcessing(true, 50);
-        const { rawHtml, rawText, result } = await parseDocxFile(file);
+        failureSource = "docx";
+        failureCategory = "parse_error";
+        const { rawHtml, rawText, result, quality } = await parseDocxFile(file);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -79,13 +160,44 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         });
         setIsProcessing(true, 100);
         setExtractionResult(result);
-        toast.success(
-          `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ file Word!`
-        );
+        // Bước 21: nối Hybrid Orchestrator vào live path (tầng đồng bộ:
+        // V2 + chunking + gate + evidence). V1 lưu vào store giữ nguyên;
+        // metadata nằm ở hybridReview để UI bước 24 dùng. Không gọi AI
+        // ở đây (AI enhancement là on-demand qua orchestrateWithAI).
+        // Bước 24: lưu cả input gốc để nút AI lấp đáp án dùng lại metadata.
+        // Bước 33: flag OFF → rollback về V1 (không chạy orchestrator);
+        // orchestrator lỗi → giữ V1, telemetry ghi rolledBack.
+        const hybridInputDocx = { result, documentQuality: quality };
+        const hybridRunDocx = applyHybridOutcome(hybridInputDocx, flagEnabled);
+        emitExtractionTelemetry({
+          sourceType: "docx",
+          v1: result,
+          hybridRun: hybridRunDocx,
+          latencyMs: Date.now() - startedAt,
+        });
+        // Bước 07: không toast "thành công" như đầy đủ khi gate báo thiếu.
+        // Dữ liệu vẫn chuyển sang màn hình review (không mất câu đã trích);
+        // chỉ thay đổi thông báo — luồng điều hướng giữ nguyên.
+        if (quality.status === "partial") {
+          toast.warning(
+            `Đã bóc tách được ${result.totalQuestionsDetected} câu hỏi từ file Word nhưng phát hiện thiếu nội dung (${quality.reasons.join("; ")}). Vui lòng kiểm tra lại trước khi xuất bản!`
+          );
+        } else if (quality.status === "failed") {
+          toast.error(
+            "Không bóc tách được câu hỏi nào từ file Word. Vui lòng kiểm tra lại cấu trúc file!"
+          );
+        } else {
+          toast.success(
+            `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ file Word!`
+          );
+        }
         handleFinishExtraction();
       } else if (isPdf) {
         setIsProcessing(true, 50);
-        const { rawText, totalPages, result, pdfDoc } = await parsePdfFile(file);
+        failureSource = "pdf";
+        failureCategory = "parse_error";
+        const { rawText, totalPages, result, pdfDoc, hasTextLayer, scanPages } =
+          await parsePdfFile(file);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -99,9 +211,35 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         });
         setIsProcessing(true, 100);
         setExtractionResult(result);
-        toast.success(
-          `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ PDF (${totalPages} trang)!`
-        );
+        // Bước 21: nối Hybrid Orchestrator (PDF: chunk theo trang + scanPages).
+        // Bước 24: lưu cả input gốc để nút AI lấp đáp án dùng lại metadata.
+        // Bước 33: flag OFF → rollback về V1; orchestrator lỗi → giữ V1.
+        const hybridInputPdf = { result, totalPages, scanPages };
+        const hybridRunPdf = applyHybridOutcome(hybridInputPdf, flagEnabled);
+        emitExtractionTelemetry({
+          sourceType: "pdf",
+          v1: result,
+          hybridRun: hybridRunPdf,
+          totalPages,
+          latencyMs: Date.now() - startedAt,
+        });
+        // Bước 16: PDF scan không còn bị báo "thành công" với 0 câu như
+        // file rỗng — nó được báo rõ là cần OCR. Tài liệu xen text/scan
+        // báo rõ trang scan nào còn thiếu. Luồng điều hướng giữ nguyên
+        // (review screen); nối engine OCR thật vào flow thuộc bước 24.
+        if (!hasTextLayer) {
+          toast.warning(
+            `PDF không có text layer (${totalPages} trang scan) — cần OCR để trích xuất, hiện chưa trích được câu hỏi nào.`
+          );
+        } else if (scanPages.length > 0) {
+          toast.warning(
+            `Đã bóc tách ${result.totalQuestionsDetected} câu hỏi từ các trang có text; còn ${scanPages.length} trang scan (${scanPages.join(", ")}) cần OCR.`
+          );
+        } else {
+          toast.success(
+            `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ PDF (${totalPages} trang)!`
+          );
+        }
         handleFinishExtraction();
       } else if (isImage) {
         setIsProcessing(true, 40);
@@ -124,11 +262,34 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
             const result = await extractQuizWithAI({ file, imageBase64 });
             setIsProcessing(true, 100);
             setExtractionResult(result);
+            // Bước 21: nối Hybrid Orchestrator (nhánh AI cũng qua gate/evidence/chunk).
+            // Bước 24: lưu cả input gốc để nút AI lấp đáp án dùng lại metadata.
+            // Bước 33: flag OFF → rollback về V1; orchestrator lỗi → giữ V1.
+            const hybridInputImage = { result };
+            const hybridRunImage = applyHybridOutcome(hybridInputImage, flagEnabled);
+            emitExtractionTelemetry({
+              sourceType: "image",
+              v1: result,
+              hybridRun: hybridRunImage,
+              model: AI_CONFIG.DEFAULT_MODEL,
+              latencyMs: Date.now() - startedAt,
+            });
             toast.success(
               `AI đã phân tích ảnh và trích xuất ${result.totalQuestionsDetected} câu hỏi!`
             );
             handleFinishExtraction();
-          } catch {
+          } catch (err) {
+            // Bước 33: lỗi đường AI (kể cả vượt quota — map từ kiểu lỗi,
+            // không đoán từ message để khỏi rò nội dung đề).
+            const category = categorizeExtractionError(err);
+            emitExtractionTelemetry({
+              sourceType: "image",
+              v1: null,
+              hybridRun: null,
+              model: AI_CONFIG.DEFAULT_MODEL,
+              errorCategory: category === "unknown" ? "ai_error" : category,
+              latencyMs: Date.now() - startedAt,
+            });
             toast.error("Không thể phân tích ảnh đề thi. Vui lòng kiểm tra lại chất lượng ảnh!");
           } finally {
             setIsProcessing(false, 0);
@@ -137,6 +298,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         reader.readAsDataURL(file);
         return;
       } else {
+        failureSource = "text";
+        failureCategory = "ai_error";
         const text = await file.text();
         const result = await extractQuizWithAI({
           file,
@@ -153,12 +316,34 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         });
         setIsProcessing(true, 100);
         setExtractionResult(result);
+        // Bước 21: nối Hybrid Orchestrator (nhánh text/AI cũng qua gate/evidence/chunk).
+        // Bước 24: lưu cả input gốc để nút AI lấp đáp án dùng lại metadata.
+        // Bước 33: flag OFF → rollback về V1; orchestrator lỗi → giữ V1.
+        const hybridInputText = { result };
+        const hybridRunText = applyHybridOutcome(hybridInputText, flagEnabled);
+        emitExtractionTelemetry({
+          sourceType: "text",
+          v1: result,
+          hybridRun: hybridRunText,
+          model: AI_CONFIG.DEFAULT_MODEL,
+          latencyMs: Date.now() - startedAt,
+        });
         toast.success(
           `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ tệp văn bản!`
         );
         handleFinishExtraction();
       }
     } catch {
+      // Bước 33: trích xuất thất bại trước khi có V1 (parse lỗi hoặc AI
+      // lỗi) — ghi telemetry thất bại rồi báo lỗi như cũ; extractionResult
+      // cũ trong store không bị chạm (không mất dữ liệu đang review).
+      emitExtractionTelemetry({
+        sourceType: failureSource,
+        v1: null,
+        hybridRun: null,
+        errorCategory: failureCategory,
+        latencyMs: Date.now() - startedAt,
+      });
       toast.error("Không thể phân tích tệp đề thi. Vui lòng kiểm tra lại cấu trúc file!");
     } finally {
       setIsProcessing(false, 0);
@@ -186,6 +371,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
     }
 
     setIsProcessing(true, 30);
+    // Bước 33: đo latency lần trích xuất để telemetry dùng.
+    const pasteStartedAt = Date.now();
     try {
       const result = await extractQuizWithAI({
         text: pastedText,
@@ -203,11 +390,33 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
 
       setIsProcessing(true, 100);
       setExtractionResult(result);
+      // Bước 21: nối Hybrid Orchestrator (nhánh dán text cũng qua gate/evidence/chunk).
+      // Bước 24: lưu cả input gốc để nút AI lấp đáp án dùng lại metadata.
+      // Bước 33: flag OFF → rollback về V1; orchestrator lỗi → giữ V1.
+      const hybridInputPaste = { result };
+      const hybridRunPaste = applyHybridOutcome(hybridInputPaste, flagEnabled);
+      emitExtractionTelemetry({
+        sourceType: "paste",
+        v1: result,
+        hybridRun: hybridRunPaste,
+        model: AI_CONFIG.DEFAULT_MODEL,
+        latencyMs: Date.now() - pasteStartedAt,
+      });
       toast.success(
         `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ văn bản!`
       );
       handleFinishExtraction();
-    } catch {
+    } catch (err) {
+      // Bước 33: lỗi đường AI (kể cả vượt quota — map từ kiểu lỗi).
+      const category = categorizeExtractionError(err);
+      emitExtractionTelemetry({
+        sourceType: "paste",
+        v1: null,
+        hybridRun: null,
+        model: AI_CONFIG.DEFAULT_MODEL,
+        errorCategory: category === "unknown" ? "ai_error" : category,
+        latencyMs: Date.now() - pasteStartedAt,
+      });
       toast.error("Không thể bóc tách nội dung văn bản. Vui lòng thử lại!");
     } finally {
       setIsProcessing(false, 0);

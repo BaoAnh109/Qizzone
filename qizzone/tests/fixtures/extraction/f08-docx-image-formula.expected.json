@@ -1,0 +1,70 @@
+{
+  "id": "f08-docx-image-formula",
+  "file": "f08-docx-image-formula.docx",
+  "format": "docx",
+  "notes": "Câu 1 có ảnh đính kèm; câu 2 có công thức OMML (phân số). Ảnh PNG tạm _f08_diagram.png chỉ là nguyên liệu sinh, không phải fixture độc lập.",
+  "questions": [
+    {
+      "order": 1,
+      "label": "Câu 1",
+      "type": "single_choice",
+      "stem": "Nhìn hình, tam giác ABC có bao nhiêu cạnh?",
+      "options": [
+        {
+          "key": "A",
+          "text": "2"
+        },
+        {
+          "key": "B",
+          "text": "3"
+        },
+        {
+          "key": "C",
+          "text": "4"
+        },
+        {
+          "key": "D",
+          "text": "5"
+        }
+      ],
+      "correctAnswers": [
+        "B"
+      ],
+      "answerOrigin": "highlight",
+      "page": 1,
+      "evidence": "Đáp án B tô vàng; câu có ảnh đính kèm (tam giác ABC).",
+      "hasImage": true
+    },
+    {
+      "order": 2,
+      "label": "Câu 2",
+      "type": "single_choice",
+      "stem": "Tính giá trị của phân số $\\frac{1}{2}$ cộng $\\frac{1}{4}$?",
+      "options": [
+        {
+          "key": "A",
+          "text": "1/4"
+        },
+        {
+          "key": "B",
+          "text": "1/2"
+        },
+        {
+          "key": "C",
+          "text": "3/4"
+        },
+        {
+          "key": "D",
+          "text": "1"
+        }
+      ],
+      "correctAnswers": [
+        "C"
+      ],
+      "answerOrigin": "answer_line",
+      "page": 1,
+      "evidence": "Stem chứa 2 phân số OMML; đáp án ở dòng 'Đáp án: C' cuối câu.",
+      "hasImage": false
+    }
+  ]
+}
