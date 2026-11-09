@@ -33,9 +33,13 @@ export async function identity(req: Request) {
 }
 export function cors(req: Request) {
   const origin = req.headers.get('Origin') || '';
-  const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim());
+  const allowed = new Set([
+    ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()),
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ]);
   return {
-    'Access-Control-Allow-Origin': allowed.includes(origin) ? origin : 'null',
+    'Access-Control-Allow-Origin': allowed.has(origin) ? origin : 'null',
     'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
     'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Vary': 'Origin',
     'Content-Type': 'application/json', 'Cache-Control': 'no-store',
