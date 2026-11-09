@@ -138,7 +138,7 @@ export function Login() {
       )}
 
       {/* React Hook Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <Input
           label="Email"
           type="email"
@@ -170,8 +170,8 @@ export function Login() {
           {...register("password")}
         />
 
-        <div className="flex justify-end">
-          <Button type="button" variant="link" size="sm" isLoading={isResetting} onClick={() => void handleResetPassword()}>
+        <div className="-mt-2 flex justify-end">
+          <Button type="button" variant="link" size="sm" className="min-h-8 text-xs" isLoading={isResetting} onClick={() => void handleResetPassword()}>
             Quên mật khẩu?
           </Button>
         </div>
@@ -179,7 +179,7 @@ export function Login() {
         <Button
           type="submit"
           variant="primary"
-          className="mt-2 h-11 w-full"
+          className="h-11 w-full"
           isLoading={isLoading}
           leftIcon={<LogIn className="h-4 w-4" />}
         >
