@@ -2,6 +2,8 @@
 
 ## Hệ thống tạo đề và thi trắc nghiệm trực tuyến
 
+> Hướng dẫn cài đặt môi trường, chạy local, deploy, backup và rollback nằm trong [SETUP.md](SETUP.md).
+
 Qizzone là đề tài xây dựng một nền tảng hỗ trợ giáo viên tổ chức thi trắc nghiệm và giúp học sinh làm bài trực tuyến trên cùng một hệ thống. Sản phẩm tập trung vào việc đơn giản hóa quá trình tạo đề, quản lý phòng thi, chấm điểm và theo dõi kết quả.
 
 Ngoài cách soạn câu hỏi thủ công, Qizzone còn hỗ trợ nhập nội dung từ các tài liệu có sẵn như PDF, DOCX và hình ảnh. Các câu hỏi sau khi trích xuất được đưa vào màn hình kiểm tra để giáo viên chỉnh sửa trước khi tạo đề chính thức.
@@ -38,10 +40,12 @@ Qizzone được xây dựng nhằm giải quyết các vấn đề đó bằng 
 - Làm bài, đánh dấu câu hỏi và tiếp tục phiên thi còn thời hạn.
 - Nhận kết quả và xem lại chi tiết theo cấu hình của giáo viên.
 - Theo dõi lịch sử các bài đã hoàn thành.
+- Chọn đề đã xuất bản trong mục **Luyện tập**, làm từng câu và xem lời giải.
 
 ### Giáo viên
 
-- Đăng ký tài khoản và gửi yêu cầu phê duyệt.
+- Tài khoản bắt đầu từ vai trò học sinh và gửi yêu cầu chuyển quyền giáo viên từ menu tài khoản.
+- Sau khi quản trị viên phê duyệt, chuyển đổi giữa màn hình học sinh và giáo viên.
 - Tạo đề thi thủ công hoặc nhập câu hỏi từ tài liệu.
 - Chỉnh sửa câu hỏi, đáp án, lời giải và công thức toán học.
 - Cấu hình thời gian, điểm đạt, số lần làm và thứ tự câu hỏi.
@@ -52,14 +56,14 @@ Qizzone được xây dựng nhằm giải quyết các vấn đề đó bằng 
 ### Quản trị viên
 
 - Xem danh sách tài khoản giáo viên đang chờ duyệt.
-- Phê duyệt hoặc từ chối yêu cầu đăng ký giáo viên.
+- Phê duyệt, từ chối hoặc khóa yêu cầu chuyển quyền giáo viên.
 - Đảm bảo chỉ tài khoản hợp lệ được sử dụng chức năng quản lý đề thi.
 
 ## Chức năng chính
 
 ### Quản lý tài khoản và phân quyền
 
-Hệ thống sử dụng ba vai trò: `student`, `teacher` và `admin`. Học sinh có thể sử dụng tài khoản ngay sau khi đăng ký, trong khi giáo viên cần được quản trị viên phê duyệt. Mỗi vai trò chỉ được truy cập các màn hình và dữ liệu phù hợp.
+Hệ thống sử dụng ba vai trò: `student`, `teacher` và `admin`. Tài khoản mới và đăng nhập Google bắt đầu ở vai trò học sinh. Người dùng có thể gửi yêu cầu chuyển quyền giáo viên từ menu avatar; chỉ sau khi quản trị viên phê duyệt mới có thể chuyển sang màn hình giáo viên. Mỗi vai trò chỉ được truy cập các màn hình và dữ liệu phù hợp.
 
 ### Tạo và quản lý đề thi
 
@@ -74,6 +78,7 @@ Một đề thi có thể cấu hình:
 - Điểm hoặc tỷ lệ đạt.
 - Đảo thứ tự câu hỏi.
 - Quyền xem đáp án và lời giải sau khi nộp.
+- Cho phép hoặc tắt chức năng luyện tập cho học sinh.
 
 ### Nhập câu hỏi từ tài liệu
 
@@ -110,6 +115,10 @@ Trong phòng thi, học sinh có thể:
 
 Học sinh có thể xem điểm, số câu đúng, tỷ lệ hoàn thành và nội dung chi tiết nếu giáo viên cho phép. Giáo viên có thể theo dõi toàn bộ lượt nộp, điểm trung bình, tỷ lệ đạt và kết quả của từng học sinh.
 
+### Luyện tập
+
+Học sinh mở luyện tập bằng nút **Luyện tập** dưới nút vào thi của đề được giao, hoặc trên sảnh của đề mở qua link/mã. Đề không còn được liệt kê thành một mục riêng trên trang chủ; lịch sử và lượt đang dở ở mục **Lịch sử luyện tập** trên thanh bên. Nút luyện tập chỉ hiện khi giáo viên bật tính năng cho đề. Phòng luyện có bố cục toàn màn hình như khi làm bài thi và chỉ hiển thị một câu hỏi tại một thời điểm; lưới bên cạnh chỉ dùng để chuyển số câu. Có thể luyện toàn bộ câu hoặc chọn số câu ngẫu nhiên; mỗi câu được kiểm tra riêng, có thể hiện lời giải ngay hoặc xem ở cuối lượt. Phiên luyện không có đếm ngược, cho phép làm lại không giới hạn và có nút luyện lại câu sai hoặc toàn bộ câu của lượt vừa rồi. Kết quả và lịch sử luyện tập được lưu riêng, không làm tăng lượt thi hay ảnh hưởng điểm và thống kê thi. Giáo viên có thể tắt chức năng này trong cài đặt đề; mặc định bật cho cả đề cũ.
+
 ## Quy trình hoạt động
 
 ```text
@@ -144,6 +153,7 @@ React + TypeScript
         │       ├── Hồ sơ người dùng
         │       ├── Đề thi và câu hỏi
         │       ├── Phiên làm bài và đáp án
+        │       ├── Phiên luyện tập và đáp án đã kiểm tra
         │       └── Kết quả và lịch sử
         │
         └── Supabase Edge Functions
@@ -160,6 +170,7 @@ Frontend chịu trách nhiệm hiển thị giao diện và điều phối thao 
 - Firebase custom claims kết hợp với hồ sơ người dùng để xác định vai trò.
 - Supabase Row Level Security giới hạn dữ liệu theo người dùng và quyền sở hữu.
 - Học sinh không được phép đọc trực tiếp đáp án của đề đang thi.
+- Đáp án luyện tập chỉ được trả về theo từng câu sau khi học sinh khóa câu đó; câu chưa kiểm tra không lộ đáp án.
 - Quá trình chấm điểm được thực hiện phía server.
 - Gemini API key, Firebase Admin credentials và Supabase secret key không được đưa xuống trình duyệt.
 - Giáo viên chưa được phê duyệt không thể truy cập dữ liệu quản lý đề thi.

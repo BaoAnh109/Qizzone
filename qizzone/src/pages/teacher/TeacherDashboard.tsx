@@ -25,12 +25,20 @@ import { Badge } from "@/components/ui/Badge";
 export function TeacherDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const quizzes = useQuizStore((state) => state.quizzes);
+  const allQuizzes = useQuizStore((state) => state.quizzes);
   const results = useExamSessionStore((state) => state.results);
   const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
 
+  const quizzes = user?.role === "admin"
+    ? allQuizzes
+    : allQuizzes.filter((q) => q.teacherId === user?.id);
+
+  const teacherSubmissions = user?.role === "admin"
+    ? results
+    : results.filter((r) => quizzes.some((q) => q.id === r.quizId));
+
   const publishedCount = quizzes.filter((q) => q.status === "published").length;
-  const totalSubmissions = results.length;
+  const totalSubmissions = teacherSubmissions.length;
 
   const stats = [
     {
@@ -60,7 +68,7 @@ export function TeacherDashboard() {
 
   return (
     <div className="space-y-7 pb-12">
-      <div className="flex flex-col justify-between gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-4 border-b theme-border pb-6 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-medium text-blue-700">Tổng quan</p>
           <h1 className="page-heading mt-1">
@@ -98,7 +106,7 @@ export function TeacherDashboard() {
             <Card key={idx}>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-neutral-500">
+                  <span className="text-sm font-medium theme-text-muted">
                     {stat.title}
                   </span>
                   <div
@@ -109,10 +117,10 @@ export function TeacherDashboard() {
                 </div>
 
                 <div className="mt-4 flex items-end justify-between gap-4">
-                  <span className="font-mono text-3xl font-semibold tracking-tight text-neutral-950">
+                  <span className="font-mono text-3xl font-semibold tracking-tight theme-text-primary">
                     {stat.value}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-right text-xs text-neutral-500">
+                  <span className="inline-flex items-center gap-1 text-right text-xs theme-text-muted">
                     <TrendingUp className="h-3.5 w-3.5" />
                     {stat.change}
                   </span>
@@ -151,11 +159,11 @@ export function TeacherDashboard() {
               return (
                 <div
                   key={quiz.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:px-6 hover:bg-neutral-50/70 transition"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:px-6 theme-hover-surface transition"
                 >
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-sm text-neutral-900 truncate">
+                      <h3 className="font-semibold text-sm theme-text-primary truncate">
                         {quiz.title}
                       </h3>
                       <Badge variant={quiz.status} size="sm" dot>
@@ -167,8 +175,8 @@ export function TeacherDashboard() {
                       </Badge>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-                      <span className="font-medium text-neutral-700">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs theme-text-muted">
+                      <span className="font-medium theme-text-secondary">
                         {quiz.subject}
                       </span>
                       <span>•</span>
@@ -182,7 +190,7 @@ export function TeacherDashboard() {
                       <span>•</span>
                       <span>
                         Mã phòng:{" "}
-                        <strong className="font-mono text-indigo-600">
+                        <strong className="font-mono text-teal-700">
                           {quiz.code}
                         </strong>
                       </span>
@@ -194,7 +202,7 @@ export function TeacherDashboard() {
                       variant="outline"
                       size="sm"
                       onClick={() => navigate(`/teacher/quiz/${quiz.id}/results`)}
-                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-indigo-600" />}
+                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-teal-700" />}
                       className="font-semibold text-xs"
                     >
                       Bảng điểm {submissionCount > 0 && `(${submissionCount})`}

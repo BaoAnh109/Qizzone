@@ -28,7 +28,10 @@ export const registerSchema = z
     password: z
       .string()
       .min(1, "Vui lòng nhập mật khẩu")
-      .min(6, "Mật khẩu phải chứa ít nhất 6 ký tự"),
+      .min(8, "Mật khẩu phải chứa ít nhất 8 ký tự")
+      .regex(/[A-Z]/, "Mật khẩu phải có ít nhất 1 chữ hoa")
+      .regex(/\d/, "Mật khẩu phải có ít nhất 1 chữ số")
+      .regex(/[\p{P}\p{S}]/u, "Mật khẩu phải có ít nhất 1 ký tự đặc biệt"),
     confirmPassword: z
       .string()
       .min(1, "Vui lòng nhập xác nhận mật khẩu"),

@@ -39,7 +39,7 @@ interface ExtractionState {
   applyBatchAnswerKey: (answerKeyString: string) => { updatedCount: number };
   solveUnansweredWithAI: (
     onStepProgress?: (current: number, total: number, message?: string) => void
-  ) => Promise<{ solvedCount: number; durationSeconds: number }>;
+  ) => Promise<{ solvedCount: number; durationSeconds: number; failureMessage?: string }>;
   clearAll: () => void;
 }
 
@@ -190,7 +190,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     set((state) => {
       if (!state.extractionResult) return state;
       const total = state.extractionResult.questions.length || 1;
-      const pointsEach = Math.round((totalPoints / total) * 100) / 100;
+      const pointsEach = total > 0 ? totalPoints / total : 1;
       const updated = state.extractionResult.questions.map((q) => ({
         ...q,
         points: pointsEach,
@@ -251,27 +251,30 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
     }
 
     setIsProcessing(true, 10);
-    const { updatedQuestions, solvedCount, durationSeconds } = await solveMissingAnswersWithAI(
-      extractionResult.questions,
-      (current, total, message) => {
-        const progress = Math.round(10 + (current / total) * 85);
-        setIsProcessing(true, progress);
-        if (onStepProgress) {
-          onStepProgress(current, total, message);
+    try {
+      const { updatedQuestions, solvedCount, durationSeconds, failureMessage } = await solveMissingAnswersWithAI(
+        extractionResult.questions,
+        (current, total, message) => {
+          const progress = Math.round(10 + (current / total) * 85);
+          setIsProcessing(true, progress);
+          if (onStepProgress) {
+            onStepProgress(current, total, message);
+          }
         }
-      }
-    );
+      );
 
-    set({
-      extractionResult: {
-        ...extractionResult,
-        questions: updatedQuestions,
-      },
-      isProcessing: false,
-      processProgress: 100,
-    });
+      set({
+        extractionResult: {
+          ...extractionResult,
+          questions: updatedQuestions,
+        },
+        processProgress: 100,
+      });
 
-    return { solvedCount, durationSeconds };
+      return { solvedCount, durationSeconds, failureMessage };
+    } finally {
+      set({ isProcessing: false });
+    }
   },
 
   clearAll: () =>

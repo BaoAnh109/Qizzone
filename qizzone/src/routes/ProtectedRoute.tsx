@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import type { Role } from "@/types/auth";
+import { getRoleHomeRoute } from "@/routes/navigation";
+import { AuthLoadingFallback } from "@/components/common/RouteLoadingFallback";
 
 interface ProtectedRouteProps {
   allowedRole?: Role;
@@ -15,16 +17,16 @@ export function ProtectedRoute({
   const location = useLocation();
 
   if (!isInitialized) {
-    return <div className="min-h-screen grid place-items-center text-sm text-neutral-500">Đang xác thực...</div>;
+    return <AuthLoadingFallback />;
   }
 
   if (configurationError && !isAuthenticated) {
     return (
       <div className="min-h-screen grid place-items-center p-6 text-center">
         <div className="max-w-lg space-y-2">
-          <h1 className="text-xl font-bold text-neutral-900">Chưa thể kết nối dịch vụ</h1>
-          <p className="text-sm text-neutral-600">{configurationError}</p>
-          <p className="text-xs text-neutral-500">Kiểm tra các biến VITE_FIREBASE_* và VITE_SUPABASE_* trong file .env rồi tải lại trang.</p>
+          <h1 className="text-xl font-bold theme-text-primary">Chưa thể kết nối dịch vụ</h1>
+          <p className="text-sm theme-text-secondary">{configurationError}</p>
+          <p className="text-xs theme-text-muted">Kiểm tra các biến VITE_FIREBASE_* và VITE_SUPABASE_* trong file .env rồi tải lại trang.</p>
         </div>
       </div>
     );
@@ -44,7 +46,7 @@ export function ProtectedRoute({
   const roles = allowedRoles || (allowedRole ? [allowedRole] : []);
   if (roles.length > 0 && !roles.includes(user.role)) {
     // Graceful fallback to user's home portal instead of 403 error page
-    const fallbackPath = user.role === "admin" ? "/admin/teacher-approvals" : user.role === "student" ? "/student" : "/teacher";
+    const fallbackPath = getRoleHomeRoute(user.role);
     return <Navigate to={fallbackPath} replace />;
   }
 

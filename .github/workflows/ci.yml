@@ -6,11 +6,9 @@ on:
       - main
       - master
       - develop
+      - 'develop/**'
+      - 'review/**'
   pull_request:
-    branches:
-      - main
-      - master
-      - develop
 
 jobs:
   validate-and-build:

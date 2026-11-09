@@ -36,9 +36,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+# Drive & Temp
+.tmp.driveupload/
 
 documents/
-docs/
 docs/*
 !docs/tasks/
-!docs/tasks/*.md
+!docs/tasks/**

@@ -23,32 +23,32 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: "bg-neutral-100 text-neutral-800 border-neutral-200",
-  primary: "bg-blue-50 text-blue-700 border-blue-200",
-  secondary: "bg-neutral-200 text-neutral-800 border-neutral-300",
-  success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  warning: "bg-amber-50 text-amber-800 border-amber-200",
-  destructive: "bg-rose-50 text-rose-700 border-rose-200",
-  outline: "bg-transparent text-neutral-700 border-neutral-300",
+  default: "theme-surface-muted theme-text-secondary theme-border",
+  primary: "theme-status-info",
+  secondary: "theme-surface-inset theme-text-secondary theme-border",
+  success: "theme-status-success",
+  warning: "theme-status-warning",
+  destructive: "theme-status-danger",
+  outline: "bg-transparent theme-text-secondary theme-border",
   // Quiz Status Variants
-  draft: "bg-neutral-100 text-neutral-700 border-neutral-300",
-  published: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  closed: "bg-rose-50 text-rose-700 border-rose-200",
-  active: "bg-blue-50 text-blue-700 border-blue-200",
+  draft: "theme-surface-muted theme-text-secondary theme-border",
+  published: "theme-status-success",
+  closed: "theme-status-danger",
+  active: "theme-status-info",
 };
 
 const dotColors: Record<BadgeVariant, string> = {
-  default: "bg-neutral-500",
-  primary: "bg-blue-500",
-  secondary: "bg-neutral-600",
-  success: "bg-emerald-500",
-  warning: "bg-amber-500",
-  destructive: "bg-rose-500",
-  outline: "bg-neutral-400",
-  draft: "bg-neutral-500",
-  published: "bg-emerald-500",
-  closed: "bg-rose-500",
-  active: "bg-blue-500",
+  default: "theme-dot-muted",
+  primary: "theme-dot-info",
+  secondary: "theme-dot-secondary",
+  success: "theme-dot-success",
+  warning: "theme-dot-warning",
+  destructive: "theme-dot-danger",
+  outline: "theme-dot-muted",
+  draft: "theme-dot-muted",
+  published: "theme-dot-success",
+  closed: "theme-dot-danger",
+  active: "theme-dot-info",
 };
 
 const sizeStyles: Record<BadgeSize, string> = {

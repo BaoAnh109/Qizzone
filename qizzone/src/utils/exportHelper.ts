@@ -1,4 +1,8 @@
 import type { ExamResult } from "@/types/exam";
+import {
+  buildQuestionAnalyticsCsv,
+  type QuestionAnalytics,
+} from "@/utils/questionAnalytics";
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -74,6 +78,27 @@ export function exportResultsToCsv(params: {
   const link = document.createElement("a");
   link.setAttribute("href", url);
   link.setAttribute("download", filename);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function exportQuestionAnalyticsToCsv(params: {
+  quizTitle: string;
+  analytics: QuestionAnalytics[];
+}): void {
+  const csvContent = buildQuestionAnalyticsCsv(params.quizTitle, params.analytics);
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const cleanTitle = params.quizTitle
+    .replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, "_")
+    .substring(0, 40);
+  const dateStr = new Date().toISOString().split("T")[0];
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `PhanTichCauHoi_${cleanTitle}_${dateStr}.csv`;
   link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();

@@ -14,6 +14,22 @@ describe("Quiz Zod Validation Schemas Unit Tests", () => {
 
     const parseResult = quizSettingsSchema.safeParse(validSettings);
     expect(parseResult.success).toBe(true);
+    if (parseResult.success) expect(parseResult.data.practiceEnabled).toBe(true);
+  });
+
+  it("cho phép giáo viên tắt luyện tập mà giữ nguyên dữ liệu cài đặt khác", () => {
+    const parseResult = quizSettingsSchema.safeParse({
+      durationMinutes: 45,
+      shuffleQuestions: false,
+      shuffleOptions: false,
+      allowReview: true,
+      maxAttempts: 2,
+      passPercentage: 50,
+      practiceEnabled: false,
+    });
+
+    expect(parseResult.success).toBe(true);
+    if (parseResult.success) expect(parseResult.data.practiceEnabled).toBe(false);
   });
 
   it("từ chối khi maxAttempts là số âm", () => {

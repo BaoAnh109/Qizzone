@@ -66,7 +66,7 @@ function CloudDataBootstrap() {
     <>
       <AppRoutes />
       {user && cloudError && (
-        <div className="fixed bottom-4 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 items-center gap-3 rounded-xl border border-rose-200 bg-white p-3 text-sm text-rose-800 shadow-xl">
+        <div className="fixed bottom-4 left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 items-center gap-3 rounded-xl border border-rose-200 theme-surface p-3 text-sm text-rose-800 shadow-xl">
           <span className="flex-1">Không thể đồng bộ dữ liệu: {cloudError}</span>
           <Button size="sm" variant="outline" isLoading={isRetrying} onClick={() => void retryCloudData()}>
             Thử lại

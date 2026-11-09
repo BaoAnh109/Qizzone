@@ -60,8 +60,8 @@ export function QuickAnswerKeyModal({ isOpen, onClose }: Props) {
       <div className="space-y-6 max-h-[65vh] overflow-y-auto pr-1">
         {/* Paste Box */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5">
-            <KeyRound className="h-4 w-4 text-indigo-600" />
+          <label className="text-xs font-bold theme-text-secondary flex items-center gap-1.5">
+            <KeyRound className="h-4 w-4 text-teal-700" />
             <span>Dán chuỗi bảng đáp án:</span>
           </label>
           <textarea
@@ -69,26 +69,26 @@ export function QuickAnswerKeyModal({ isOpen, onClose }: Props) {
             onChange={(e) => setInputString(e.target.value)}
             rows={3}
             placeholder="Ví dụ: 1A 2B 3C 4D 5A 6B hoặc 1.A, 2.B, 3.C..."
-            className="w-full text-xs font-mono rounded-xl border border-neutral-300 p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+            className="w-full text-xs font-mono rounded-xl border theme-border-strong p-3 focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
           />
-          <p className="text-[11px] text-neutral-500">
-            Hỗ trợ tự động nhận diện các định dạng: <code className="font-bold text-indigo-600">1A 2B</code>, <code className="font-bold text-indigo-600">1.A 2.B</code>, <code className="font-bold text-indigo-600">1-A, 2-B</code>.
+          <p className="text-[11px] theme-text-muted">
+            Hỗ trợ tự động nhận diện các định dạng: <code className="font-bold text-teal-700">1A 2B</code>, <code className="font-bold text-teal-700">1.A 2.B</code>, <code className="font-bold text-teal-700">1-A, 2-B</code>.
           </p>
         </div>
 
         {/* Quick Grid Selector */}
-        <div className="space-y-3 pt-3 border-t border-neutral-100">
-          <label className="text-xs font-bold text-neutral-800 block">
+        <div className="space-y-3 pt-3 border-t theme-border">
+          <label className="text-xs font-bold theme-text-secondary block">
             Hoặc chọn trực tiếp trên ma trận câu hỏi ({questions.length} câu):
           </label>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto p-1 bg-neutral-50 rounded-xl border border-neutral-200">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto p-1 theme-surface-muted rounded-xl border theme-border">
             {questions.map((q) => (
               <div
                 key={q.id}
-                className="flex items-center justify-between p-2 rounded-lg bg-white border border-neutral-200 shadow-2xs text-xs"
+                className="flex items-center justify-between p-2 rounded-lg theme-surface border theme-border shadow-2xs text-xs"
               >
-                <span className="font-bold font-mono text-neutral-700 w-8">
+                <span className="font-bold font-mono theme-text-secondary w-8">
                   C{q.order}:
                 </span>
 
@@ -102,8 +102,8 @@ export function QuickAnswerKeyModal({ isOpen, onClose }: Props) {
                         onClick={() => setCorrectAnswer(q.id, letter as OptionId)}
                         className={`h-6 w-6 rounded-md font-mono font-bold text-[11px] transition cursor-pointer ${
                           isSelected
-                            ? "bg-indigo-600 text-white shadow-xs"
-                            : "bg-neutral-100 text-neutral-600 hover:bg-indigo-50 hover:text-indigo-700"
+                            ? "bg-teal-700 text-white shadow-xs"
+                            : "theme-surface-muted theme-text-secondary hover:bg-teal-50 hover:text-teal-700"
                         }`}
                       >
                         {letter}

@@ -23,26 +23,20 @@ export interface ButtonProps
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary:
-    "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus-visible:ring-blue-500",
-  default:
-    "bg-neutral-900 text-white shadow-xs hover:bg-neutral-800 active:bg-neutral-950 focus-visible:ring-neutral-500",
-  secondary:
-    "border border-neutral-200 bg-neutral-100 text-neutral-800 hover:bg-neutral-200 active:bg-neutral-300 focus-visible:ring-neutral-400",
-  outline:
-    "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-950 active:bg-neutral-100 focus-visible:ring-neutral-400",
-  destructive:
-    "bg-rose-600 text-white shadow-xs hover:bg-rose-700 active:bg-rose-800 focus-visible:ring-rose-500",
-  ghost:
-    "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 active:bg-neutral-200 focus-visible:ring-neutral-400",
+  primary: "theme-button-primary shadow-xs hover:shadow-sm focus-visible:ring-primary",
+  default: "theme-button-default shadow-xs focus-visible:ring-primary",
+  secondary: "theme-button-secondary focus-visible:ring-primary",
+  outline: "theme-button-outline focus-visible:ring-primary",
+  destructive: "theme-button-destructive shadow-xs focus-visible:ring-rose-500",
+  ghost: "theme-button-ghost focus-visible:ring-primary",
   link:
-    "text-blue-700 underline-offset-4 hover:underline focus-visible:ring-blue-500 p-0 h-auto font-normal",
+    "theme-link min-h-11 rounded-md px-2 underline-offset-4 hover:underline focus-visible:ring-primary font-medium",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs gap-1.5 rounded-md",
-  md: "h-10 px-4 text-sm gap-2 rounded-md",
-  lg: "h-11 px-5 text-sm gap-2 rounded-md",
+  sm: "h-9 px-3 text-xs gap-1.5 rounded-md",
+  md: "h-11 px-4 text-sm gap-2 rounded-lg",
+  lg: "h-12 px-6 text-base gap-2 rounded-lg",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -70,8 +64,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || isLoading}
         aria-busy={isLoading}
         className={cn(
-          "inline-flex items-center justify-center font-semibold transition-colors duration-150 cursor-pointer select-none",
-          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2",
+          "inline-flex items-center justify-center font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 cursor-pointer select-none",
+          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]",
           "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
           !isLink && sizeStyles[size],
           variantStyles[variant],

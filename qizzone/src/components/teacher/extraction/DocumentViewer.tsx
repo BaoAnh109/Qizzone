@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import {
   ZoomIn,
   ZoomOut,
@@ -21,6 +22,10 @@ import { renderPdfPageToCanvas } from "@/utils/parsers/pdfParser";
 export function DocumentViewer() {
   const { document, extractionResult, selectedQuestionId } = useExtractionStore();
   const toast = useToast();
+  const sanitizedRawHtml = useMemo(
+    () => document?.rawHtml ? DOMPurify.sanitize(document.rawHtml) : "",
+    [document],
+  );
 
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,8 +53,8 @@ export function DocumentViewer() {
 
   if (!document && !extractionResult) {
     return (
-      <Card className="h-full flex items-center justify-center p-8 text-center bg-neutral-50/60 border-neutral-200">
-        <div className="space-y-2 text-neutral-400">
+      <Card className="theme-surface-muted theme-border h-full flex items-center justify-center p-8 text-center">
+        <div className="space-y-2 theme-text-muted">
           <FileText className="h-10 w-10 mx-auto stroke-1" />
           <p className="text-sm font-medium">Chưa có tài liệu nguồn nào được tải lên</p>
         </div>
@@ -73,17 +78,17 @@ export function DocumentViewer() {
 
   return (
     <Card
-      className={`flex flex-col h-full overflow-hidden border-neutral-200/90 shadow-xs transition-all ${
-        isExpanded ? "fixed inset-4 z-50 shadow-2xl bg-white" : ""
+      className={`theme-border flex flex-col h-full overflow-hidden shadow-xs transition-all ${
+        isExpanded ? "fixed inset-4 z-50 shadow-2xl theme-surface" : ""
       }`}
     >
       {/* Header Toolbar */}
-      <CardHeader className="py-3 px-4 bg-neutral-50/90 border-b border-neutral-200 flex flex-row items-center justify-between">
+      <CardHeader className="theme-surface-muted theme-border py-3 px-4 border-b flex flex-row items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <Badge variant="secondary" size="sm" className="font-mono text-xs uppercase">
             {document?.fileType || "DOCX"}
           </Badge>
-          <CardTitle className="text-xs sm:text-sm font-bold truncate text-neutral-800">
+          <CardTitle className="text-xs sm:text-sm font-bold truncate theme-text-secondary">
             {document?.fileName || "Tài liệu đề thi gốc"}
           </CardTitle>
         </div>
@@ -91,23 +96,23 @@ export function DocumentViewer() {
         <div className="flex items-center gap-1.5">
           {/* PDF Page Navigation */}
           {document?.fileType === "pdf" && totalPages > 1 && (
-            <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-neutral-200 text-xs font-semibold mr-1">
+            <div className="theme-surface flex items-center gap-1 theme-border px-2 py-0.5 rounded-lg border text-xs font-semibold mr-1">
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage <= 1}
-                className="p-1 rounded text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 cursor-pointer"
+                className="p-1 rounded theme-text-muted theme-hover-surface disabled:opacity-30 cursor-pointer"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-              <span className="font-mono text-[11px] text-neutral-700 min-w-14 text-center">
+              <span className="font-mono text-[11px] theme-text-secondary min-w-14 text-center">
                 {currentPage} / {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
-                className="p-1 rounded text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 cursor-pointer"
+                className="p-1 rounded theme-text-muted theme-hover-surface disabled:opacity-30 cursor-pointer"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -118,18 +123,18 @@ export function DocumentViewer() {
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.max(50, z - 10))}
-            className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-200 transition cursor-pointer"
+            className="p-1.5 rounded-lg theme-text-muted theme-hover-surface transition cursor-pointer"
             title="Thu nhỏ"
           >
             <ZoomOut className="h-4 w-4" />
           </button>
-          <span className="font-mono text-xs text-neutral-600 w-9 text-center">
+          <span className="font-mono text-xs theme-text-secondary w-9 text-center">
             {zoomLevel}%
           </span>
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.min(200, z + 10))}
-            className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-200 transition cursor-pointer"
+            className="p-1.5 rounded-lg theme-text-muted theme-hover-surface transition cursor-pointer"
             title="Phóng to"
           >
             <ZoomIn className="h-4 w-4" />
@@ -140,7 +145,7 @@ export function DocumentViewer() {
             <button
               type="button"
               onClick={() => setRotation((r) => (r + 90) % 360)}
-              className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-200 transition cursor-pointer"
+              className="p-1.5 rounded-lg theme-text-muted theme-hover-surface transition cursor-pointer"
               title="Xoay ảnh 90°"
             >
               <RotateCw className="h-4 w-4" />
@@ -152,7 +157,7 @@ export function DocumentViewer() {
           <button
             type="button"
             onClick={handleCopyRaw}
-            className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-200 transition cursor-pointer"
+            className="p-1.5 rounded-lg theme-text-muted theme-hover-surface transition cursor-pointer"
             title="Sao chép toàn bộ văn bản gốc"
           >
             {isCopied ? (
@@ -165,7 +170,7 @@ export function DocumentViewer() {
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-200 transition cursor-pointer"
+            className="p-1.5 rounded-lg theme-text-muted theme-hover-surface transition cursor-pointer"
             title={isExpanded ? "Thu nhỏ lại" : "Mở rộng toàn màn hình"}
           >
             {isExpanded ? (
@@ -178,16 +183,16 @@ export function DocumentViewer() {
       </CardHeader>
 
       {/* Document Content View */}
-      <CardContent className="p-0 flex-1 overflow-y-auto bg-neutral-100/70 font-sans">
+        <CardContent className="theme-surface-inset p-0 flex-1 overflow-y-auto font-sans">
         <div className="p-4 sm:p-6 transition-all origin-top">
           {/* Active Highlight Target Banner */}
           {selectedQuestion && (
-            <div className="mb-4 rounded-xl bg-indigo-50 p-3 border border-indigo-200 text-xs text-indigo-950 flex items-center justify-between shadow-2xs">
+            <div className="mb-4 rounded-xl bg-teal-50 p-3 border border-teal-200 text-xs text-teal-950 flex items-center justify-between shadow-2xs">
               <span className="flex items-center gap-1.5 font-bold">
-                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <Sparkles className="h-4 w-4 text-teal-700" />
                 <span>Đang đồng bộ xem câu {selectedQuestion.order}:</span>
               </span>
-              <span className="font-mono text-[11px] text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-100">
+              <span className="font-mono text-[11px] text-teal-700 theme-surface px-2 py-0.5 rounded-md border border-teal-100">
                 Đáp án: {selectedQuestion.correctAnswers.join(", ")} ({selectedQuestion.detectionStrategy})
               </span>
             </div>
@@ -196,7 +201,7 @@ export function DocumentViewer() {
           {/* Render PDF Canvas */}
           {document?.fileType === "pdf" && document.pdfDoc ? (
             <div className="flex flex-col items-center justify-center p-2">
-              <div className="rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
+              <div className="theme-document-canvas rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
                 <canvas ref={canvasRef} className="max-w-full h-auto block" />
               </div>
             </div>
@@ -204,7 +209,7 @@ export function DocumentViewer() {
             /* Render Image Viewer */
             <div className="flex flex-col items-center justify-center p-2">
               <div
-                className="overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
+                className="theme-document-canvas overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
                 style={{
                   transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
                 }}
@@ -219,13 +224,13 @@ export function DocumentViewer() {
           ) : (
             /* Render Word / Text Document */
             <div
-              className="min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
+              className="theme-document-paper min-h-[500px] rounded-lg border border-neutral-200 bg-white p-6 font-sans text-sm leading-relaxed text-neutral-800 sm:p-8"
               style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: "top left" }}
             >
               {document?.rawHtml ? (
                 <div
-                  className="prose prose-sm max-w-none [&_u]:underline [&_u]:decoration-indigo-600 [&_u]:decoration-2 [&_strong]:text-indigo-950 [&_mark]:bg-yellow-200 [&_.text-color-red]:text-rose-600 [&_table]:border-collapse [&_table]:border [&_table]:border-neutral-300 [&_td]:border [&_td]:border-neutral-300 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-300 [&_th]:p-2"
-                  dangerouslySetInnerHTML={{ __html: document.rawHtml }}
+                  className="prose prose-sm max-w-none [&_u]:underline [&_u]:decoration-teal-600 [&_u]:decoration-2 [&_strong]:text-teal-950 [&_mark]:bg-yellow-200 [&_.text-color-red]:text-rose-600 [&_table]:border-collapse [&_table]:border [&_table]:border-neutral-300 [&_td]:border [&_td]:border-neutral-300 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-300 [&_th]:p-2"
+                  dangerouslySetInnerHTML={{ __html: sanitizedRawHtml }}
                 />
               ) : (
                 <pre className="whitespace-pre-wrap font-sans text-sm text-neutral-800 leading-relaxed">

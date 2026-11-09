@@ -43,11 +43,11 @@ export function SplitExamEditor() {
       {!extractionResult ? (
         <div className="max-w-4xl mx-auto space-y-6 pt-4">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            <h1 className="page-heading">
               Nhập và kiểm tra đề thi từ tệp
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-500 max-w-xl mx-auto">
-              Tải lên file Word (<strong className="text-neutral-700">.docx</strong>), PDF hoặc Ảnh chụp đề thi. Hệ thống tự động nhận diện câu hỏi, công thức Toán LaTeX và đáp án đúng.
+            <p className="text-xs sm:text-sm theme-text-muted max-w-xl mx-auto">
+              Tải lên file Word (<strong className="theme-text-secondary">.docx</strong>), PDF hoặc Ảnh chụp đề thi. Hệ thống tự động nhận diện câu hỏi, công thức Toán LaTeX và đáp án đúng.
             </p>
           </div>
 
@@ -58,7 +58,7 @@ export function SplitExamEditor() {
         <div className="space-y-4">
           <BatchActionBar />
 
-          <div className="flex h-[calc(100vh-210px)] min-h-[600px] flex-col gap-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100/50 md:flex-row">
+          <div className="flex h-[calc(100vh-210px)] min-h-[600px] flex-col gap-0 overflow-hidden rounded-lg border theme-border theme-surface-muted md:flex-row">
             {/* Left Column: Document Viewer */}
             <div
               className="w-full md:h-full overflow-hidden"
@@ -77,7 +77,7 @@ export function SplitExamEditor() {
 
             {/* Right Column: Extracted Questions List */}
             <div
-              className="w-full md:h-full overflow-y-auto p-4 space-y-4 bg-neutral-50/50"
+              className="w-full md:h-full overflow-y-auto p-4 space-y-4 theme-surface-muted"
               style={{
                 width:
                   typeof window !== "undefined" && window.innerWidth >= 768
@@ -94,11 +94,11 @@ export function SplitExamEditor() {
                   />
                 ))
               ) : (
-                <div className="space-y-2 rounded-lg border border-neutral-200 bg-white p-12 text-center text-neutral-400">
-                  <p className="text-sm font-bold text-neutral-800">
+                <div className="space-y-2 rounded-lg border theme-border theme-surface p-12 text-center theme-text-muted">
+                  <p className="text-sm font-bold theme-text-secondary">
                     Không tìm thấy câu hỏi nào phù hợp với bộ lọc
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs theme-text-muted">
                     Thử chọn lại bộ lọc nguồn nhận diện hoặc xóa từ khóa tìm kiếm.
                   </p>
                 </div>

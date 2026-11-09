@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen,
   Clock,
@@ -28,6 +28,9 @@ function cleanStudentName(rawName?: string): string {
 
 export function ExamEntry() {
   const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
+  const retryMode = searchParams.get("mode");
+  const sourceResultId = searchParams.get("sourceResultId");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
@@ -52,10 +55,10 @@ export function ExamEntry() {
         <div className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
           <AlertCircle className="h-8 w-8" />
         </div>
-        <h2 className="text-xl font-bold text-neutral-900">
+        <h2 className="text-xl font-bold theme-text-primary">
           Không tìm thấy phòng thi
         </h2>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs theme-text-muted">
           Mã phòng thi không tồn tại hoặc đã bị gỡ bỏ bởi giáo viên.
         </p>
         <Button variant="outline" onClick={() => navigate("/student")}>
@@ -71,10 +74,10 @@ export function ExamEntry() {
         <div className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
           <AlertCircle className="h-8 w-8" />
         </div>
-        <h2 className="text-xl font-bold text-neutral-900">
+        <h2 className="text-xl font-bold theme-text-primary">
           Phòng thi chưa mở
         </h2>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs theme-text-muted">
           Đề thi này đang ở trạng thái Bản nháp hoặc Đã đóng bởi Giáo viên.
         </p>
         <Button variant="outline" onClick={() => navigate("/student")}>
@@ -96,14 +99,20 @@ export function ExamEntry() {
     }
 
     // Initialize or resume session
+    const studentClassVal = user?.studentClass || (user ? localStorage.getItem(`qizzone_student_class_${user.id}`) || "" : "");
     try {
       await initSession({
         quiz,
         studentId: user?.id || "guest-student",
         studentName: studentName.trim(),
+        studentClass: studentClassVal || undefined,
       });
       toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
-      navigate(`/student/quiz/${quiz.id}`);
+      const targetUrl =
+        retryMode === "retry_incorrect" && sourceResultId
+          ? `/student/quiz/${quiz.id}?mode=retry_incorrect&sourceResultId=${sourceResultId}`
+          : `/student/quiz/${quiz.id}`;
+      navigate(targetUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể bắt đầu bài thi.");
     }
@@ -123,7 +132,7 @@ export function ExamEntry() {
 
       <Card className="overflow-hidden">
         {/* Banner Header */}
-        <CardHeader className="bg-white p-6 sm:p-8">
+        <CardHeader className="theme-surface p-6 sm:p-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" size="sm">
@@ -132,13 +141,18 @@ export function ExamEntry() {
               <Badge variant="success" size="sm" dot>
                 Phòng thi đang mở
               </Badge>
+              {retryMode === "retry_incorrect" && (
+                <Badge variant="warning" size="sm">
+                  Chế độ làm lại câu sai
+                </Badge>
+              )}
             </div>
             <CardTitle className="text-2xl font-semibold sm:text-3xl">
               {quiz.title}
             </CardTitle>
-            <p className="text-xs text-neutral-500 sm:text-sm">
+            <p className="text-xs theme-text-muted sm:text-sm">
               Giáo viên tạo đề: {quiz.teacherName || "Thầy Cô"} · Mã phòng:{" "}
-              <strong className="font-mono font-semibold text-neutral-950">{quiz.code}</strong>
+              <strong className="font-mono font-semibold theme-text-primary">{quiz.code}</strong>
             </p>
           </div>
         </CardHeader>
@@ -146,36 +160,36 @@ export function ExamEntry() {
         <CardContent className="p-6 sm:p-8 space-y-6">
           {/* Metadata Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <Clock className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
-              <p className="text-xs text-neutral-500 font-medium">Thời gian</p>
-              <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <Clock className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Thời gian</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
                 {quiz.settings.durationMinutes === 0
                   ? "Vô thời hạn"
                   : `${quiz.settings.durationMinutes} phút`}
               </p>
             </div>
 
-            <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <BookOpen className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
-              <p className="text-xs text-neutral-500 font-medium">Số lượng câu</p>
-              <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <BookOpen className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Số lượng câu</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
                 {quiz.totalQuestions} câu hỏi
               </p>
             </div>
 
-            <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <RotateCcw className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
-              <p className="text-xs text-neutral-500 font-medium">Số lần làm</p>
-              <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <RotateCcw className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Số lần làm</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
                 {maxAttempts === 0 ? "Vô hạn (∞)" : `${maxAttempts} lần`}
               </p>
             </div>
 
-            <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <Award className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
-              <p className="text-xs text-neutral-500 font-medium">Điểm đạt</p>
-              <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <Award className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Điểm đạt</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
                 {quiz.settings.passPercentage}%
               </p>
             </div>
@@ -196,11 +210,11 @@ export function ExamEntry() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-2 text-xs bg-white"
+                    className="mt-2 text-xs theme-surface"
                     onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
                     leftIcon={<Eye className="h-3.5 w-3.5" />}
                   >
-                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(1)}đ)
+                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(2)}đ)
                   </Button>
                 )}
               </div>
@@ -209,12 +223,12 @@ export function ExamEntry() {
 
           {/* Rules & Regulations */}
           <div className="space-y-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-950">
-            <div className="flex items-center gap-1.5 font-bold text-indigo-900">
+            <div className="flex items-center gap-1.5 font-bold text-teal-900">
               <ShieldCheck className="h-4 w-4 text-blue-600" />
               <span>Quy chế và hướng dẫn làm bài:</span>
             </div>
 
-            <ol className="space-y-1.5 text-indigo-900/90 pl-5 list-decimal font-normal leading-relaxed">
+            <ol className="space-y-1.5 text-teal-900/90 pl-5 list-decimal font-normal leading-relaxed">
               <li>
                 Hệ thống tự động lưu đáp án sau mỗi lần chọn, chống mất bài khi mất kết nối.
               </li>
@@ -230,7 +244,7 @@ export function ExamEntry() {
               </li>
               {quiz.description?.trim() && (
                 <li className="pt-0.5">
-                  <span className="font-semibold text-indigo-950">Ghi chú từ giáo viên:</span>{" "}
+                  <span className="font-semibold text-teal-950">Ghi chú từ giáo viên:</span>{" "}
                   {quiz.description}
                 </li>
               )}
@@ -239,8 +253,8 @@ export function ExamEntry() {
 
           {/* Student Confirmation Form */}
           {!isAttemptsExceeded && (
-            <div className="space-y-3 pt-2 border-t border-neutral-100">
-              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-1.5">
+            <div className="space-y-3 pt-2 border-t theme-border">
+              <h3 className="text-sm font-bold theme-text-primary flex items-center gap-1.5">
                 <UserCheck className="h-4 w-4 text-blue-600" />
                 <span>Xác nhận thông tin thí sinh</span>
               </h3>
@@ -255,7 +269,7 @@ export function ExamEntry() {
           )}
 
           {/* Start Exam CTA */}
-          <div className="pt-4">
+          <div className="space-y-2 pt-4">
             {isAttemptsExceeded ? (
               <Button
                 variant="outline"
@@ -270,10 +284,21 @@ export function ExamEntry() {
                 variant="primary"
                 size="lg"
                 onClick={handleStartExam}
-                className="w-full h-12 text-base font-bold shadow-md shadow-indigo-600/20"
+                className="w-full h-12 text-base font-bold shadow-md shadow-teal-600/20"
                 leftIcon={<Play className="h-5 w-5 fill-current" />}
               >
                 Bắt đầu làm bài thi ngay
+              </Button>
+            )}
+            {user?.role === "student" && quiz.settings.practiceEnabled !== false && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate(`/student/practice/${quiz.id}`)}
+                className="w-full h-12 border-emerald-200 font-bold text-emerald-800 hover:bg-emerald-50"
+                leftIcon={<BookOpen className="h-5 w-5" />}
+              >
+                Luyện tập
               </Button>
             )}
           </div>

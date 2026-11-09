@@ -66,20 +66,20 @@ export function MathEditorPreview({
       {/* Header with Mode Switch */}
       <div className="flex items-center justify-between">
         {label && (
-          <label className="text-sm font-semibold text-neutral-800 select-none">
+          <label className="text-sm font-semibold theme-text-secondary select-none">
             {label}
           </label>
         )}
 
-        <div className="flex items-center gap-1 rounded-lg bg-neutral-100 p-0.5 text-xs">
+        <div className="flex items-center gap-1 rounded-lg theme-surface-muted p-0.5 text-xs">
           <button
             type="button"
             onClick={() => setActiveTab("write")}
             className={cn(
               "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition cursor-pointer",
               activeTab === "write"
-                ? "bg-white text-indigo-700 shadow-2xs font-semibold"
-                : "text-neutral-600 hover:text-neutral-900"
+                ? "theme-surface text-teal-700 shadow-2xs font-semibold"
+                : "theme-text-secondary theme-hover-text-primary"
             )}
           >
             <Code className="h-3 w-3" />
@@ -92,8 +92,8 @@ export function MathEditorPreview({
             className={cn(
               "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition cursor-pointer hidden sm:flex",
               activeTab === "split"
-                ? "bg-white text-indigo-700 shadow-2xs font-semibold"
-                : "text-neutral-600 hover:text-neutral-900"
+                ? "theme-surface text-teal-700 shadow-2xs font-semibold"
+                : "theme-text-secondary theme-hover-text-primary"
             )}
           >
             <Sparkles className="h-3 w-3" />
@@ -106,8 +106,8 @@ export function MathEditorPreview({
             className={cn(
               "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition cursor-pointer",
               activeTab === "preview"
-                ? "bg-white text-indigo-700 shadow-2xs font-semibold"
-                : "text-neutral-600 hover:text-neutral-900"
+                ? "theme-surface text-teal-700 shadow-2xs font-semibold"
+                : "theme-text-secondary theme-hover-text-primary"
             )}
           >
             <Eye className="h-3 w-3" />
@@ -117,9 +117,9 @@ export function MathEditorPreview({
       </div>
 
       {/* Quick Insert Math Toolbar */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-indigo-50/60 p-2 border border-indigo-100 text-xs">
-        <span className="text-[11px] font-semibold text-indigo-800 flex items-center gap-1 mr-1">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-teal-50/60 p-2 border border-teal-100 text-xs">
+        <span className="text-[11px] font-semibold text-teal-800 flex items-center gap-1 mr-1">
+          <Sparkles className="h-3.5 w-3.5 text-teal-700" />
           Chèn nhanh:
         </span>
         {MATH_SHORTCUTS.map((item, idx) => (
@@ -130,7 +130,7 @@ export function MathEditorPreview({
             size="sm"
             onClick={() => insertSnippet(item.snippet)}
             title={item.tip}
-            className="h-6 px-2 text-[11px] bg-white border-indigo-200 text-indigo-900 hover:bg-indigo-100 hover:text-indigo-950 font-mono"
+            className="h-6 px-2 text-[11px] theme-surface border-teal-200 text-teal-900 hover:bg-teal-100 hover:text-teal-950 font-mono"
           >
             {item.label}
           </Button>
@@ -154,11 +154,11 @@ export function MathEditorPreview({
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
               className={cn(
-                "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 font-mono shadow-xs",
-                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-500",
+                "w-full rounded-xl border theme-surface px-3.5 py-2.5 text-sm theme-text-primary theme-placeholder-muted font-mono shadow-xs",
+                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-teal-500",
                 error
                   ? "border-rose-500 text-rose-950"
-                  : "border-neutral-300 focus-visible:border-indigo-600"
+                  : "theme-border-strong focus-visible:border-teal-600"
               )}
             />
           </div>
@@ -166,8 +166,8 @@ export function MathEditorPreview({
 
         {/* Live KaTeX Preview Box */}
         {(activeTab === "preview" || activeTab === "split") && (
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50/80 p-3.5 min-h-[85px] max-h-60 overflow-y-auto flex flex-col justify-start">
-            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-neutral-200/60 text-[11px] text-neutral-400 font-medium">
+          <div className="rounded-xl border theme-border theme-surface-muted p-3.5 min-h-[85px] max-h-60 overflow-y-auto flex flex-col justify-start">
+            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b theme-border text-[11px] theme-text-muted font-medium">
               <span>Kết quả hiển thị (Live KaTeX):</span>
               <span className="flex items-center gap-0.5 text-emerald-600">
                 <Sparkles className="h-3 w-3" /> Realtime
@@ -175,11 +175,11 @@ export function MathEditorPreview({
             </div>
 
             {value ? (
-              <div className="text-sm text-neutral-900 pt-1">
+              <div className="text-sm theme-text-primary pt-1">
                 <MathRenderer content={value} />
               </div>
             ) : (
-              <p className="text-xs text-neutral-400 italic pt-1">
+              <p className="text-xs theme-text-muted italic pt-1">
                 Chưa có nội dung xem trước... Hãy gõ $công thức$ để thấy kết quả.
               </p>
             )}
@@ -191,7 +191,7 @@ export function MathEditorPreview({
       {error ? (
         <p className="text-xs font-medium text-rose-600">{error}</p>
       ) : helperText ? (
-        <p className="text-xs text-neutral-500 flex items-center gap-1">
+        <p className="text-xs theme-text-muted flex items-center gap-1">
           <HelpCircle className="h-3 w-3 shrink-0" />
           <span>{helperText}</span>
         </p>

@@ -21,14 +21,14 @@ const icons: Record<ToastType, React.ReactNode> = {
   success: <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />,
   error: <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />,
   warning: <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />,
-  info: <Info className="h-5 w-5 text-indigo-600 shrink-0" />,
+  info: <Info className="h-5 w-5 text-teal-700 shrink-0" />,
 };
 
 const typeStyles: Record<ToastType, string> = {
   success: "border-emerald-200 bg-emerald-50/90 text-emerald-950",
   error: "border-rose-200 bg-rose-50/90 text-rose-950",
   warning: "border-amber-200 bg-amber-50/90 text-amber-950",
-  info: "border-indigo-200 bg-indigo-50/90 text-indigo-950",
+  info: "border-teal-200 bg-teal-50/90 text-teal-950",
 };
 
 export function Toast({ toast, onDismiss }: ToastProps) {
@@ -36,7 +36,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     <div
       role="alert"
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border bg-white p-4 shadow-lg",
+        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border theme-surface p-4 shadow-lg",
         "animate-in slide-in-from-top-2 sm:slide-in-from-bottom-2 duration-200 transition-all",
         typeStyles[toast.type]
       )}

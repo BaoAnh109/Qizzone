@@ -34,6 +34,7 @@ describe('Supabase migration, RLS, and server-side grading', () => {
         ('teacher-b','teacher-b@example.test','Teacher B','teacher'),
         ('student-a','student-a@example.test','Student A','student'),
         ('student-b','student-b@example.test','Student B','student'),
+        ('student-c','student-c@example.test','Student C','student'),
         ('admin-a','admin-a@example.test','Admin A','admin'),
         ('teacher-pending','teacher-pending@example.test','Pending Teacher','teacher');
       update public.profiles set approval_status='pending' where firebase_uid='teacher-pending';
@@ -58,11 +59,16 @@ describe('Supabase migration, RLS, and server-side grading', () => {
     const teacherB: Claims = { sub: 'teacher-b', role: 'authenticated', app_role: 'teacher' };
     const studentA: Claims = { sub: 'student-a', role: 'authenticated', app_role: 'student' };
     const studentB: Claims = { sub: 'student-b', role: 'authenticated', app_role: 'student' };
+    const studentC: Claims = { sub: 'student-c', role: 'authenticated', app_role: 'student' };
     const admin: Claims = { sub: 'admin-a', role: 'authenticated', app_role: 'admin' };
     const pendingTeacher: Claims = { sub: 'teacher-pending', role: 'authenticated', app_role: 'teacher' };
     const quizInput = {
       title: 'Security test', subject: 'Math', description: '', status: 'published',
-      settings: { durationMinutes: 10, shuffleQuestions: true, shuffleOptions: true, allowReview: true, maxAttempts: 2, passPercentage: 50 },
+      settings: {
+        durationMinutes: 10, shuffleQuestions: true, shuffleOptions: true, allowReview: true,
+        maxAttempts: 2, passPercentage: 50,
+        assignedEmails: ['student-a@example.test', 'student-b@example.test', 'outsider@example.test'],
+      },
       questions: [{
         id: 'legacy-question-1', content: '2 + 2 = ?', type: 'single_choice', points: 10,
         options: [{ id: 'A', content: '3' }, { id: 'B', content: '4' }],
@@ -91,10 +97,29 @@ describe('Supabase migration, RLS, and server-side grading', () => {
     )).rejects.toThrow(/giáo viên/i);
 
     const studentQuizRows = await asAuthenticated<{ payload: unknown }>(studentA, 'select public.list_quizzes() as payload');
-    const studentQuizzes = json<Array<{ id: string; questions: Array<{ id: string; correctAnswers: string[]; explanation: string | null }> }>>(studentQuizRows[0].payload);
+    const studentQuizzes = json<Array<{
+      id: string;
+      code: string;
+      settings: { assignedEmails: string[] };
+      questions: Array<{ id: string; correctAnswers: string[]; explanation: string | null }>;
+    }>>(studentQuizRows[0].payload);
     expect(studentQuizzes[0].questions[0].correctAnswers).toEqual([]);
     expect(studentQuizzes[0].questions[0].explanation).toBeNull();
+    expect(studentQuizzes[0].settings.assignedEmails).toEqual(['student-a@example.test']);
+    expect(JSON.stringify(studentQuizzes)).not.toContain('student-b@example.test');
+    expect(JSON.stringify(studentQuizzes)).not.toContain('outsider@example.test');
     expect(await asAuthenticated(studentA, 'select * from public.question_answer_keys')).toEqual([]);
+
+    const studentBQuizRows = await asAuthenticated<{ payload: unknown }>(studentB, 'select public.list_quizzes() as payload');
+    const studentBQuizzes = json<Array<{ settings: { assignedEmails: string[] } }>>(studentBQuizRows[0].payload);
+    expect(studentBQuizzes[0].settings.assignedEmails).toEqual(['student-b@example.test']);
+    expect(JSON.stringify(studentBQuizzes)).not.toContain('student-a@example.test');
+    expect(JSON.stringify(studentBQuizzes)).not.toContain('outsider@example.test');
+
+    const studentCQuizRows = await asAuthenticated<{ payload: unknown }>(studentC, 'select public.list_quizzes() as payload');
+    const studentCQuizzes = json<Array<{ code: string; settings: { assignedEmails: string[] } }>>(studentCQuizRows[0].payload);
+    expect(studentCQuizzes[0].code).toBeDefined();
+    expect(studentCQuizzes[0].settings.assignedEmails).toEqual([]);
 
     const startRows = await asAuthenticated<{ payload: unknown }>(studentA, 'select public.start_attempt($1, null) as payload', [quizId]);
     const session = json<{ id: string; revision: number; questionOrder: string[] }>(startRows[0].payload);
@@ -149,8 +174,14 @@ describe('Supabase migration, RLS, and server-side grading', () => {
     expect(json<{ id: string }>(importedAgain[0].payload).id).toBe(json<{ id: string }>(importedResult[0].payload).id);
 
     const adminRows = await asAuthenticated<{ payload: unknown }>(admin, 'select public.list_quizzes() as payload');
-    const adminQuizzes = json<Array<{ questions: Array<{ correctAnswers: string[] }> }>>(adminRows[0].payload);
+    const adminQuizzes = json<Array<{
+      settings: { assignedEmails: string[] };
+      questions: Array<{ correctAnswers: string[] }>;
+    }>>(adminRows[0].payload);
     expect(adminQuizzes[0].questions[0].correctAnswers).toEqual(['B']);
+    expect(adminQuizzes[0].settings.assignedEmails).toEqual([
+      'student-a@example.test', 'student-b@example.test', 'outsider@example.test',
+    ]);
 
     await db.exec("set role anon");
     await expect(db.query('select public.list_quizzes()')).rejects.toThrow();
