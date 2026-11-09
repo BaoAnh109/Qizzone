@@ -50,8 +50,8 @@
 @layer base {
   :root {
     color-scheme: light;
-    --font-body: "Work Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-heading: "Outfit", "Work Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-body: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-heading: var(--font-body);
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
     --space-md: 1rem;
