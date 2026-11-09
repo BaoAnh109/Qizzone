@@ -217,14 +217,14 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   return (
     <div className="flex flex-col h-full space-y-3">
       {/* 2 Tabs Switcher: Thả file & Nhập text */}
-      <div className="flex items-center gap-1 rounded-xl bg-neutral-100 p-1 border border-neutral-200/80">
+      <div className="flex items-center gap-1 rounded-xl theme-surface-muted p-1 border theme-border">
         <button
           type="button"
           onClick={() => setActiveTab("file")}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "file"
-              ? "bg-white text-teal-700 shadow-2xs"
-              : "text-neutral-500 hover:text-neutral-800"
+              ? "theme-surface text-teal-700 shadow-2xs"
+              : "theme-text-muted theme-hover-text-primary"
           }`}
         >
           <UploadCloud className="h-3.5 w-3.5" />
@@ -235,8 +235,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           onClick={() => setActiveTab("paste")}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "paste"
-              ? "bg-white text-teal-700 shadow-2xs"
-              : "text-neutral-500 hover:text-neutral-800"
+              ? "theme-surface text-teal-700 shadow-2xs"
+              : "theme-text-muted theme-hover-text-primary"
           }`}
         >
           <ClipboardPaste className="h-3.5 w-3.5" />
@@ -256,7 +256,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           className={`flex-1 flex flex-col justify-center items-center border-2 border-dashed p-5 sm:p-6 text-center transition cursor-pointer min-h-[295px] ${
             isDragOver
               ? "border-teal-600 bg-teal-50/50 scale-[1.01]"
-              : "border-neutral-300 hover:border-teal-400 bg-neutral-50/40"
+              : "theme-border-strong hover:border-teal-400 theme-surface-muted"
           }`}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -278,16 +278,16 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-base sm:text-lg font-extrabold text-neutral-900 tracking-tight">
+              <h3 className="text-base sm:text-lg font-extrabold theme-text-primary tracking-tight">
                 Kéo thả file đề thi hoặc Nhấn để tải lên
               </h3>
-              <p className="text-xs text-neutral-500">
-                Hỗ trợ Word (<strong className="text-neutral-700">.docx</strong>), PDF (<strong className="text-neutral-700">.pdf</strong>), ảnh và văn bản. Tối đa 25 MB cho Word/PDF, 5 MB cho ảnh/TXT/MD.
+              <p className="text-xs theme-text-muted">
+                Hỗ trợ Word (<strong className="theme-text-secondary">.docx</strong>), PDF (<strong className="theme-text-secondary">.pdf</strong>), ảnh và văn bản. Tối đa 25 MB cho Word/PDF, 5 MB cho ảnh/TXT/MD.
               </p>
             </div>
 
             {/* Formats Pills */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-[11px] font-semibold text-neutral-600">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-[11px] font-semibold theme-text-secondary">
               <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-blue-700 border border-blue-200/60">
                 <FileText className="h-3 w-3" /> Word .docx
               </span>
@@ -313,13 +313,13 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         </Card>
       ) : (
         /* Tab 2: Dán văn bản thô / TXT */
-        <Card className="flex-1 flex flex-col justify-between p-4 sm:p-5 bg-white border-neutral-200 shadow-xs min-h-[295px] space-y-3">
+        <Card className="flex-1 flex flex-col justify-between p-4 sm:p-5 theme-surface theme-border shadow-xs min-h-[295px] space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-1.5 text-neutral-900 font-bold">
+            <div className="flex items-center gap-1.5 theme-text-primary font-bold">
               <ClipboardPaste className="h-4 w-4 text-teal-700" />
               <span>Dán toàn bộ nội dung đề thi vào khung:</span>
             </div>
-            <span className="text-[11px] text-neutral-400">Hỗ trợ KaTeX $...$ · Tối đa 5 MB</span>
+            <span className="text-[11px] theme-text-muted">Hỗ trợ KaTeX $...$ · Tối đa 5 MB</span>
           </div>
 
           <textarea
@@ -334,11 +334,11 @@ Lời giải: Thay x = 1 vào biểu thức ta được 2(1) - 3(1) + 1 = 0. Ch�
 
 BẢNG ĐÁP ÁN:
 1.A  2.B`}
-            className="w-full flex-1 min-h-[155px] rounded-xl border border-neutral-300 p-3 text-xs font-mono leading-relaxed text-neutral-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden resize-none"
+            className="w-full flex-1 min-h-[155px] rounded-xl border theme-border-strong p-3 text-xs font-mono leading-relaxed theme-text-primary focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden resize-none"
           />
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-[11px] text-neutral-500">
+            <span className="text-[11px] theme-text-muted">
               Độ dài: <strong>{pastedText.length} ký tự</strong>
             </span>
             <Button

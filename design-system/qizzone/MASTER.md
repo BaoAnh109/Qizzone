@@ -20,23 +20,27 @@
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
 | Primary | `#2563EB` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
+| On Primary | `#FFFFFF` | `--primary-foreground` |
 | Secondary | `#0F766E` | `--color-secondary` |
-| On Secondary | `#FFFFFF` | `--color-on-secondary` |
+| On Secondary | `#FFFFFF` | `--secondary-foreground` |
 | Accent/CTA | `#F59E0B` | `--color-accent` |
-| On Accent/CTA | `#0F172A` | `--color-on-accent` |
-| Background | `#EFF6FF` | `--color-background` |
-| Foreground | `#0F172A` | `--color-foreground` |
-| Card | `#FFFFFF` | `--color-card` |
-| Card Foreground | `#0F172A` | `--color-card-foreground` |
-| Muted | `#F1F5FD` | `--color-muted` |
-| Muted Foreground | `#475569` | `--color-muted-foreground` |
-| Border | `#E4ECFC` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| On Destructive | `#FFFFFF` | `--color-on-destructive` |
-| Ring | `#2563EB` | `--color-ring` |
+| On Accent/CTA | `#0F172A` | `--accent-foreground` |
+| Background | `#EFF6FF` | `--background` |
+| Foreground | `#0F172A` | `--foreground` |
+| Card | `#FFFFFF` | `--surface` |
+| Card Foreground | `#0F172A` | `--text-primary` |
+| Muted | `#F1F5FD` | `--surface-muted` |
+| Muted Foreground | `#64748B` | `--text-muted` |
+| Border | `#DBE5F2` | `--color-border` |
+| Destructive | `#DC2626` | `--danger-action` |
+| On Destructive | `#FFFFFF` | `--danger-action-foreground` |
+| Ring | `#2563EB` | `--focus` |
 
 **Color Notes:** Blue is the primary action and navigation color; teal is the secondary accent; gold is reserved for highlights and warnings. Green, amber, and red remain distinct for success, caution, and error states.
+
+### Dark Theme
+
+The same semantic tokens switch when `html[data-theme="dark"]` is active. The background is `#0B1220`, cards use `#111C2F`, raised surfaces use `#1B2940`, primary text uses `#F1F5F9`, secondary text uses `#CBD5E1`, muted text uses `#94A3B8`, and borders use `#344861`. Status colors keep their meaning while changing surface, border, and foreground together.
 
 ### Typography
 
@@ -82,8 +86,8 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #2563EB;
-  color: #FFFFFF;
+  background: var(--primary);
+  color: var(--primary-foreground);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -92,15 +96,15 @@
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  background: var(--primary-hover);
   transform: translateY(-1px);
 }
 
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #2563EB;
-  border: 2px solid #2563EB;
+  color: var(--primary-hover);
+  border: 1px solid var(--border-strong);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -113,9 +117,9 @@
 
 ```css
 .card {
-  background: #FFFFFF;
+  background: var(--surface);
   border-radius: 12px;
-  padding: 24px;
+  padding: var(--space-card);
   box-shadow: var(--shadow-md);
   transition: all 200ms ease;
   cursor: pointer;
@@ -132,18 +136,33 @@
 ```css
 .input {
   padding: 12px 16px;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 16px;
   transition: border-color 200ms ease;
 }
 
 .input:focus {
-  border-color: #2563EB;
+  border-color: var(--focus);
   outline: none;
-  box-shadow: 0 0 0 3px #2563EB20;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 20%, transparent);
 }
 ```
+
+### Shared Theme Utilities
+
+Use the semantic classes in every screen so the active theme supplies the actual color:
+
+```tsx
+<main className="app-shell">
+  <section className="theme-surface theme-border rounded-xl border p-card">
+    <h1 className="page-heading">Tiêu đề trang</h1>
+    <p className="theme-text-secondary">Mô tả</p>
+  </section>
+</main>
+```
+
+Prefer `theme-surface`, `theme-surface-muted`, `theme-surface-inset`, `theme-text-primary`, `theme-text-secondary`, `theme-text-muted`, and `theme-border` over raw neutral colors. Use the status utilities for informational, success, warning, and error states. `html[data-theme="dark"]` activates the dark token set; the saved preference is applied before React renders to avoid a light-theme flash.
 
 ### Modals
 

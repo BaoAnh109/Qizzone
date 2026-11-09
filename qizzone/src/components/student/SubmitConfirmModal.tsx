@@ -87,7 +87,7 @@ export function SubmitConfirmModal({
             </p>
           </div>
 
-          <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200 text-xs text-neutral-600 text-center">
+          <div className="rounded-xl theme-surface-muted p-3 border theme-border text-xs theme-text-secondary text-center">
             Khuyến khích: Bạn nên quay lại kiểm tra và chọn hết tất cả các câu trước khi hoàn tất nộp bài.
           </div>
         </div>
@@ -134,7 +134,7 @@ export function SubmitConfirmModal({
             className={`rounded-xl p-3 border ${
               hasUnanswered
                 ? "bg-rose-50 border-rose-100 text-rose-900"
-                : "bg-neutral-50 border-neutral-200 text-neutral-600"
+                : "theme-surface-muted theme-border theme-text-secondary"
             }`}
           >
             <div className="flex items-center justify-center gap-1 text-rose-600 mb-1">
@@ -177,7 +177,7 @@ export function SubmitConfirmModal({
           </div>
         )}
 
-        <p className="text-xs text-neutral-500 text-center">
+        <p className="text-xs theme-text-muted text-center">
           Sau khi nộp bài, hệ thống sẽ tiến hành chấm điểm tự động và bạn sẽ không thể thay đổi đáp án.
         </p>
       </div>

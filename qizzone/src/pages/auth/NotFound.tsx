@@ -47,7 +47,7 @@ export function NotFound() {
   }, [countdown, autoRedirectEnabled, isInitialized, homePath, navigate]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center theme-surface-muted px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
         <div className="relative inline-flex">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 shadow-xs">
@@ -59,11 +59,11 @@ export function NotFound() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-3xl font-extrabold text-neutral-900 tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold theme-text-primary tracking-tight sm:text-4xl">
             Không tìm thấy trang
           </h1>
-          <p className="text-sm text-neutral-500 max-w-sm mx-auto">
-            Đường dẫn <code className="font-mono text-xs bg-neutral-200/80 px-1.5 py-0.5 rounded text-neutral-700">{location.pathname}</code> không tồn tại hoặc đã được cập nhật.
+          <p className="text-sm theme-text-muted max-w-sm mx-auto">
+            Đường dẫn <code className="font-mono text-xs theme-surface-inset px-1.5 py-0.5 rounded theme-text-secondary">{location.pathname}</code> không tồn tại hoặc đã được cập nhật.
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export function NotFound() {
             <span>Tự động chuyển về trang chính sau <strong>{countdown}s</strong>...</span>
             <button
               onClick={() => setAutoRedirectEnabled(false)}
-              className="ml-1 text-neutral-400 hover:text-neutral-700 inline-flex items-center gap-0.5 underline cursor-pointer"
+              className="ml-1 theme-text-muted theme-hover-text-primary inline-flex items-center gap-0.5 underline cursor-pointer"
               title="Dừng tự động chuyển hướng"
             >
               <XCircle className="h-3.5 w-3.5" /> Dừng

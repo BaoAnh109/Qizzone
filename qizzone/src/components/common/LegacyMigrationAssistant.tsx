@@ -61,7 +61,7 @@ export function LegacyMigrationAssistant({ user, onCompleted }: Props) {
         </>
       )}
     >
-      <div className="space-y-4 text-sm text-neutral-700">
+      <div className="space-y-4 text-sm theme-text-secondary">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             ['Hồ sơ', preview.profileCount],
@@ -69,9 +69,9 @@ export function LegacyMigrationAssistant({ user, onCompleted }: Props) {
             ['Bài đang làm', preview.attemptCount],
             ['Kết quả', preview.resultCount],
           ].map(([label, value]) => (
-            <div key={String(label)} className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-center">
+            <div key={String(label)} className="rounded-xl border theme-border theme-surface-muted p-3 text-center">
               <div className="text-xl font-bold text-teal-700">{value}</div>
-              <div className="text-xs text-neutral-500">{label}</div>
+              <div className="text-xs theme-text-muted">{label}</div>
             </div>
           ))}
         </div>
@@ -90,7 +90,7 @@ export function LegacyMigrationAssistant({ user, onCompleted }: Props) {
           </div>
         )}
         {(preview.hasUnsafeGeminiKey || preview.hasObsoleteSession) && (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs theme-text-muted">
             Khóa Gemini cũ (nếu có) và phiên đăng nhập giả lập chỉ được xóa sau khi server ghi nhận migration; chúng không được chuyển sang cloud.
           </p>
         )}

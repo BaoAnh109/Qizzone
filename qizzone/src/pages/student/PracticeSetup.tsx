@@ -58,7 +58,7 @@ export function PracticeSetup() {
   };
 
   if (isQuizzesLoading && !quiz) {
-    return <div className="mx-auto max-w-2xl py-16 text-center text-sm text-neutral-500">Đang tải đề luyện tập…</div>;
+    return <div className="mx-auto max-w-2xl py-16 text-center text-sm theme-text-muted">Đang tải đề luyện tập…</div>;
   }
 
   if (!isAvailable) {
@@ -67,8 +67,8 @@ export function PracticeSetup() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
           <CircleHelp className="h-7 w-7" />
         </div>
-        <h1 className="text-xl font-bold text-neutral-900">Không thể luyện tập đề này</h1>
-        <p className="text-sm text-neutral-600">{unavailableMessage}</p>
+        <h1 className="text-xl font-bold theme-text-primary">Không thể luyện tập đề này</h1>
+        <p className="text-sm theme-text-secondary">{unavailableMessage}</p>
         <Button variant="outline" onClick={() => navigate('/student')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
           Về trang học sinh
         </Button>
@@ -88,29 +88,29 @@ export function PracticeSetup() {
             <Badge variant="secondary" size="sm">{totalQuestions} câu hỏi</Badge>
           </div>
           <CardTitle className="text-2xl font-bold">{quiz.title}</CardTitle>
-          {quiz.description && <p className="pt-1 text-sm text-neutral-600">{quiz.description}</p>}
+          {quiz.description && <p className="pt-1 text-sm theme-text-secondary">{quiz.description}</p>}
         </CardHeader>
         <CardContent className="space-y-6 p-5 sm:p-7">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${!randomCountEnabled ? 'border-emerald-500 bg-emerald-50/60' : 'border-neutral-200'}`}>
+            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${!randomCountEnabled ? 'border-emerald-500 bg-emerald-50/60' : 'theme-border'}`}>
               <input type="radio" name="practice-question-count" checked={!randomCountEnabled} onChange={() => setRandomCountEnabled(false)} className="mt-1 accent-emerald-700" />
               <span>
-                <span className="block text-sm font-semibold text-neutral-900">Luyện toàn bộ câu hỏi</span>
-                <span className="mt-1 block text-xs text-neutral-500">Làm đủ {totalQuestions} câu của đề.</span>
+                <span className="block text-sm font-semibold theme-text-primary">Luyện toàn bộ câu hỏi</span>
+                <span className="mt-1 block text-xs theme-text-muted">Làm đủ {totalQuestions} câu của đề.</span>
               </span>
             </label>
-            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${randomCountEnabled ? 'border-emerald-500 bg-emerald-50/60' : 'border-neutral-200'}`}>
+            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${randomCountEnabled ? 'border-emerald-500 bg-emerald-50/60' : 'theme-border'}`}>
               <input type="radio" name="practice-question-count" checked={randomCountEnabled} onChange={() => setRandomCountEnabled(true)} className="mt-1 accent-emerald-700" />
               <span>
-                <span className="block text-sm font-semibold text-neutral-900">Chọn số câu ngẫu nhiên</span>
-                <span className="mt-1 block text-xs text-neutral-500">Hệ thống chọn ngẫu nhiên trong đề.</span>
+                <span className="block text-sm font-semibold theme-text-primary">Chọn số câu ngẫu nhiên</span>
+                <span className="mt-1 block text-xs theme-text-muted">Hệ thống chọn ngẫu nhiên trong đề.</span>
               </span>
             </label>
           </div>
 
           {randomCountEnabled && (
             <div className="max-w-xs space-y-1.5">
-              <label htmlFor="practice-question-count" className="text-sm font-semibold text-neutral-800">Số câu muốn luyện</label>
+              <label htmlFor="practice-question-count" className="text-sm font-semibold theme-text-secondary">Số câu muốn luyện</label>
               <input
                 id="practice-question-count"
                 type="number"
@@ -118,19 +118,19 @@ export function PracticeSetup() {
                 max={totalQuestions}
                 value={questionCount}
                 onChange={event => setQuestionCount(Number(event.target.value))}
-                className="h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                className="h-11 w-full rounded-lg border theme-border-strong px-3 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100"
               />
-              <p className="text-xs text-neutral-500">Chọn từ 1 đến {totalQuestions} câu.</p>
+              <p className="text-xs theme-text-muted">Chọn từ 1 đến {totalQuestions} câu.</p>
             </div>
           )}
 
-          <div className="space-y-3 border-t border-neutral-100 pt-5">
-            <h2 className="text-sm font-bold text-neutral-900">Cách luyện tập</h2>
-            <div className="flex items-start gap-3 rounded-xl bg-neutral-50 p-4">
+          <div className="space-y-3 border-t theme-border pt-5">
+            <h2 className="text-sm font-bold theme-text-primary">Cách luyện tập</h2>
+            <div className="flex items-start gap-3 rounded-xl theme-surface-muted p-4">
               <Shuffle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-              <p className="text-sm text-neutral-700">Thứ tự câu hỏi và đáp án sẽ theo cài đặt xáo trộn của đề.</p>
+              <p className="text-sm theme-text-secondary">Thứ tự câu hỏi và đáp án sẽ theo cài đặt xáo trộn của đề.</p>
             </div>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 p-4">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border theme-border p-4">
               <input
                 type="checkbox"
                 checked={showExplanation}
@@ -138,14 +138,14 @@ export function PracticeSetup() {
                 className="mt-0.5 h-4 w-4 rounded accent-emerald-700"
               />
               <span>
-                <span className="block text-sm font-semibold text-neutral-900">Hiện lời giải ngay sau khi kiểm tra mỗi câu</span>
-                <span className="mt-1 block text-xs text-neutral-500">{showExplanation ? 'Đang bật' : 'Lời giải sẽ hiện ở trang kết quả.'}</span>
+                <span className="block text-sm font-semibold theme-text-primary">Hiện lời giải ngay sau khi kiểm tra mỗi câu</span>
+                <span className="mt-1 block text-xs theme-text-muted">{showExplanation ? 'Đang bật' : 'Lời giải sẽ hiện ở trang kết quả.'}</span>
               </span>
             </label>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-neutral-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-xs text-neutral-500">
+          <div className="flex flex-col gap-3 border-t theme-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-xs theme-text-muted">
               <BookOpen className="h-4 w-4 text-emerald-700" />
               Không giới hạn lượt, không đếm ngược và không tính điểm thi.
             </div>

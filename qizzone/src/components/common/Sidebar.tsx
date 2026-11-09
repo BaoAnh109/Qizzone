@@ -84,7 +84,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
             <GraduationCap className="h-[18px] w-[18px]" />
           </div>
           <div className="leading-tight">
-              <span className="font-display text-lg font-bold tracking-tight text-neutral-950">
+              <span className="font-display text-lg font-bold tracking-tight theme-text-primary">
               Qiz<span className="text-primary">zone</span>
             </span>
           </div>
@@ -95,7 +95,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
             type="button"
             onClick={onCloseMobile}
             aria-label="Đóng menu"
-            className="flex h-11 w-11 items-center justify-center rounded-lg theme-text-muted hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden cursor-pointer"
+            className="flex h-11 w-11 items-center justify-center rounded-lg theme-text-muted theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -104,7 +104,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
 
       {/* Navigation Links */}
       <div className="flex-1 overflow-y-auto px-3 py-5">
-        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider theme-text-muted">
           {user?.role === "admin" ? "Quản trị" : user?.role === "teacher" ? "Giáo viên" : "Học sinh"}
         </p>
 
@@ -122,7 +122,7 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
                     "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary",
                     isActive
                       ? "theme-nav-active"
-                      : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                      : "theme-text-secondary theme-hover-surface theme-hover-text-primary"
                   )
                 }
               >
@@ -134,8 +134,8 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
         </nav>
       </div>
 
-      <div className="border-t border-neutral-200 px-5 py-4">
-        <p className="text-xs leading-5 text-neutral-500">Qizzone · Quản lý thi trực tuyến</p>
+      <div className="border-t theme-border px-5 py-4">
+        <p className="text-xs leading-5 theme-text-muted">Qizzone · Quản lý thi trực tuyến</p>
       </div>
     </div>
   );

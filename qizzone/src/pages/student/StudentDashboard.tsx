@@ -187,7 +187,7 @@ export function StudentDashboard() {
   return (
     <div className="space-y-8 pb-16">
       {/* Top Section: Greeting on Left + Room Code Card on Right */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b border-neutral-200">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b theme-border">
         {/* Left: Chào User */}
         <div className="space-y-2 max-w-xl">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60">
@@ -196,7 +196,7 @@ export function StudentDashboard() {
           <h1 className="page-heading">
             Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed">
+          <p className="text-xs sm:text-sm theme-text-muted leading-relaxed">
             Các đề thi được thầy cô giao trực tiếp cho bạn qua Email hoặc Lớp sẽ tự động xuất hiện ở mục bên dưới. Bạn cũng có thể nhập mã phòng hoặc nhấn vào liên kết chia sẻ để vào thi.
           </p>
         </div>
@@ -204,12 +204,12 @@ export function StudentDashboard() {
         {/* Right: Card Tham gia phòng thi qua mã phòng 6 ký tự */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-teal-600 to-sky-600 p-5 sm:p-6 text-white shadow-lg shadow-teal-600/20 border border-blue-400/40 shrink-0 lg:max-w-lg w-full lg:w-auto">
           {/* Subtle Decorative Glow */}
-          <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-28 rounded-full bg-white/20 blur-xl" />
+          <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-28 rounded-full theme-surface blur-xl" />
           <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-sky-400/25 blur-lg" />
 
           <div className="relative z-10 space-y-3.5">
             <div className="flex items-center gap-2.5">
-              <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs text-white shadow-2xs">
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl theme-surface backdrop-blur-xs text-white shadow-2xs">
                 <KeyRound className="h-4.5 w-4.5" />
               </div>
               <div>
@@ -230,11 +230,11 @@ export function StudentDashboard() {
                 maxLength={10}
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                className="theme-light-control h-11 w-full sm:w-52 rounded-xl border border-white/25 bg-white px-3.5 text-center font-mono text-sm sm:text-base font-bold uppercase tracking-wider text-neutral-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-white/60 shadow-xs"
+                className="theme-light-control h-11 w-full sm:w-52 rounded-xl border border-white/25 theme-surface px-3.5 text-center font-mono text-sm sm:text-base font-bold uppercase tracking-wider theme-text-primary placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal theme-placeholder-muted focus:outline-hidden focus:ring-2 focus:ring-white/60 shadow-xs"
               />
               <button
                 type="submit"
-                className="theme-light-control theme-light-control-button h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-teal-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+                className="theme-light-control theme-light-control-button h-11 w-full sm:w-auto px-5 rounded-xl theme-surface text-teal-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
               >
                 <LogIn className="h-4 w-4 text-teal-700" />
                 <span>Vào phòng thi</span>
@@ -249,7 +249,7 @@ export function StudentDashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Timer className="h-5 w-5 text-amber-600 animate-pulse" />
-            <h2 className="text-lg font-bold text-neutral-900">
+            <h2 className="text-lg font-bold theme-text-primary">
               Bài thi đang làm dở ({inProgressQuizzes.length})
             </h2>
           </div>
@@ -270,12 +270,12 @@ export function StudentDashboard() {
                         Đang làm ({answeredCount}/{quiz.totalQuestions} câu)
                       </Badge>
                     </div>
-                    <CardTitle className="text-base font-bold text-neutral-900 line-clamp-1">
+                    <CardTitle className="text-base font-bold theme-text-primary line-clamp-1">
                       {quiz.title}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3 space-y-3">
-                    <div className="flex items-center justify-between text-xs text-neutral-600">
+                    <div className="flex items-center justify-between text-xs theme-text-secondary">
                       <span>Mã: <strong className="font-mono text-teal-700">{quiz.code}</strong></span>
                       <span>Thời gian: {quiz.settings.durationMinutes > 0 ? `${quiz.settings.durationMinutes} phút` : "Không giới hạn"}</span>
                     </div>
@@ -301,7 +301,7 @@ export function StudentDashboard() {
         <Card className={inProgressQuizzes.length > 0 ? "border-amber-300 bg-amber-50/20" : ""}>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Bài đang làm dở</p>
+              <p className="text-xs font-semibold theme-text-muted">Bài đang làm dở</p>
               <p className="text-2xl font-extrabold text-amber-700 mt-1 font-mono">
                 {inProgressQuizzes.length}
               </p>
@@ -315,7 +315,7 @@ export function StudentDashboard() {
         <Card>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Bài đã hoàn thành</p>
+              <p className="text-xs font-semibold theme-text-muted">Bài đã hoàn thành</p>
               <p className="text-2xl font-extrabold text-emerald-900 mt-1 font-mono">
                 {studentResults.length}
               </p>
@@ -329,7 +329,7 @@ export function StudentDashboard() {
         <Card>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Điểm trung bình</p>
+              <p className="text-xs font-semibold theme-text-muted">Điểm trung bình</p>
               <p className="text-2xl font-extrabold text-teal-900 mt-1 font-mono">
                 {avgScore} {avgScore !== "--" ? "đ" : ""}
               </p>
@@ -347,11 +347,11 @@ export function StudentDashboard() {
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-teal-700" />
-              <h2 className="text-xl font-bold text-neutral-900">
+              <h2 className="text-xl font-bold theme-text-primary">
                 Đề thi được giao cho bạn ({matchedQuizzes.length})
               </h2>
             </div>
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <p className="text-xs theme-text-muted mt-0.5">
               Đề được giao qua lớp hoặc email. Chọn Vào thi để làm bài hoặc Luyện tập để ôn từng câu.
             </p>
           </div>
@@ -397,9 +397,9 @@ export function StudentDashboard() {
               return (
                 <Card
                   key={quiz.id}
-                  className="flex flex-col justify-between overflow-hidden border-teal-100 hover:border-teal-300 hover:shadow-md transition bg-white"
+                  className="flex flex-col justify-between overflow-hidden border-teal-100 hover:border-teal-300 hover:shadow-md transition theme-surface"
                 >
-                  <CardHeader className="pb-3 bg-neutral-50/70 border-b border-neutral-100">
+                  <CardHeader className="pb-3 theme-surface-muted border-b theme-border">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <Badge variant="secondary" size="sm" className="font-semibold">
                         {quiz.subject}
@@ -407,18 +407,18 @@ export function StudentDashboard() {
                       {audienceBadge}
                     </div>
 
-                    <CardTitle className="text-base font-bold text-neutral-900 line-clamp-2 leading-snug">
+                    <CardTitle className="text-base font-bold theme-text-primary line-clamp-2 leading-snug">
                       {quiz.title}
                     </CardTitle>
 
-                    <p className="text-xs text-neutral-500 pt-0.5">
-                      Giáo viên: <strong className="text-neutral-700">{quiz.teacherName || "Thầy Cô"}</strong>
+                    <p className="text-xs theme-text-muted pt-0.5">
+                      Giáo viên: <strong className="theme-text-secondary">{quiz.teacherName || "Thầy Cô"}</strong>
                     </p>
                   </CardHeader>
 
                   <CardContent className="pt-3 pb-4 space-y-3.5 flex-1 flex flex-col justify-between">
-                    <div className="space-y-2 text-xs text-neutral-600">
-                      <div className="grid grid-cols-2 gap-2 bg-neutral-50 p-2.5 rounded-lg border border-neutral-100">
+                    <div className="space-y-2 text-xs theme-text-secondary">
+                      <div className="grid grid-cols-2 gap-2 theme-surface-muted p-2.5 rounded-lg border theme-border">
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-teal-700 shrink-0" />
                           <span>
@@ -442,9 +442,9 @@ export function StudentDashboard() {
                       </div>
 
                       {/* Attempts info */}
-                      <div className="flex items-center justify-between text-[11px] text-neutral-500 px-0.5">
+                      <div className="flex items-center justify-between text-[11px] theme-text-muted px-0.5">
                         <span>
-                          Số lượt đã làm: <strong className="text-neutral-800">{attemptsMade}</strong>
+                          Số lượt đã làm: <strong className="theme-text-secondary">{attemptsMade}</strong>
                           {maxAttempts > 0 && `/${maxAttempts}`}
                         </span>
                         {isAttemptsExceeded && (
@@ -504,12 +504,12 @@ export function StudentDashboard() {
             })}
           </div>
         ) : (
-          <Card className="text-center p-8 border-dashed border-neutral-200 bg-neutral-50/50">
+          <Card className="text-center p-8 border-dashed theme-border theme-surface-muted">
             <BookOpen className="h-10 w-10 text-neutral-300 mx-auto mb-2" />
-            <h3 className="text-base font-bold text-neutral-900">
+            <h3 className="text-base font-bold theme-text-primary">
               Chưa có đề thi nào được giao trực tiếp cho bạn
             </h3>
-            <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs theme-text-muted mt-1 max-w-md mx-auto leading-relaxed">
               Nếu thầy cô cung cấp mã phòng thi hoặc liên kết chia sẻ, bạn hãy nhập mã ở khung bên trên hoặc mở link để tham gia làm bài như bình thường.
             </p>
             <div className="pt-3">
@@ -529,7 +529,7 @@ export function StudentDashboard() {
       {/* History Section */}
       <div className="space-y-4 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h2 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
+          <h2 className="text-xl font-bold theme-text-primary flex items-center gap-2">
             <History className="h-5 w-5 text-teal-700" />
             <span>Lịch sử các bài thi đã hoàn thành</span>
           </h2>
@@ -548,7 +548,7 @@ export function StudentDashboard() {
 
         {studentResults.length === 0 ? (
           <Card className="text-center p-8 border-dashed">
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm theme-text-muted">
               Bạn chưa hoàn thành bài thi nào. Nhập mã phòng hoặc chọn bài thi được giao bên trên để bắt đầu làm bài!
             </p>
           </Card>
@@ -558,18 +558,18 @@ export function StudentDashboard() {
               {filteredHistory.map((result) => (
                 <div
                   key={result.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:px-6 hover:bg-neutral-50/70 transition"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:px-6 theme-hover-surface transition"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" size="sm">
                         {result.subject}
                       </Badge>
-                      <h4 className="font-bold text-sm text-neutral-900">
+                      <h4 className="font-bold text-sm theme-text-primary">
                         {result.quizTitle}
                       </h4>
                     </div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs theme-text-muted">
                       Nộp bài lúc: {new Date(result.submittedAt).toLocaleString("vi-VN")} · Mã phòng:{" "}
                       <span className="font-mono text-teal-700 font-bold">{result.roomCode}</span>
                     </p>
@@ -584,7 +584,7 @@ export function StudentDashboard() {
                       >
                         {result.score.toFixed(2)} / 10 đ
                       </span>
-                      <p className="text-[11px] text-neutral-400 font-medium">
+                      <p className="text-[11px] theme-text-muted font-medium">
                         Đúng {result.correctCount}/{result.totalQuestions} câu ({result.percentage}%)
                       </p>
                     </div>
@@ -603,7 +603,7 @@ export function StudentDashboard() {
           </Card>
         ) : (
           <Card className="text-center p-8">
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm theme-text-muted">
               Không tìm thấy kết quả nào phù hợp với từ khóa "{historySearchTerm}".
             </p>
           </Card>

@@ -14,7 +14,7 @@ export function Card({
     <div
       className={cn(
         "rounded-xl border theme-border theme-surface shadow-xs",
-        hoverEffect && "transition-[border-color,box-shadow] duration-150 hover:border-neutral-300 hover:shadow-sm",
+        hoverEffect && "transition-[border-color,box-shadow] duration-150 theme-hover-border-strong hover:shadow-sm",
         className
       )}
       {...props}

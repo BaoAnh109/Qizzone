@@ -81,7 +81,7 @@ export function TeacherApprovals() {
             <ShieldCheck className="h-3.5 w-3.5" /> Quản trị hệ thống
           </div>
           <h1 className="page-heading">Duyệt tài khoản giáo viên</h1>
-          <p className="mt-1 text-sm text-neutral-500">Tài khoản học sinh chỉ được chuyển sang màn hình giáo viên sau khi admin duyệt yêu cầu.</p>
+          <p className="mt-1 text-sm theme-text-muted">Tài khoản học sinh chỉ được chuyển sang màn hình giáo viên sau khi admin duyệt yêu cầu.</p>
         </div>
         <Button variant="outline" onClick={() => void load()} isLoading={isLoading} leftIcon={<RefreshCw className="h-4 w-4" />}>
           Làm mới
@@ -99,8 +99,8 @@ export function TeacherApprovals() {
         <Card>
           <CardContent className="flex flex-col items-center py-14 text-center">
             <UserRoundCheck className="mb-3 h-10 w-10 text-emerald-500" />
-            <h2 className="font-semibold text-neutral-900">Không có yêu cầu đang chờ</h2>
-            <p className="mt-1 text-sm text-neutral-500">Các yêu cầu đăng ký giáo viên mới sẽ xuất hiện tại đây.</p>
+            <h2 className="font-semibold theme-text-primary">Không có yêu cầu đang chờ</h2>
+            <p className="mt-1 text-sm theme-text-muted">Các yêu cầu đăng ký giáo viên mới sẽ xuất hiện tại đây.</p>
           </CardContent>
         </Card>
       )}
@@ -119,8 +119,8 @@ export function TeacherApprovals() {
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="flex flex-col justify-between gap-4 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2 text-xs text-neutral-500">
+            <CardContent className="flex flex-col justify-between gap-4 border-t theme-border pt-4 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2 text-xs theme-text-muted">
                 <Clock3 className="h-4 w-4" />
                 Gửi lúc {new Date(request.requestedAt).toLocaleString("vi-VN")}
               </div>
@@ -133,10 +133,10 @@ export function TeacherApprovals() {
                     aria-label={request.blocked ? "Cho phép tài khoản gửi yêu cầu giáo viên" : "Không cho tài khoản gửi yêu cầu giáo viên"}
                     disabled={processingUid !== null}
                     onClick={() => void toggleBlocked(request)}
-                    className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"}`}
+                    className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "theme-border theme-surface theme-text-secondary theme-hover-surface"}`}
                   >
                     <span className={`relative h-4 w-7 rounded-full transition-colors ${request.blocked ? "bg-rose-500" : "bg-neutral-300"}`}>
-                      <span className={`theme-switch-thumb absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                      <span className={`theme-switch-thumb absolute top-0.5 h-3 w-3 rounded-full theme-surface shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
                     </span>
                     {request.blocked ? "Đã khóa gửi yêu cầu" : "Cho phép gửi yêu cầu"}
                   </button>

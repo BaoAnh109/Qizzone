@@ -190,9 +190,9 @@ export function BatchActionBar() {
 
   return (
     <>
-      <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4">
+      <div className="flex flex-col gap-4 rounded-lg border theme-border theme-surface p-4">
         {/* Top Row: Navigation and Main CTA */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-neutral-100 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b theme-border pb-3">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -207,10 +207,10 @@ export function BatchActionBar() {
             </Button>
             <span className="text-neutral-300">|</span>
             <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-neutral-900 truncate">
+              <h2 className="text-base sm:text-lg font-extrabold theme-text-primary truncate">
                 {extractionResult?.title || "Bóc tách đề thi thông minh"}
               </h2>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs theme-text-muted">
                 Tổng số: <strong>{questions.length} câu</strong> · Tổng điểm:{" "}
                 <strong className="font-mono text-teal-700">{Math.round(totalPoints * 100) / 100}đ</strong>
                 {totalWarnings > 0 && (
@@ -237,7 +237,7 @@ export function BatchActionBar() {
               size="sm"
               onClick={() => handleFinalizeQuiz("draft")}
               disabled={isSubmitting || questions.length === 0}
-              leftIcon={<Save className="h-3.5 w-3.5 text-neutral-600" />}
+              leftIcon={<Save className="h-3.5 w-3.5 theme-text-secondary" />}
             >
               Lưu bản nháp
             </Button>
@@ -317,9 +317,9 @@ export function BatchActionBar() {
 
           {/* Filter & Search */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 bg-neutral-50 px-2.5 py-1 rounded-xl border border-neutral-200">
-              <Filter className="h-3.5 w-3.5 text-neutral-500" />
-              <span className="text-neutral-600 font-medium">Nguồn:</span>
+            <div className="flex items-center gap-1.5 theme-surface-muted px-2.5 py-1 rounded-xl border theme-border">
+              <Filter className="h-3.5 w-3.5 theme-text-muted" />
+              <span className="theme-text-secondary font-medium">Nguồn:</span>
               <select
                 value={filterStrategy}
                 onChange={(e) =>
@@ -327,7 +327,7 @@ export function BatchActionBar() {
                     e.target.value as DetectionStrategy | "all" | "warnings"
                   )
                 }
-                className="bg-transparent text-neutral-800 font-bold focus:outline-hidden cursor-pointer"
+                className="bg-transparent theme-text-secondary font-bold focus:outline-hidden cursor-pointer"
               >
                 <option value="all">Tất cả ({questions.length})</option>
                 <option value="underline">Gạch chân</option>

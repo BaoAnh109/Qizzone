@@ -61,7 +61,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 : undefined
             }
             className={cn(
-              "theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-base sm:text-sm placeholder:text-neutral-400",
+              "theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-base sm:text-sm theme-placeholder-muted",
               "transition-colors duration-150",
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]",
               error
@@ -87,7 +87,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {error}
           </p>
         ) : helperText ? (
-          <p id={`${inputId}-helper`} className="text-xs text-neutral-500">
+          <p id={`${inputId}-helper`} className="text-xs theme-text-muted">
             {helperText}
           </p>
         ) : null}

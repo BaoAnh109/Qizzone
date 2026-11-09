@@ -142,7 +142,7 @@ export function QuizResultsView() {
     return (
       <div className="max-w-md mx-auto my-16 text-center space-y-4">
         <AlertCircle className="h-10 w-10 text-rose-600 mx-auto" />
-        <h2 className="text-xl font-bold text-neutral-900">Không tìm thấy bài thi</h2>
+        <h2 className="text-xl font-bold theme-text-primary">Không tìm thấy bài thi</h2>
         <Button variant="outline" onClick={() => navigate("/teacher/quizzes")}>
           Quay lại danh sách đề thi
         </Button>
@@ -159,7 +159,7 @@ export function QuizResultsView() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200/80 pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b theme-border pb-5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Button
@@ -167,7 +167,7 @@ export function QuizResultsView() {
               size="sm"
               onClick={() => navigate("/teacher/quizzes")}
               leftIcon={<ArrowLeft className="h-4 w-4" />}
-              className="p-0 h-auto text-neutral-500 hover:text-neutral-900"
+              className="p-0 h-auto theme-text-muted theme-hover-text-primary"
             >
               Danh sách đề thi
             </Button>
@@ -180,7 +180,7 @@ export function QuizResultsView() {
           <h1 className="page-heading">
             Bảng điểm & Thống kê: {quiz.title}
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500">
+          <p className="text-xs sm:text-sm theme-text-muted">
             Mã phòng: <span className="font-mono font-bold text-teal-700">{quiz.code}</span> ·{" "}
             Tổng số: <strong>{quiz.totalQuestions} câu hỏi</strong> · Điểm đạt yêu cầu:{" "}
             <strong>{quiz.settings.passPercentage}%</strong>
@@ -209,12 +209,12 @@ export function QuizResultsView() {
       </div>
 
       {/* Question Level Analytics */}
-      <Card className="overflow-hidden border-neutral-200/90 shadow-xs">
+      <Card className="overflow-hidden theme-border shadow-xs">
         <CardContent className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-neutral-900">Phân tích theo câu hỏi</h2>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-neutral-500">
+              <h2 className="text-lg font-bold theme-text-primary">Phân tích theo câu hỏi</h2>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed theme-text-muted">
                 Tỷ lệ đúng tính trên lượt có dữ liệu. Với câu nhiều lựa chọn, tổng lượt chọn có thể cao hơn số bài làm. Mẫu nhỏ chỉ mang tính tham khảo.
               </p>
             </div>
@@ -231,8 +231,8 @@ export function QuizResultsView() {
           </div>
 
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-xs text-neutral-600">
-              <thead className="border-b border-neutral-200 bg-neutral-50/80 text-[11px] font-bold uppercase tracking-wider text-neutral-800">
+            <table className="w-full min-w-[760px] text-left text-xs theme-text-secondary">
+              <thead className="border-b theme-border theme-surface-muted text-[11px] font-bold uppercase tracking-wider theme-text-secondary">
                 <tr>
                   <th className="px-3 py-3">Câu hỏi</th>
                   <th className="px-3 py-3 text-center">Lượt có dữ liệu</th>
@@ -244,7 +244,7 @@ export function QuizResultsView() {
               <tbody className="divide-y divide-neutral-100">
                 {questionAnalytics.map((item) => (
                   <tr key={item.questionId} className="align-top">
-                    <td className="max-w-sm px-3 py-3 font-medium text-neutral-900">
+                    <td className="max-w-sm px-3 py-3 font-medium theme-text-primary">
                       <span className="mr-1 font-bold text-teal-700">Câu {item.order}.</span>
                       <MathRenderer content={item.content} />
                     </td>
@@ -253,7 +253,7 @@ export function QuizResultsView() {
                     </td>
                     <td className="px-3 py-3 text-center">
                       {item.attemptCount === 0 ? (
-                        <span className="text-neutral-400">—</span>
+                        <span className="theme-text-muted">—</span>
                       ) : (
                         <span className="font-mono font-bold text-emerald-700">
                           {item.correctCount}/{item.attemptCount} · {item.accuracyPercent}%
@@ -265,9 +265,9 @@ export function QuizResultsView() {
                     </td>
                     <td className="min-w-[250px] px-3 py-3">
                       {item.attemptCount === 0 ? (
-                        <span className="text-neutral-400">Chưa có dữ liệu câu hỏi</span>
+                        <span className="theme-text-muted">Chưa có dữ liệu câu hỏi</span>
                       ) : item.options.length === 0 ? (
-                        <span className="text-neutral-400">Không có phương án</span>
+                        <span className="theme-text-muted">Không có phương án</span>
                       ) : (
                         <div className="space-y-1.5">
                           {item.options.map((option) => {
@@ -278,22 +278,22 @@ export function QuizResultsView() {
                             );
                             return (
                               <div key={option.id} className="flex items-center gap-2">
-                                <span className="w-4 shrink-0 font-mono font-bold text-neutral-700">
+                                <span className="w-4 shrink-0 font-mono font-bold theme-text-secondary">
                                   {option.id}
                                 </span>
                                 <span
-                                  className="w-28 shrink-0 truncate text-neutral-500"
+                                  className="w-28 shrink-0 truncate theme-text-muted"
                                   title={option.content}
                                 >
                                   {option.content}
                                 </span>
-                                <div className="h-1.5 min-w-10 flex-1 overflow-hidden rounded-full bg-neutral-100">
+                                <div className="h-1.5 min-w-10 flex-1 overflow-hidden rounded-full theme-surface-muted">
                                   <div
                                     className="h-full rounded-full bg-teal-500"
                                     style={{ width: `${width}%` }}
                                   />
                                 </div>
-                                <span className="w-6 shrink-0 text-right font-mono text-neutral-500">
+                                <span className="w-6 shrink-0 text-right font-mono theme-text-muted">
                                   {count}
                                 </span>
                               </div>
@@ -315,7 +315,7 @@ export function QuizResultsView() {
         <Card hoverEffect>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Số bài nộp</p>
+              <p className="text-xs font-semibold theme-text-muted">Số bài nộp</p>
               <p className="text-2xl font-extrabold text-teal-900 mt-1 font-mono">
                 {totalSubmissions}
               </p>
@@ -329,12 +329,12 @@ export function QuizResultsView() {
         <Card hoverEffect>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Điểm trung bình</p>
+              <p className="text-xs font-semibold theme-text-muted">Điểm trung bình</p>
               <p className="text-2xl font-extrabold text-teal-900 mt-1 font-mono">
-                {averageScore} <span className="text-sm font-normal text-neutral-400">/ 10</span>
+                {averageScore} <span className="text-sm font-normal theme-text-muted">/ 10</span>
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-neutral-100 text-neutral-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md theme-surface-muted theme-text-secondary">
               <TrendingUp className="h-5 w-5" />
             </div>
           </CardContent>
@@ -343,9 +343,9 @@ export function QuizResultsView() {
         <Card hoverEffect>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Cao nhất / Thấp nhất</p>
+              <p className="text-xs font-semibold theme-text-muted">Cao nhất / Thấp nhất</p>
               <p className="text-2xl font-extrabold text-emerald-900 mt-1 font-mono">
-                {maxScore} <span className="text-xs font-normal text-neutral-400">/ {minScore}</span>
+                {maxScore} <span className="text-xs font-normal theme-text-muted">/ {minScore}</span>
               </p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
@@ -357,7 +357,7 @@ export function QuizResultsView() {
         <Card hoverEffect>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-neutral-500">Tỉ lệ đạt yêu cầu</p>
+              <p className="text-xs font-semibold theme-text-muted">Tỉ lệ đạt yêu cầu</p>
               <p className="text-2xl font-extrabold text-teal-700 mt-1 font-mono">
                 {passRate}%
               </p>
@@ -370,7 +370,7 @@ export function QuizResultsView() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border theme-border theme-surface p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <Input
             placeholder="Tìm theo tên học sinh, lớp..."
@@ -381,15 +381,15 @@ export function QuizResultsView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-600">
-            <Filter className="h-4 w-4 text-neutral-400" />
+          <div className="flex items-center gap-1.5 text-xs font-medium theme-text-secondary">
+            <Filter className="h-4 w-4 theme-text-muted" />
             <span>Trạng thái:</span>
             <select
               value={filterStatus}
               onChange={(e) =>
                 setFilterStatus(e.target.value as "all" | "passed" | "failed")
               }
-              className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs text-neutral-800 focus:outline-hidden focus:ring-1 focus:ring-teal-500 cursor-pointer"
+              className="rounded-lg border theme-border-strong theme-surface px-2.5 py-1 text-xs theme-text-secondary focus:outline-hidden focus:ring-1 focus:ring-teal-500 cursor-pointer"
             >
               <option value="all">Tất cả</option>
               <option value="passed">Đạt (Passed)</option>
@@ -397,7 +397,7 @@ export function QuizResultsView() {
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-600">
+          <div className="flex items-center gap-1.5 text-xs font-medium theme-text-secondary">
             <span>Sắp xếp:</span>
             <select
               value={sortBy}
@@ -406,7 +406,7 @@ export function QuizResultsView() {
                   e.target.value as "score_desc" | "score_asc" | "time_desc"
                 )
               }
-              className="rounded-lg border border-neutral-300 bg-white px-2.5 py-1 text-xs text-neutral-800 focus:outline-hidden focus:ring-1 focus:ring-teal-500 cursor-pointer"
+              className="rounded-lg border theme-border-strong theme-surface px-2.5 py-1 text-xs theme-text-secondary focus:outline-hidden focus:ring-1 focus:ring-teal-500 cursor-pointer"
             >
               <option value="score_desc">Điểm cao nhất</option>
               <option value="score_asc">Điểm thấp nhất</option>
@@ -417,10 +417,10 @@ export function QuizResultsView() {
       </div>
 
       {/* Submissions Table */}
-      <Card className="overflow-hidden border-neutral-200/90 shadow-xs">
+      <Card className="overflow-hidden theme-border shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-neutral-600">
-            <thead className="bg-neutral-50/80 text-neutral-800 font-bold border-b border-neutral-200/80 uppercase tracking-wider text-[11px]">
+          <table className="w-full text-left text-xs theme-text-secondary">
+            <thead className="theme-surface-muted theme-text-secondary font-bold border-b theme-border uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="py-3.5 px-4 w-12 text-center">STT</th>
                 <th className="py-3.5 px-4">Họ và tên thí sinh</th>
@@ -439,27 +439,27 @@ export function QuizResultsView() {
             <tbody className="divide-y divide-neutral-100 font-medium">
               {filteredResults.length > 0 ? (
                 filteredResults.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-neutral-50/60 transition">
-                    <td className="py-3 px-4 text-center font-mono text-neutral-400">
+                  <tr key={item.id} className="theme-hover-surface transition">
+                    <td className="py-3 px-4 text-center font-mono theme-text-muted">
                       {idx + 1}
                     </td>
-                    <td className="py-3 px-4 font-bold text-neutral-900">
+                    <td className="py-3 px-4 font-bold theme-text-primary">
                       {item.studentName}
                     </td>
-                    <td className="py-3 px-4 font-mono text-neutral-600">
+                    <td className="py-3 px-4 font-mono theme-text-secondary">
                       {item.studentClass || "12A1"}
                     </td>
                     <td className="py-3 px-4 text-center font-black font-mono text-sm text-teal-700">
                       {item.score.toFixed(2)}
                     </td>
-                    <td className="py-3 px-4 text-center font-mono font-semibold text-neutral-800">
+                    <td className="py-3 px-4 text-center font-mono font-semibold theme-text-secondary">
                       {item.correctCount} / {item.totalQuestions}
                     </td>
-                    <td className="py-3 px-4 text-center font-mono font-semibold text-neutral-800">
+                    <td className="py-3 px-4 text-center font-mono font-semibold theme-text-secondary">
                       {item.percentage}%
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="font-semibold text-[11px] text-neutral-700">
+                      <span className="font-semibold text-[11px] theme-text-secondary">
                         {item.academicRank || (item.score >= 8 ? "Giỏi" : item.score >= 6.5 ? "Khá" : "Trung bình")}
                       </span>
                     </td>
@@ -472,10 +472,10 @@ export function QuizResultsView() {
                         {item.isPassed ? "Đạt" : "Chưa đạt"}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 font-mono text-neutral-500">
+                    <td className="py-3 px-4 font-mono theme-text-muted">
                       {formatDuration(item.timeSpentSeconds)}
                     </td>
-                    <td className="py-3 px-4 text-neutral-500">
+                    <td className="py-3 px-4 theme-text-muted">
                       {new Date(item.submittedAt).toLocaleTimeString("vi-VN", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -497,7 +497,7 @@ export function QuizResultsView() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-neutral-400">
+                  <td colSpan={11} className="py-12 text-center theme-text-muted">
                     Chưa có học sinh nào nộp bài thi phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
@@ -545,7 +545,7 @@ export function QuizResultsView() {
                     </span>
                   </div>
 
-                  <div className="text-sm font-medium text-neutral-900 leading-relaxed">
+                  <div className="text-sm font-medium theme-text-primary leading-relaxed">
                     <MathRenderer content={q.content} />
                   </div>
 
@@ -554,7 +554,7 @@ export function QuizResultsView() {
                       const isSelected = q.selectedAnswers.includes(opt.id);
                       const isCorrect = q.correctAnswers.includes(opt.id);
 
-                      let style = "border-neutral-200 bg-white text-neutral-700";
+                      let style = "theme-border theme-surface theme-text-secondary";
                       if (isSelected && isCorrect) {
                         style = "border-emerald-500 bg-emerald-50 text-emerald-950 font-bold";
                       } else if (isSelected && !isCorrect) {

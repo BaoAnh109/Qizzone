@@ -130,7 +130,7 @@ export function AccountManagement() {
   return (
     <div className="space-y-6 pb-16">
       {/* Top Header */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b border-neutral-200 pb-5">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b theme-border pb-5">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
             <Users className="h-3.5 w-3.5" /> Quản trị người dùng
@@ -155,14 +155,14 @@ export function AccountManagement() {
       {/* Tabs and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Role Tabs */}
-        <div className="inline-flex rounded-xl bg-neutral-100 p-1 border border-neutral-200">
+        <div className="inline-flex rounded-xl theme-surface-muted p-1 border theme-border">
           <button
             type="button"
             onClick={() => setActiveTab("teacher")}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition cursor-pointer ${
               activeTab === "teacher"
-                ? "bg-white text-teal-700 shadow-xs font-bold"
-                : "text-neutral-600 hover:text-neutral-900"
+                ? "theme-surface text-teal-700 shadow-xs font-bold"
+                : "theme-text-secondary theme-hover-text-primary"
             }`}
           >
             <GraduationCap className="h-4 w-4" />
@@ -177,8 +177,8 @@ export function AccountManagement() {
             onClick={() => setActiveTab("student")}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition cursor-pointer ${
               activeTab === "student"
-                ? "bg-white text-teal-700 shadow-xs font-bold"
-                : "text-neutral-600 hover:text-neutral-900"
+                ? "theme-surface text-teal-700 shadow-xs font-bold"
+                : "theme-text-secondary theme-hover-text-primary"
             }`}
           >
             <Users className="h-4 w-4" />
@@ -203,8 +203,8 @@ export function AccountManagement() {
       {/* Accounts Table Card */}
       <Card className="overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-neutral-600">
-            <thead className="bg-neutral-50/80 text-xs uppercase text-neutral-500 font-semibold border-b border-neutral-200">
+          <table className="w-full text-left text-sm theme-text-secondary">
+            <thead className="theme-surface-muted text-xs uppercase theme-text-muted font-semibold border-b theme-border">
               <tr>
                 <th className="px-5 py-3.5">Người dùng</th>
                 <th className="px-5 py-3.5">Email</th>
@@ -219,14 +219,14 @@ export function AccountManagement() {
             <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-neutral-400">
+                  <td colSpan={6} className="py-12 text-center theme-text-muted">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-teal-700" />
                     Đang tải danh sách tài khoản...
                   </td>
                 </tr>
               ) : filteredAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-neutral-400">
+                  <td colSpan={6} className="py-12 text-center theme-text-muted">
                     Không có tài khoản nào phù hợp với tìm kiếm.
                   </td>
                 </tr>
@@ -253,29 +253,29 @@ export function AccountManagement() {
                   return (
                     <tr
                       key={account.id}
-                      className="hover:bg-neutral-50/70 transition"
+                      className="theme-hover-surface transition"
                     >
-                      <td className="px-5 py-4 font-semibold text-neutral-900">
+                      <td className="px-5 py-4 font-semibold theme-text-primary">
                         <div className="flex items-center gap-3">
                           <div className="h-9 w-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center font-bold text-teal-700 text-sm">
                             {account.fullName.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-bold text-neutral-900">
+                            <p className="font-bold theme-text-primary">
                               {account.fullName}
                             </p>
-                            <p className="text-xs text-neutral-400 font-normal font-mono">
+                            <p className="text-xs theme-text-muted font-normal font-mono">
                               ID: {account.id}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      <td className="px-5 py-4 font-mono text-xs text-neutral-700">
+                      <td className="px-5 py-4 font-mono text-xs theme-text-secondary">
                         {account.email}
                       </td>
 
-                      <td className="px-5 py-4 text-center font-mono font-bold text-neutral-900">
+                      <td className="px-5 py-4 text-center font-mono font-bold theme-text-primary">
                         {activeTab === "teacher" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-0.5 text-xs text-teal-700">
                             {teacherQuizzesCount} đề
@@ -287,7 +287,7 @@ export function AccountManagement() {
                         )}
                       </td>
 
-                      <td className="px-5 py-4 text-xs text-neutral-500">
+                      <td className="px-5 py-4 text-xs theme-text-muted">
                         {new Date(account.createdAt).toLocaleDateString("vi-VN")}
                       </td>
 
@@ -358,8 +358,8 @@ export function AccountManagement() {
       >
         <div className="space-y-4 pt-2">
           {teacherQuizzes.length === 0 ? (
-            <div className="p-8 text-center text-neutral-500 border border-dashed rounded-xl">
-              <ShieldAlert className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
+            <div className="p-8 text-center theme-text-muted border border-dashed rounded-xl">
+              <ShieldAlert className="h-8 w-8 theme-text-muted mx-auto mb-2" />
               <p className="text-sm font-semibold">Giáo viên này chưa khởi tạo đề thi nào trong hệ thống.</p>
             </div>
           ) : (
@@ -367,7 +367,7 @@ export function AccountManagement() {
               {teacherQuizzes.map((quiz) => (
                 <div
                   key={quiz.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 transition"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border theme-border theme-surface theme-hover-surface transition"
                 >
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -386,11 +386,11 @@ export function AccountManagement() {
                       </span>
                     </div>
 
-                    <h4 className="font-bold text-neutral-900 text-sm truncate">
+                    <h4 className="font-bold theme-text-primary text-sm truncate">
                       {quiz.title}
                     </h4>
 
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs theme-text-muted">
                       Số câu: <strong>{quiz.totalQuestions}</strong> · Thời gian:{" "}
                       <strong>
                         {quiz.settings.durationMinutes === 0
@@ -432,7 +432,7 @@ export function AccountManagement() {
             </div>
           )}
 
-          <div className="flex justify-end pt-3 border-t border-neutral-200">
+          <div className="flex justify-end pt-3 border-t theme-border">
             <Button
               variant="outline"
               size="sm"

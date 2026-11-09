@@ -3,17 +3,49 @@
 @theme inline {
   --font-sans: var(--font-body);
   --font-display: var(--font-heading);
+  --spacing-page-x: var(--space-page-x);
+  --spacing-page-y: var(--space-page-y);
+  --spacing-card: var(--space-card);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-inset: var(--surface-inset);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-focus: var(--focus);
+  --color-status-info: var(--status-info-foreground);
+  --color-status-accent: var(--status-accent-foreground);
+  --color-status-success: var(--status-success-foreground);
+  --color-status-warning: var(--status-warning-foreground);
+  --color-status-danger: var(--status-danger-foreground);
+  --color-danger-action: var(--danger-action);
+  --color-danger-action-hover: var(--danger-action-hover);
+  --color-danger-action-foreground: var(--danger-action-foreground);
+  --color-status-info-surface: var(--status-info-surface);
+  --color-status-info-border: var(--status-info-border);
+  --color-status-accent-surface: var(--status-accent-surface);
+  --color-status-accent-border: var(--status-accent-border);
+  --color-status-success-surface: var(--status-success-surface);
+  --color-status-success-border: var(--status-success-border);
+  --color-status-warning-surface: var(--status-warning-surface);
+  --color-status-warning-border: var(--status-warning-border);
+  --color-status-danger-surface: var(--status-danger-surface);
+  --color-status-danger-border: var(--status-danger-border);
 }
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 @layer base {
   :root {
@@ -27,21 +59,29 @@
     --space-xl: 2rem;
     --space-2xl: 3rem;
     --space-3xl: 4rem;
+    --space-page-x: clamp(1rem, 2.5vw, 2rem);
+    --space-page-y: clamp(1.25rem, 2vw, 2rem);
+    --space-card: clamp(1rem, 1.5vw, 1.5rem);
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
     --primary-foreground: #ffffff;
     --secondary: #0f766e;
+    --secondary-foreground: #ffffff;
     --accent: #f59e0b;
-    --on-accent: #0f172a;
+    --accent-foreground: #0f172a;
+    --danger-action: #dc2626;
+    --danger-action-hover: #b91c1c;
+    --danger-action-foreground: #ffffff;
     --background: #eff6ff;
     --foreground: #0f172a;
     --surface: #ffffff;
     --surface-raised: #ffffff;
+    --switch-thumb: #ffffff;
     --surface-muted: #f1f5fd;
     --surface-inset: #e8ecf5;
     --text-primary: #0f172a;
     --text-secondary: #334155;
-    --text-muted: #475569;
+    --text-muted: #64748b;
     --border: #dbe5f2;
     --border-strong: #94a3b8;
     --focus: #2563eb;
@@ -71,18 +111,23 @@
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
     --secondary: #5eead4;
+    --secondary-foreground: #0b1220;
     --accent: #fbbf24;
-    --on-accent: #0f172a;
+    --accent-foreground: #0b1220;
+    --danger-action: #b91c1c;
+    --danger-action-hover: #991b1b;
+    --danger-action-foreground: #ffffff;
     --primary-foreground: #ffffff;
     --background: #0b1220;
     --foreground: #f8fafc;
     --surface: #111c2f;
     --surface-raised: #1b2940;
+    --switch-thumb: #f8fafc;
     --surface-muted: #16243a;
     --surface-inset: #202f45;
     --text-primary: #f1f5f9;
     --text-secondary: #cbd5e1;
-    --text-muted: #a4b3c7;
+    --text-muted: #94a3b8;
     --border: #344861;
     --border-strong: #647b96;
     --focus: #93c5fd;
@@ -199,6 +244,11 @@
     color: var(--text-primary);
   }
 
+  .theme-placeholder-muted::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
   .theme-button-primary {
     background-color: var(--primary);
     color: var(--primary-foreground);
@@ -236,12 +286,12 @@
   }
 
   .theme-button-destructive {
-    background-color: #dc2626;
-    color: #ffffff;
+    background-color: var(--danger-action);
+    color: var(--danger-action-foreground);
   }
 
   .theme-button-destructive:hover {
-    background-color: #b91c1c;
+    background-color: var(--danger-action-hover);
   }
 
   .theme-button-ghost {
@@ -312,6 +362,14 @@
     border-color: var(--border);
   }
 
+  .theme-border-strong {
+    border-color: var(--border-strong);
+  }
+
+  .theme-hover-border-strong:hover {
+    border-color: var(--border-strong);
+  }
+
   .theme-text-primary {
     color: var(--text-primary);
   }
@@ -322,6 +380,39 @@
 
   .theme-text-muted {
     color: var(--text-muted);
+  }
+
+  .theme-hover-surface:hover {
+    background-color: var(--surface-muted);
+  }
+
+  .theme-hover-text-primary:hover {
+    color: var(--text-primary);
+  }
+
+  .theme-hover-text-secondary:hover {
+    color: var(--text-secondary);
+  }
+
+  .theme-hover-info:hover {
+    background-color: var(--status-info-surface);
+  }
+
+  .theme-avatar {
+    background-color: var(--status-info-surface);
+    color: var(--status-info-foreground);
+  }
+
+  .theme-switch-thumb {
+    background-color: var(--switch-thumb);
+  }
+
+  .theme-toggle-track {
+    background-color: var(--surface-inset);
+  }
+
+  .theme-toggle-track[aria-checked="true"] {
+    background-color: var(--primary);
   }
 
   .page-heading {
@@ -345,14 +436,14 @@
     width: 100%;
     max-width: 100rem;
     margin-inline: auto;
-    padding: clamp(1.25rem, 2vw, 2rem) clamp(1rem, 2.5vw, 2rem);
+    padding: var(--space-page-y) var(--space-page-x);
   }
 
   .exam-main {
     width: 100%;
     max-width: 110rem;
     margin-inline: auto;
-    padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 2.5vw, 2rem);
+    padding: clamp(1rem, 2vw, 1.5rem) var(--space-page-x);
   }
 
   .route-progress-bar {
@@ -786,8 +877,4 @@ html[data-theme="dark"] .theme-document-paper :where(
   .text-neutral-400
 ) {
   color: #172033;
-}
-
-html[data-theme="dark"] .theme-switch-thumb {
-  background-color: #f8fafc;
 }

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Moon, Sun, Monitor, Settings2 } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Settings2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
-import { useThemeStore } from "@/store/themeStore";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import { AccountSettingsModal } from "@/components/common/AccountSettingsModal";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 
 interface NavbarProps {
   onToggleMobileSidebar?: () => void;
@@ -29,10 +29,6 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   const logout = useAuthStore((state) => state.logout);
   const requestTeacherAccess = useAuthStore((state) => state.requestTeacherAccess);
   const switchRole = useAuthStore((state) => state.switchRole);
-  const themePreference = useThemeStore((state) => state.preference);
-  const isDarkTheme = useThemeStore((state) => state.isDark);
-  const setThemePreference = useThemeStore((state) => state.setPreference);
-
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -123,13 +119,13 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                 type="button"
                 onClick={onToggleMobileSidebar}
                 aria-label="Mở menu"
-                className="flex h-11 w-11 items-center justify-center rounded-lg theme-text-secondary hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden cursor-pointer"
+                className="flex h-11 w-11 items-center justify-center rounded-lg theme-text-secondary theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden cursor-pointer"
               >
                 <Menu className="h-5 w-5" />
               </button>
             )}
             <div>
-              <h2 className="font-display text-sm font-semibold text-neutral-900 leading-none">{getPageTitle()}</h2>
+              <h2 className="font-display text-sm font-semibold theme-text-primary leading-none">{getPageTitle()}</h2>
             </div>
           </div>
 
@@ -137,10 +133,10 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
                 <div className="flex items-center gap-2 justify-end">
-                  <p className="text-sm font-medium text-neutral-900">{user?.fullName || user?.email || "Người dùng"}</p>
+                  <p className="text-sm font-medium theme-text-primary">{user?.fullName || user?.email || "Người dùng"}</p>
                   <Badge size="sm" variant={user?.role !== "student" ? "primary" : "success"}>{roleLabel(user?.role)}</Badge>
                 </div>
-                <p className="mt-0.5 max-w-48 truncate text-[11px] text-neutral-500">{user?.email}</p>
+                <p className="mt-0.5 max-w-48 truncate text-[11px] theme-text-muted">{user?.email}</p>
               </div>
 
               <div className="relative" ref={profileMenuRef}>
@@ -149,12 +145,12 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                   aria-label="Mở tài khoản"
                   aria-expanded={isProfileOpen}
                   onClick={() => setIsProfileOpen((open) => !open)}
-                  className="flex h-11 items-center gap-1.5 rounded-full p-1 text-primary transition-colors hover:bg-blue-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
+                  className="flex h-11 items-center gap-1.5 rounded-full p-1 text-primary transition-colors theme-hover-info focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
                 >
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt="Ảnh đại diện" referrerPolicy="no-referrer" className="h-8 w-8 rounded-full object-cover" />
                   ) : (
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                    <span className="theme-avatar flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold">
                       {user?.fullName?.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" />}
                     </span>
                   )}
@@ -163,12 +159,12 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
 
                 {isProfileOpen && (
                   <div className="absolute right-0 top-11 z-40 w-80 overflow-hidden rounded-xl border theme-border theme-surface-raised shadow-xl">
-                    <div className="border-b border-neutral-100 px-4 py-3">
-                      <p className="truncate text-sm font-semibold text-neutral-900">{user?.fullName || "Người dùng"}</p>
-                      <p className="truncate text-xs text-neutral-500">{user?.email}</p>
+                    <div className="border-b theme-border px-4 py-3">
+                      <p className="truncate text-sm font-semibold theme-text-primary">{user?.fullName || "Người dùng"}</p>
+                      <p className="truncate text-xs theme-text-muted">{user?.email}</p>
                       <div className="mt-2 flex items-center gap-2">
                         <Badge size="sm" variant={user?.role !== "student" ? "primary" : "success"}>{roleLabel(user?.role)}</Badge>
-                        {user?.baseRole === "student" && <span className="text-[11px] text-neutral-500">Tài khoản gốc: học sinh</span>}
+                        {user?.baseRole === "student" && <span className="text-[11px] theme-text-muted">Tài khoản gốc: học sinh</span>}
                       </div>
                     </div>
 
@@ -207,7 +203,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                           </Button>
                         )}
                         {teacherRequestStatus === "rejected" && !user.teacherRequestBlocked && (
-                          <p className="text-[11px] leading-4 text-neutral-500">Yêu cầu trước đã bị từ chối. Bạn có thể gửi lại yêu cầu.</p>
+                          <p className="text-[11px] leading-4 theme-text-muted">Yêu cầu trước đã bị từ chối. Bạn có thể gửi lại yêu cầu.</p>
                         )}
                       </div>
                     )}
@@ -227,51 +223,15 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                       </div>
                     )}
 
-                    <div className="border-y border-neutral-100 px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          {isDarkTheme ? (
-                            <Moon className="h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
-                          ) : (
-                            <Sun className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-neutral-800">Giao diện tối</p>
-                            <p className="text-[11px] text-neutral-500">
-                              {themePreference === "system" ? "Tự động theo thiết bị" : isDarkTheme ? "Đang bật" : "Đang tắt"}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={isDarkTheme}
-                          aria-label="Giao diện tối"
-                          onClick={() => setThemePreference(isDarkTheme ? "light" : "dark")}
-                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${isDarkTheme ? "bg-blue-600" : "bg-neutral-200"}`}
-                        >
-                          <span
-                            className={`theme-switch-thumb pointer-events-none h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isDarkTheme ? "translate-x-5" : "translate-x-0.5"}`}
-                          />
-                        </button>
-                      </div>
-                      {themePreference !== "system" && (
-                        <button
-                          type="button"
-                          onClick={() => setThemePreference("system")}
-                          className="mt-2 inline-flex items-center gap-1.5 rounded text-[11px] font-medium text-blue-700 transition hover:text-blue-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
-                        >
-                          <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
-                          Dùng theo giao diện thiết bị
-                        </button>
-                      )}
+                    <div className="border-y theme-border px-4 py-3">
+                      <ThemeToggle />
                     </div>
 
-                    <div className="border-b border-neutral-100 p-2">
+                    <div className="border-b theme-border p-2">
                       <button
                         type="button"
                         onClick={() => { setIsProfileOpen(false); setIsSettingsOpen(true); }}
-                        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 hover:text-neutral-950 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium theme-text-secondary transition theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                       >
                         <Settings2 className="h-4 w-4" aria-hidden="true" />
                         Cài đặt tài khoản
@@ -310,7 +270,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
           </>
         )}
       >
-        <p className="text-sm leading-6 text-neutral-600">
+        <p className="text-sm leading-6 theme-text-secondary">
           Bạn vẫn đăng nhập và làm bài với tài khoản học sinh trong thời gian chờ duyệt. Chỉ sau khi admin chấp thuận, bạn mới có thể chuyển sang màn hình giáo viên.
         </p>
       </Modal>

@@ -207,7 +207,7 @@ export function QuizRoom() {
     return (
       <div className="text-center py-20 space-y-4">
         <AlertCircle className="h-10 w-10 text-rose-600 mx-auto" />
-        <h2 className="text-xl font-bold text-neutral-900">
+        <h2 className="text-xl font-bold theme-text-primary">
           Đang khởi tạo bài thi...
         </h2>
         <Button variant="outline" onClick={() => navigate("/student")}>
@@ -221,7 +221,7 @@ export function QuizRoom() {
   const flaggedCount = session.flaggedQuestionIds?.length || 0;
 
   return (
-    <div className="flex flex-col min-h-screen bg-neutral-100/60 pb-12">
+    <div className="flex flex-col min-h-screen theme-surface-muted pb-12">
       {/* Top Fixed Exam Header Bar */}
       <header className="sticky top-0 z-40 theme-surface-raised backdrop-blur-md border-b theme-border shadow-2xs">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
@@ -230,7 +230,7 @@ export function QuizRoom() {
             <Badge variant="secondary" size="sm" className="hidden sm:inline-flex">
               {quiz.subject}
             </Badge>
-            <h1 className="font-bold text-sm sm:text-base text-neutral-900 truncate">
+            <h1 className="font-bold text-sm sm:text-base theme-text-primary truncate">
               {quiz.title}
             </h1>
           </div>
@@ -312,7 +312,7 @@ export function QuizRoom() {
                 questionNumber={currentIndex + 1}
                 questionCount={questions.length}
                 headerMeta={(
-                  <span className="text-xs text-neutral-400">
+                  <span className="text-xs theme-text-muted">
                     ({Number((currentQuestion.points || 1).toFixed(2))} điểm)
                   </span>
                 )}
@@ -323,11 +323,11 @@ export function QuizRoom() {
                       onClick={handleToggleFlag}
                       className={isCurrentFlagged
                         ? "flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-950 ring-2 ring-amber-400/40 shadow-xs transition cursor-pointer"
-                        : "flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-neutral-300 hover:bg-neutral-50 cursor-pointer"}
+                        : "flex items-center gap-1.5 rounded-xl border theme-border theme-surface px-3 py-1.5 text-xs font-semibold theme-text-secondary transition theme-hover-border-strong theme-hover-surface cursor-pointer"}
                     >
                       <Flag className={isCurrentFlagged
                         ? "h-3.5 w-3.5 fill-amber-500 text-amber-600"
-                        : "h-3.5 w-3.5 text-neutral-400"} />
+                        : "h-3.5 w-3.5 theme-text-muted"} />
                       <span>{isCurrentFlagged ? "Đã gắn cờ" : "Gắn cờ"}</span>
                     </button>
 
@@ -336,7 +336,7 @@ export function QuizRoom() {
                         type="button"
                         onClick={handleClearCurrent}
                         title="Bỏ chọn đáp án"
-                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-neutral-500 transition hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs theme-text-muted transition hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Bỏ chọn</span>
@@ -346,7 +346,7 @@ export function QuizRoom() {
                 )}
                 prompt={<MathRenderer content={currentQuestion.content} />}
                 footer={(
-                  <div className="flex items-center justify-between border-t border-neutral-100 pt-6">
+                  <div className="flex items-center justify-between border-t theme-border pt-6">
                     <Button
                       variant="outline"
                       disabled={currentIndex === 0}
@@ -386,17 +386,17 @@ export function QuizRoom() {
                       onClick={() => handleSelectOption(opt.id)}
                       className={isSelected
                         ? "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-blue-600 bg-blue-50 p-4 text-left ring-2 ring-blue-100 transition-colors sm:p-5"
-                        : "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-teal-300 hover:bg-neutral-50/80 sm:p-5"}
+                        : "flex w-full cursor-pointer items-start gap-4 rounded-lg border theme-border theme-surface p-4 text-left transition-colors hover:border-teal-300 theme-hover-surface sm:p-5"}
                     >
                       <span
                         className={isSelected
                           ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-600 text-xs font-bold text-white shadow-2xs transition sm:text-sm"
-                          : "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-100 text-xs font-bold text-neutral-700 transition sm:text-sm"}
+                          : "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border theme-border theme-surface-muted text-xs font-bold theme-text-secondary transition sm:text-sm"}
                       >
                         {String.fromCharCode(65 + index)}
                       </span>
 
-                      <div className="flex-1 pt-0.5 text-sm font-normal text-neutral-900 sm:text-base">
+                      <div className="flex-1 pt-0.5 text-sm font-normal theme-text-primary sm:text-base">
                         <MathRenderer content={opt.content} />
                       </div>
 
@@ -420,21 +420,21 @@ export function QuizRoom() {
                 aria-controls="quiz-question-navigator"
                 aria-expanded="false"
                 title="Mở danh sách câu hỏi"
-                className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors hover:bg-neutral-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 lg:min-h-[32rem]"
+                className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors theme-hover-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 lg:min-h-[32rem]"
               >
                 <PanelRightOpen className="h-4 w-4 shrink-0" />
                 <span className="[writing-mode:vertical-rl] text-xs font-semibold tracking-wide">Danh sách câu hỏi</span>
               </button>
             ) : (
-              <Card className="border-neutral-200/90 shadow-xs bg-white">
-                <CardHeader className="pb-3 border-b border-neutral-100">
+              <Card className="theme-border shadow-xs theme-surface">
+                <CardHeader className="pb-3 border-b theme-border">
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="flex min-w-0 items-center gap-1.5 text-sm font-bold sm:text-base">
                       <ListChecks className="h-4 w-4 shrink-0 text-blue-600" />
                       <span className="truncate">Danh sách câu hỏi</span>
                     </CardTitle>
                     <div className="flex shrink-0 items-center gap-1">
-                      <span className="text-xs font-semibold text-neutral-500">
+                      <span className="text-xs font-semibold theme-text-muted">
                         {answeredCount}/{questions.length} đã làm
                       </span>
                       <Button
@@ -455,7 +455,7 @@ export function QuizRoom() {
 
                 <CardContent className="p-4 space-y-4">
                 {/* Status Legend */}
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600 pb-1 border-b border-neutral-100">
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium theme-text-secondary pb-1 border-b theme-border">
                   <div className="flex items-center gap-1.5">
                     <span className="h-3 w-3 rounded-md bg-emerald-500" />
                     <span>Đã làm</span>
@@ -465,7 +465,7 @@ export function QuizRoom() {
                     <span>Gắn cờ</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded-md bg-neutral-200" />
+                    <span className="h-3 w-3 rounded-md theme-surface-inset" />
                     <span>Chưa làm</span>
                   </div>
                 </div>
@@ -480,7 +480,7 @@ export function QuizRoom() {
                       ).includes(q.id);
                       const isCurrent = idx === currentIndex;
 
-                      let bgClass = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
+                      let bgClass = "theme-surface-muted theme-text-secondary theme-hover-surface";
                       if (isAnswered) {
                         bgClass = "bg-emerald-500 text-white font-bold";
                       }
@@ -510,7 +510,7 @@ export function QuizRoom() {
                 </div>
 
                 {/* Submit CTA in Sidebar */}
-                <div className="pt-3 border-t border-neutral-100">
+                <div className="pt-3 border-t theme-border">
                   <Button
                     variant="primary"
                     size="sm"

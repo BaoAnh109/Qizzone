@@ -165,8 +165,8 @@ export function PracticeRoom() {
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
           <ListChecks className="h-7 w-7" />
         </div>
-        <h1 className="text-xl font-bold text-neutral-900">Không thể tiếp tục lượt luyện</h1>
-        <p className="text-sm text-neutral-600">{displayedError}</p>
+        <h1 className="text-xl font-bold theme-text-primary">Không thể tiếp tục lượt luyện</h1>
+        <p className="text-sm theme-text-secondary">{displayedError}</p>
         <Button variant="outline" onClick={() => navigate('/student/practice')} leftIcon={<ArrowLeft className="h-4 w-4" />}>
           Về lịch sử luyện tập
         </Button>
@@ -175,38 +175,38 @@ export function PracticeRoom() {
   }
 
   if (isLoading || isQuizLoading || !session || !quiz) {
-    return <div className="mx-auto max-w-3xl py-16 text-center text-sm text-neutral-500">Đang mở lượt luyện tập…</div>;
+    return <div className="mx-auto max-w-3xl py-16 text-center text-sm theme-text-muted">Đang mở lượt luyện tập…</div>;
   }
 
   if (quiz.status !== 'published' || quiz.settings.practiceEnabled === false || questions.length !== session.questionOrder.length) {
     return (
       <div className="mx-auto max-w-xl space-y-4 py-12 text-center">
-        <h1 className="text-xl font-bold text-neutral-900">Đề luyện tập đã thay đổi</h1>
-        <p className="text-sm text-neutral-600">Giáo viên đã đóng hoặc chỉnh sửa đề. Lượt luyện dở không thể tiếp tục.</p>
+        <h1 className="text-xl font-bold theme-text-primary">Đề luyện tập đã thay đổi</h1>
+        <p className="text-sm theme-text-secondary">Giáo viên đã đóng hoặc chỉnh sửa đề. Lượt luyện dở không thể tiếp tục.</p>
         <Button variant="outline" onClick={() => navigate('/student/practice')}>Về lịch sử luyện tập</Button>
       </div>
     );
   }
 
   if (!currentQuestion) {
-    return <div className="mx-auto max-w-xl py-16 text-center text-sm text-neutral-600">Không tìm thấy câu hỏi trong lượt luyện. Hãy quay lại lịch sử luyện tập.</div>;
+    return <div className="mx-auto max-w-xl py-16 text-center text-sm theme-text-secondary">Không tìm thấy câu hỏi trong lượt luyện. Hãy quay lại lịch sử luyện tập.</div>;
   }
 
   const isFlagged = session.flaggedQuestionIds.includes(currentQuestion.id);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 pb-10">
-      <header className="flex flex-col gap-4 rounded-2xl border border-emerald-100 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <header className="flex flex-col gap-4 rounded-2xl border border-emerald-100 theme-surface p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="min-w-0">
           <div className="mb-1 flex items-center gap-2">
             <Badge variant="success" size="sm">Luyện tập</Badge>
             <Badge variant="secondary" size="sm">{session.subject}</Badge>
           </div>
-          <h1 className="truncate text-lg font-bold text-neutral-900 sm:text-xl">{session.quizTitle}</h1>
-          <p className="mt-1 text-xs text-neutral-500">Đã kiểm tra {checkedCount}/{questions.length} câu · Mỗi lần hiển thị một câu; câu chưa kiểm tra vẫn có thể sửa đáp án.</p>
+          <h1 className="truncate text-lg font-bold theme-text-primary sm:text-xl">{session.quizTitle}</h1>
+          <p className="mt-1 text-xs theme-text-muted">Đã kiểm tra {checkedCount}/{questions.length} câu · Mỗi lần hiển thị một câu; câu chưa kiểm tra vẫn có thể sửa đáp án.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm font-semibold tabular-nums text-neutral-700">
+          <div className="flex items-center justify-center gap-2 rounded-xl theme-surface-muted px-3 py-2 text-sm font-semibold tabular-nums theme-text-secondary">
             <Clock3 className="h-4 w-4 text-emerald-700" />
             <span>Đã luyện {formatElapsed(elapsedSeconds)}</span>
           </div>
@@ -260,7 +260,7 @@ export function PracticeRoom() {
               </>
             )}
             footer={(
-              <div className="flex flex-col gap-3 border-t border-neutral-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 border-t theme-border pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   variant="outline"
                   disabled={currentIndex <= 0}
@@ -303,10 +303,10 @@ export function PracticeRoom() {
                   ? 'border-emerald-500 bg-emerald-50 text-emerald-950'
                   : isWrongSelection
                     ? 'border-rose-400 bg-rose-50 text-rose-950'
-                    : 'border-neutral-200 bg-white text-neutral-500'
+                    : 'theme-border theme-surface theme-text-muted'
                 : isSelected
-                  ? 'border-blue-500 bg-blue-50 text-neutral-950'
-                  : 'border-neutral-200 bg-white text-neutral-800 hover:border-blue-300 hover:bg-blue-50/40';
+                  ? 'border-blue-500 bg-blue-50 theme-text-primary'
+                  : 'theme-border theme-surface theme-text-secondary hover:border-blue-300 hover:bg-blue-50/40';
               return (
                 <button
                   key={option.id}
@@ -316,7 +316,7 @@ export function PracticeRoom() {
                   onClick={() => selectAnswer(session.id, currentQuestion.id, option.id as OptionId, currentQuestion.type === 'multiple_choice')}
                   className={'flex min-h-14 w-full items-start gap-3 rounded-xl border p-3.5 text-left transition sm:p-4 ' + style + ' disabled:cursor-default'}
                 >
-                  <span className={'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ' + (isSelected || isCorrectOption ? 'border-current' : 'border-neutral-300')}>
+                  <span className={'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ' + (isSelected || isCorrectOption ? 'border-current' : 'theme-border-strong')}>
                     {String.fromCharCode(65 + index)}
                   </span>
                   <span className="min-w-0 flex-1 text-sm leading-6"><MathRenderer content={option.content} /></span>
@@ -335,7 +335,7 @@ export function PracticeRoom() {
               onClick={() => setIsNavigatorCollapsed(false)}
               aria-label="Mở bảng điều hướng câu hỏi"
               title="Mở bảng điều hướng câu hỏi"
-              className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors hover:bg-neutral-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:min-h-[32rem]"
+              className="flex min-h-32 w-full flex-col items-center gap-3 rounded-xl border theme-border theme-surface px-2 py-4 theme-text-secondary shadow-xs transition-colors theme-hover-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 lg:min-h-[32rem]"
             >
               <PanelRightOpen className="h-4 w-4 shrink-0" />
               <span className="[writing-mode:vertical-rl] text-xs font-semibold tracking-wide">Điều hướng câu hỏi</span>
@@ -365,7 +365,7 @@ export function PracticeRoom() {
                       const color = answer
                         ? answer.isCorrect ? 'border-emerald-300 bg-emerald-100 text-emerald-900' : 'border-rose-300 bg-rose-100 text-rose-900'
                         : flagged ? 'border-amber-300 bg-amber-50 text-amber-900'
-                          : selected ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-neutral-200 bg-white text-neutral-700';
+                          : selected ? 'border-blue-300 bg-blue-50 text-blue-900' : 'theme-border theme-surface theme-text-secondary';
                       return (
                         <button
                           key={questionId}
@@ -380,13 +380,13 @@ export function PracticeRoom() {
                       );
                     })}
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-500">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] theme-text-muted">
                     <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Đúng</span>
                     <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-rose-500" />Sai</span>
                     <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-blue-500" />Đã chọn</span>
                     <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded-full bg-amber-500" />Đánh dấu</span>
                   </div>
-                  <p className="text-xs text-neutral-500">Câu nhiều đáp án chỉ đúng khi bạn chọn đủ và đúng tất cả đáp án.</p>
+                  <p className="text-xs theme-text-muted">Câu nhiều đáp án chỉ đúng khi bạn chọn đủ và đúng tất cả đáp án.</p>
                 </CardContent>
               </Card>
               <Button variant="outline" className="w-full" onClick={() => void handleFinish()} isLoading={isFinishing}>

@@ -24,9 +24,9 @@ export function ProtectedRoute({
     return (
       <div className="min-h-screen grid place-items-center p-6 text-center">
         <div className="max-w-lg space-y-2">
-          <h1 className="text-xl font-bold text-neutral-900">Chưa thể kết nối dịch vụ</h1>
-          <p className="text-sm text-neutral-600">{configurationError}</p>
-          <p className="text-xs text-neutral-500">Kiểm tra các biến VITE_FIREBASE_* và VITE_SUPABASE_* trong file .env rồi tải lại trang.</p>
+          <h1 className="text-xl font-bold theme-text-primary">Chưa thể kết nối dịch vụ</h1>
+          <p className="text-sm theme-text-secondary">{configurationError}</p>
+          <p className="text-xs theme-text-muted">Kiểm tra các biến VITE_FIREBASE_* và VITE_SUPABASE_* trong file .env rồi tải lại trang.</p>
         </div>
       </div>
     );

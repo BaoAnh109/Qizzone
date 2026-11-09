@@ -115,16 +115,16 @@ export function JoinByLink() {
   if (!cleanCode) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center border-teal-100 shadow-xl bg-white">
+        <Card className="max-w-md w-full text-center border-teal-100 shadow-xl theme-surface">
           <CardContent className="pt-8 pb-6 px-6 space-y-5">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
               <Play className="h-7 w-7 fill-current ml-0.5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-neutral-900">
+              <h2 className="text-xl font-bold theme-text-primary">
                 Tham gia phòng thi
               </h2>
-              <p className="text-sm text-neutral-500 mt-1">
+              <p className="text-sm theme-text-muted mt-1">
                 Nhập mã 6 ký tự do giáo viên cung cấp để vào phòng làm bài.
               </p>
             </div>
@@ -146,7 +146,7 @@ export function JoinByLink() {
                 variant="ghost"
                 onClick={() => navigate(homePath)}
                 leftIcon={<ArrowLeft className="h-4 w-4" />}
-                className="text-xs text-neutral-500 hover:text-neutral-800"
+                className="text-xs theme-text-muted theme-hover-text-primary"
               >
                 Quay về trang chủ
               </Button>
@@ -162,7 +162,7 @@ export function JoinByLink() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-3">
         <Loader2 className="h-8 w-8 text-teal-700 animate-spin" />
-        <p className="text-sm font-semibold text-neutral-700">
+        <p className="text-sm font-semibold theme-text-secondary">
           Đang kết nối tới phòng thi {cleanCode}...
         </p>
       </div>
@@ -174,7 +174,7 @@ export function JoinByLink() {
     const returnUrl = `/join/${cleanCode}`;
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center border-teal-200 shadow-xl bg-white">
+        <Card className="max-w-md w-full text-center border-teal-200 shadow-xl theme-surface">
           <CardContent className="pt-8 pb-6 px-6 space-y-5">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
               <Play className="h-7 w-7 fill-current ml-0.5" />
@@ -183,20 +183,20 @@ export function JoinByLink() {
               <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-teal-100 text-teal-800 mb-2 font-mono">
                 Mã phòng: {cleanCode}
               </span>
-              <h2 className="text-xl font-bold text-neutral-900">
+              <h2 className="text-xl font-bold theme-text-primary">
                 {quiz ? quiz.title : "Tham gia phòng thi"}
               </h2>
               {quiz ? (
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs theme-text-muted mt-1">
                   Môn: {quiz.subject} • {quiz.totalQuestions} câu hỏi • {quiz.settings.durationMinutes === 0 ? "Không giới hạn" : `${quiz.settings.durationMinutes} phút`}
                 </p>
               ) : (
-                <p className="text-xs text-neutral-500 mt-1">
+                <p className="text-xs theme-text-muted mt-1">
                   Đang chuẩn bị vào phòng thi trực tuyến Qizzone
                 </p>
               )}
             </div>
-            <p className="text-sm text-neutral-600 bg-neutral-50 rounded-lg p-3 border border-neutral-100">
+            <p className="text-sm theme-text-secondary theme-surface-muted rounded-lg p-3 border theme-border">
               Vui lòng đăng nhập hoặc tạo tài khoản để làm bài thi này. Bạn sẽ tự động được đưa vào phòng thi ngay sau khi đăng nhập.
             </p>
             <div className="space-y-2 pt-1">
@@ -227,10 +227,10 @@ export function JoinByLink() {
               <AlertCircle className="h-7 w-7" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-neutral-900">
+              <h2 className="text-xl font-bold theme-text-primary">
                 Không tìm thấy phòng thi
               </h2>
-              <p className="text-sm text-neutral-600 mt-1.5">
+              <p className="text-sm theme-text-secondary mt-1.5">
                 Mã phòng thi <span className="font-mono font-bold text-rose-700">{cleanCode}</span> không tồn tại hoặc đã bị xóa. Vui lòng kiểm tra lại liên kết.
               </p>
             </div>
@@ -270,10 +270,10 @@ export function JoinByLink() {
               <Lock className="h-7 w-7" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-neutral-900">
+              <h2 className="text-xl font-bold theme-text-primary">
                 {quiz.status === "draft" ? "Phòng thi đang là Bản nháp" : "Phòng thi đã kết thúc"}
               </h2>
-              <p className="text-sm text-neutral-600 mt-1.5">
+              <p className="text-sm theme-text-secondary mt-1.5">
                 Đề thi <strong>"{quiz.title}"</strong> ({quiz.code}) hiện đang ở trạng thái{" "}
                 <span className="font-bold text-amber-800">
                   {quiz.status === "draft" ? "bản nháp" : "đã đóng"}
@@ -309,7 +309,7 @@ export function JoinByLink() {
                 variant="ghost"
                 onClick={() => navigate(homePath)}
                 leftIcon={<ArrowLeft className="h-4 w-4" />}
-                className="w-full text-neutral-600"
+                className="w-full theme-text-secondary"
               >
                 Quay về trang chủ
               </Button>
@@ -324,7 +324,7 @@ export function JoinByLink() {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-3">
       <Loader2 className="h-8 w-8 text-teal-700 animate-spin" />
-      <p className="text-sm font-semibold text-neutral-700">
+      <p className="text-sm font-semibold theme-text-secondary">
         Đang chuyển hướng vào phòng thi...
       </p>
     </div>

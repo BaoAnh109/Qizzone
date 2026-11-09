@@ -64,7 +64,7 @@ export function Result() {
   if (!result) {
     return (
       <div className="max-w-md mx-auto my-16 text-center space-y-4">
-        <h2 className="text-xl font-bold text-neutral-900">
+        <h2 className="text-xl font-bold theme-text-primary">
           Chưa tìm thấy kết quả bài thi
         </h2>
         <Button variant="primary" onClick={() => navigate("/student")}>
@@ -131,7 +131,7 @@ export function Result() {
           <h1 className="page-heading mt-2">
             Kết quả bài thi: {result.quizTitle}
           </h1>
-          <p className="text-xs text-neutral-500 mt-1">
+          <p className="text-xs theme-text-muted mt-1">
             Thí sinh: <strong>{result.studentName}</strong> · Mã phòng:{" "}
             <span className="font-mono text-teal-700 font-bold">{result.roomCode}</span> ·{" "}
             {new Date(result.submittedAt).toLocaleString("vi-VN")}
@@ -140,10 +140,10 @@ export function Result() {
       </div>
 
       {/* Score Summary Card */}
-      <Card className="text-center overflow-hidden border-neutral-200/90 shadow-sm">
+      <Card className="text-center overflow-hidden theme-border shadow-sm">
         <CardContent className="p-6 sm:p-8 space-y-6">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">
+            <span className="text-xs font-semibold theme-text-muted uppercase tracking-widest">
               Điểm số tổng kết
             </span>
             <div
@@ -152,11 +152,11 @@ export function Result() {
               }`}
             >
               {result.score.toFixed(2)}{" "}
-              <span className="text-xl font-normal text-neutral-400">/ 10</span>
+              <span className="text-xl font-normal theme-text-muted">/ 10</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-neutral-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t theme-border">
             <div className="rounded-xl bg-emerald-50/80 p-3.5 border border-emerald-100">
               <span className="text-xs text-emerald-700 font-medium">Số câu đúng</span>
               <p className="text-2xl font-black text-emerald-900 font-mono mt-0.5">
@@ -171,9 +171,9 @@ export function Result() {
               </p>
             </div>
 
-            <div className="rounded-xl bg-neutral-50 p-3.5 border border-neutral-200">
-              <span className="text-xs text-neutral-600 font-medium">Bỏ qua / Chưa làm</span>
-              <p className="text-2xl font-black text-neutral-800 font-mono mt-0.5">
+            <div className="rounded-xl theme-surface-muted p-3.5 border theme-border">
+              <span className="text-xs theme-text-secondary font-medium">Bỏ qua / Chưa làm</span>
+              <p className="text-2xl font-black theme-text-secondary font-mono mt-0.5">
                 {result.skippedCount}
               </p>
             </div>
@@ -242,8 +242,8 @@ export function Result() {
       {allowReview ? (
         <div className="space-y-6">
           {/* Header & Search */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200/80 pb-4">
-            <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b theme-border pb-4">
+            <h2 className="text-lg font-bold theme-text-primary flex items-center gap-2">
               <ListChecks className="h-5 w-5 text-blue-600" />
               <span>Chi tiết câu hỏi và đáp án</span>
             </h2>
@@ -260,14 +260,14 @@ export function Result() {
           </div>
 
           {/* Task 2.2: Filter Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto rounded-xl bg-neutral-100 p-1.5 text-xs font-semibold">
+          <div className="flex items-center gap-1.5 overflow-x-auto rounded-xl theme-surface-muted p-1.5 text-xs font-semibold">
             <button
               type="button"
               onClick={() => setFilterTab("all")}
               className={`rounded-lg px-3 py-1.5 transition cursor-pointer ${
                 filterTab === "all"
-                  ? "bg-white text-teal-700 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "theme-surface text-teal-700 shadow-xs font-bold"
+                  : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
               Tất cả ({result.totalQuestions})
@@ -277,8 +277,8 @@ export function Result() {
               onClick={() => setFilterTab("correct")}
               className={`rounded-lg px-3 py-1.5 transition cursor-pointer ${
                 filterTab === "correct"
-                  ? "bg-white text-emerald-700 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "theme-surface text-emerald-700 shadow-xs font-bold"
+                  : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
               Đúng ({result.correctCount})
@@ -288,8 +288,8 @@ export function Result() {
               onClick={() => setFilterTab("incorrect")}
               className={`rounded-lg px-3 py-1.5 transition cursor-pointer ${
                 filterTab === "incorrect"
-                  ? "bg-white text-rose-700 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "theme-surface text-rose-700 shadow-xs font-bold"
+                  : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
               Sai ({result.incorrectCount})
@@ -299,8 +299,8 @@ export function Result() {
               onClick={() => setFilterTab("skipped")}
               className={`rounded-lg px-3 py-1.5 transition cursor-pointer ${
                 filterTab === "skipped"
-                  ? "bg-white text-neutral-800 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "theme-surface theme-text-secondary shadow-xs font-bold"
+                  : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
               Chưa làm ({result.skippedCount})
@@ -310,8 +310,8 @@ export function Result() {
               onClick={() => setFilterTab("flagged")}
               className={`flex items-center gap-1 rounded-lg px-3 py-1.5 transition cursor-pointer ${
                 filterTab === "flagged"
-                  ? "bg-white text-amber-800 shadow-xs font-bold"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "theme-surface text-amber-800 shadow-xs font-bold"
+                  : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
               <Flag className="h-3 w-3 fill-amber-500 text-amber-600" />
@@ -343,10 +343,10 @@ export function Result() {
                       id={`question-${item.questionId}`}
                       className={`border shadow-xs overflow-hidden scroll-mt-20 ${
                         item.isCorrect
-                          ? "border-emerald-300 bg-white"
+                          ? "border-emerald-300 theme-surface"
                           : isSkipped
-                          ? "border-neutral-300 bg-white"
-                          : "border-rose-300 bg-white"
+                          ? "theme-border-strong theme-surface"
+                          : "border-rose-300 theme-surface"
                       }`}
                     >
                       {/* Question Header */}
@@ -355,7 +355,7 @@ export function Result() {
                           item.isCorrect
                             ? "bg-emerald-50/60 border-emerald-100"
                             : isSkipped
-                            ? "bg-neutral-50 border-neutral-200"
+                            ? "theme-surface-muted theme-border"
                             : "bg-rose-50/60 border-rose-100"
                         }`}
                       >
@@ -372,7 +372,7 @@ export function Result() {
                           >
                             Câu {item.order || idx + 1}
                           </Badge>
-                          <span className="text-xs font-semibold text-neutral-600">
+                          <span className="text-xs font-semibold theme-text-secondary">
                             {item.isCorrect
                               ? `+${Number(item.pointsEarned.toFixed(2))} điểm`
                               : `0 / ${Number(item.maxPoints.toFixed(2))} điểm`}
@@ -392,7 +392,7 @@ export function Result() {
                               <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Chính xác
                             </span>
                           ) : isSkipped ? (
-                            <span className="flex items-center gap-1 text-neutral-500">
+                            <span className="flex items-center gap-1 theme-text-muted">
                               Chưa chọn đáp án
                             </span>
                           ) : (
@@ -405,13 +405,13 @@ export function Result() {
 
                       <CardContent className="p-5 sm:p-6 space-y-5">
                         {/* Question prompt with KaTeX */}
-                        <div className="text-base sm:text-lg font-medium text-neutral-900 leading-relaxed">
+                        <div className="text-base sm:text-lg font-medium theme-text-primary leading-relaxed">
                           <MathRenderer content={item.content} />
                         </div>
 
                         {/* All Options with accurate color coding */}
                         <div className="space-y-3 pt-1">
-                          <p className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                          <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider">
                             Các lựa chọn:
                           </p>
 
@@ -420,8 +420,8 @@ export function Result() {
                               const isSelected = item.selectedAnswers.includes(opt.id);
                               const isCorrectAnswer = item.correctAnswers.includes(opt.id);
 
-                              let cardStyle = "border-neutral-200 bg-white text-neutral-800";
-                              let badgeStyle = "bg-neutral-100 text-neutral-700 border border-neutral-200";
+                              let cardStyle = "theme-border theme-surface theme-text-secondary";
+                              let badgeStyle = "theme-surface-muted theme-text-secondary border theme-border";
                               let indicator: React.ReactNode = null;
 
                               if (isSelected && isCorrectAnswer) {
@@ -492,7 +492,7 @@ export function Result() {
                   );
                 })
               ) : (
-                <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 p-12 text-center text-neutral-500">
+                <div className="rounded-xl border border-dashed theme-border-strong theme-surface-muted p-12 text-center theme-text-muted">
                   <p className="font-semibold text-sm">Không tìm thấy câu hỏi phù hợp với điều kiện tìm kiếm hoặc bộ lọc.</p>
                   <Button
                     variant="outline"
@@ -511,14 +511,14 @@ export function Result() {
 
             {/* RIGHT: Task 2.5 Matrix Navigator (4 cols, 40 questions scroll max) */}
             <div className="lg:col-span-4 space-y-4 sticky top-6">
-              <Card className="border-neutral-200/90 shadow-xs bg-white">
-                <CardHeader className="pb-3 border-b border-neutral-100">
+              <Card className="theme-border shadow-xs theme-surface">
+                <CardHeader className="pb-3 border-b theme-border">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-bold flex items-center gap-1.5">
                       <ListChecks className="h-4 w-4 text-blue-600" />
                       <span>Danh sách câu hỏi</span>
                     </CardTitle>
-                    <span className="text-xs font-semibold text-neutral-500">
+                    <span className="text-xs font-semibold theme-text-muted">
                       {result.correctCount}/{result.totalQuestions} đúng
                     </span>
                   </div>
@@ -526,7 +526,7 @@ export function Result() {
 
                 <CardContent className="p-4 space-y-4">
                   {/* Status Legend */}
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium text-neutral-600 pb-1 border-b border-neutral-100">
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] font-medium theme-text-secondary pb-1 border-b theme-border">
                     <div className="flex items-center gap-1.5">
                       <span className="h-3 w-3 rounded-md bg-emerald-500" />
                       <span>Đúng</span>
@@ -536,7 +536,7 @@ export function Result() {
                       <span>Sai</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="h-3 w-3 rounded-md bg-neutral-200" />
+                      <span className="h-3 w-3 rounded-md theme-surface-inset" />
                       <span>Chưa làm</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -556,7 +556,7 @@ export function Result() {
                         if (q.isCorrect) {
                           bgClass = "bg-emerald-500 text-white font-bold";
                         } else if (isSkipped) {
-                          bgClass = "bg-neutral-200 text-neutral-700 font-semibold";
+                          bgClass = "theme-surface-inset theme-text-secondary font-semibold";
                         }
 
                         return (
@@ -586,14 +586,14 @@ export function Result() {
           </div>
         </div>
       ) : (
-        <Card className="border-neutral-200/90 bg-neutral-50/50 p-6 text-center space-y-3">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-lg bg-neutral-200 text-neutral-600">
+        <Card className="theme-border theme-surface-muted p-6 text-center space-y-3">
+          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-lg theme-surface-inset theme-text-secondary">
             <Lock className="h-6 w-6" />
           </div>
-          <h3 className="font-bold text-neutral-900 text-base">
+          <h3 className="font-bold theme-text-primary text-base">
             Không hiển thị xem lại bài làm
           </h3>
-          <p className="text-xs text-neutral-500 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs theme-text-muted max-w-md mx-auto leading-relaxed">
             Giáo viên đã cấu hình bảo mật tắt tính năng xem lại đáp án chi tiết cho đề thi này nhằm đảm bảo tính công bằng.
           </p>
         </Card>

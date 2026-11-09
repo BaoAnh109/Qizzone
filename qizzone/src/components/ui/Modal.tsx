@@ -93,12 +93,12 @@ export function Modal({
           <div className="flex shrink-0 items-start justify-between border-b theme-border px-5 py-4 sm:px-6">
             <div className="space-y-1 pr-6">
               {title && (
-                <h3 id="modal-title" className="font-display text-lg font-semibold leading-tight text-neutral-900">
+                <h3 id="modal-title" className="font-display text-lg font-semibold leading-tight theme-text-primary">
                   {title}
                 </h3>
               )}
               {description && (
-                <p id="modal-description" className="text-sm leading-5 text-neutral-500">{description}</p>
+                <p id="modal-description" className="text-sm leading-5 theme-text-muted">{description}</p>
               )}
             </div>
 
@@ -107,7 +107,7 @@ export function Modal({
                 type="button"
                 onClick={onClose}
                 aria-label="Đóng"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg theme-text-muted transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg theme-text-muted transition-colors theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <X className="h-5 w-5" />
               </button>

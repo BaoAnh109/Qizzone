@@ -24,8 +24,8 @@ export function QuestionFrame({
   children,
 }: QuestionFrameProps) {
   return (
-    <Card className="overflow-hidden border-neutral-200/90 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-neutral-200/60 bg-neutral-50/70 p-4 sm:p-5">
+    <Card className="overflow-hidden theme-border shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 border-b theme-border theme-surface-muted p-4 sm:p-5">
         <div className="flex min-w-0 items-center gap-2">
           <Badge variant="primary" size="md">
             Câu {questionNumber} / {questionCount}
@@ -36,7 +36,7 @@ export function QuestionFrame({
       </CardHeader>
 
       <CardContent className="space-y-6 p-5 sm:p-7">
-        <div className="text-base font-medium leading-relaxed text-neutral-900 sm:text-lg">
+        <div className="text-base font-medium leading-relaxed theme-text-primary sm:text-lg">
           {prompt}
         </div>
         <div className="space-y-3 pt-2">{children}</div>

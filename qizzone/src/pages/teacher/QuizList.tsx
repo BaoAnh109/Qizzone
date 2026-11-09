@@ -176,7 +176,7 @@ export function QuizList() {
   return (
     <div className="space-y-7 pb-16">
       {/* Top Header */}
-      <div className="flex flex-col gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 border-b theme-border pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-blue-700">Đề thi</p>
           <h1 className="page-heading mt-1">
@@ -207,7 +207,7 @@ export function QuizList() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border theme-border theme-surface p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <Input
             placeholder="Tìm theo tên đề, môn học, mã phòng..."
@@ -218,7 +218,7 @@ export function QuizList() {
         </div>
 
         {/* Status Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto rounded-md bg-neutral-100 p-1 text-xs font-semibold">
+        <div className="flex items-center gap-1 overflow-x-auto rounded-md theme-surface-muted p-1 text-xs font-semibold">
           {(["all", "published", "draft", "closed"] as const).map((st) => (
             <button
               key={st}
@@ -226,8 +226,8 @@ export function QuizList() {
               onClick={() => setStatusFilter(st)}
               className={`shrink-0 cursor-pointer rounded px-3 py-1.5 transition-colors ${
                 statusFilter === st
-                  ? "bg-white text-blue-700 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "theme-surface text-blue-700 shadow-sm"
+                  : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
               {st === "all"
@@ -254,7 +254,7 @@ export function QuizList() {
                 hoverEffect
                 className="flex flex-col justify-between overflow-hidden"
               >
-                <CardHeader className="pb-3 bg-neutral-50/50">
+                <CardHeader className="pb-3 theme-surface-muted">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <Badge variant="secondary" size="sm">
                       {quiz.subject}
@@ -267,7 +267,7 @@ export function QuizList() {
                         : "Đã đóng"}
                     </Badge>
                   </div>
-                  <CardTitle className="text-base font-bold line-clamp-2 leading-snug text-neutral-900">
+                  <CardTitle className="text-base font-bold line-clamp-2 leading-snug theme-text-primary">
                     {quiz.title}
                   </CardTitle>
                 </CardHeader>
@@ -289,7 +289,7 @@ export function QuizList() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-2 text-xs bg-white text-teal-900 border-teal-200 hover:bg-teal-100"
+                          className="h-8 px-2 text-xs theme-surface text-teal-900 border-teal-200 hover:bg-teal-100"
                           onClick={() => handleCopyCode(quiz.code)}
                           title="Sao chép mã phòng"
                           leftIcon={
@@ -306,7 +306,7 @@ export function QuizList() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-2 text-xs bg-white text-teal-900 border-teal-200 hover:bg-teal-100"
+                          className="h-8 px-2 text-xs theme-surface text-teal-900 border-teal-200 hover:bg-teal-100"
                           onClick={() => handleCopyLink(quiz.code)}
                           title="Sao chép link làm bài trực tiếp"
                           leftIcon={
@@ -323,13 +323,13 @@ export function QuizList() {
                     </div>
 
                     {/* Summary Details */}
-                    <div className="grid grid-cols-2 gap-2 text-xs text-neutral-500 py-1">
+                    <div className="grid grid-cols-2 gap-2 text-xs theme-text-muted py-1">
                       <div>
-                        Số câu: <strong className="text-neutral-900">{quiz.totalQuestions} câu</strong>
+                        Số câu: <strong className="theme-text-primary">{quiz.totalQuestions} câu</strong>
                       </div>
                       <div>
                         Thời gian:{" "}
-                        <strong className="text-neutral-900">
+                        <strong className="theme-text-primary">
                           {quiz.settings.durationMinutes === 0
                             ? "Vô thời hạn"
                             : `${quiz.settings.durationMinutes} phút`}
@@ -352,7 +352,7 @@ export function QuizList() {
                         </span>
                       )}
                       {(!quiz.settings.assignedClasses?.length && !quiz.settings.assignedEmails?.length) && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-600 font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md theme-surface-muted theme-text-secondary font-medium">
                           <KeyRound className="h-3 w-3" />
                           <span>Vào bằng mã / link</span>
                         </span>
@@ -361,7 +361,7 @@ export function QuizList() {
                   </div>
 
                   {/* Card Action Buttons */}
-                  <div className="space-y-2 pt-3 border-t border-neutral-100">
+                  <div className="space-y-2 pt-3 border-t theme-border">
                     {/* Bảng điểm CTA */}
                     <Button
                       variant="primary"
@@ -408,7 +408,7 @@ export function QuizList() {
                       <button
                         type="button"
                         onClick={() => handleTogglePublish(quiz.id)}
-                        className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 hover:text-teal-700 transition cursor-pointer"
+                        className="flex items-center gap-1.5 text-xs font-medium theme-text-secondary hover:text-teal-700 transition cursor-pointer"
                       >
                         {quiz.status === "published" ? (
                           <>
@@ -417,7 +417,7 @@ export function QuizList() {
                           </>
                         ) : (
                           <>
-                            <ToggleLeft className="h-4 w-4 text-neutral-400" />
+                            <ToggleLeft className="h-4 w-4 theme-text-muted" />
                             <span>Xuất bản ngay</span>
                           </>
                         )}
@@ -428,7 +428,7 @@ export function QuizList() {
                           type="button"
                           onClick={() => handleDuplicate(quiz.id)}
                           title="Nhân bản đề thi"
-                          className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition cursor-pointer"
+                          className="rounded-lg p-1.5 theme-text-muted theme-hover-surface theme-hover-text-primary transition cursor-pointer"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </button>
@@ -437,7 +437,7 @@ export function QuizList() {
                           type="button"
                           onClick={() => setDeleteTarget(quiz)}
                           title="Xóa đề thi"
-                          className="rounded-lg p-1.5 text-neutral-400 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
+                          className="rounded-lg p-1.5 theme-text-muted hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -452,10 +452,10 @@ export function QuizList() {
       ) : (
         <Card className="text-center p-12">
           <BookOpen className="h-10 w-10 text-neutral-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-neutral-900">
+          <h3 className="text-base font-bold theme-text-primary">
             Không tìm thấy đề thi nào
           </h3>
-          <p className="text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
+          <p className="text-xs theme-text-muted mt-1 max-w-sm mx-auto">
             Không có đề thi nào khớp với điều kiện tìm kiếm hoặc bộ lọc trạng thái hiện tại.
           </p>
         </Card>
@@ -522,7 +522,7 @@ export function QuizList() {
             {/* Lớp học */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <label className="text-xs font-bold theme-text-secondary flex items-center gap-1.5 uppercase tracking-wide">
                   <GraduationCap className="h-4 w-4 text-teal-700" />
                   <span>Chỉ định theo Lớp ({assignClasses.length})</span>
                 </label>
@@ -571,16 +571,16 @@ export function QuizList() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-neutral-400 italic">
+                <p className="text-xs theme-text-muted italic">
                   Chưa gán cho lớp nào.
                 </p>
               )}
             </div>
 
             {/* Email học sinh */}
-            <div className="space-y-2 pt-3 border-t border-neutral-100">
+            <div className="space-y-2 pt-3 border-t theme-border">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <label className="text-xs font-bold theme-text-secondary flex items-center gap-1.5 uppercase tracking-wide">
                   <Mail className="h-4 w-4 text-teal-700" />
                   <span>Chỉ định theo Email học sinh ({assignEmails.length})</span>
                 </label>
@@ -629,13 +629,13 @@ export function QuizList() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-neutral-400 italic">
+                <p className="text-xs theme-text-muted italic">
                   Chưa gán email học sinh nào.
                 </p>
               )}
             </div>
 
-            <div className="rounded-lg bg-neutral-50 p-3 border border-neutral-200 text-xs text-neutral-600">
+            <div className="rounded-lg theme-surface-muted p-3 border theme-border text-xs theme-text-secondary">
               {assignClasses.length === 0 && assignEmails.length === 0 ? (
                 <span>
                   🔒 <strong>Mặc định:</strong> Đề thi không hiển thị sẵn trên màn hình trang chủ học sinh (học sinh tham gia qua mã phòng hoặc link chia sẻ).

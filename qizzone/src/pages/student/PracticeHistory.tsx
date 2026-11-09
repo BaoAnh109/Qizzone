@@ -34,7 +34,7 @@ export function PracticeHistory() {
           <h1 className="page-heading flex items-center gap-2">
             <History className="h-5 w-5 text-emerald-700" />Lịch sử luyện tập
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">Tiếp tục lượt đang dở hoặc xem kết quả luyện tập đã hoàn thành.</p>
+          <p className="mt-1 text-sm theme-text-muted">Tiếp tục lượt đang dở hoặc xem kết quả luyện tập đã hoàn thành.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate("/student")} leftIcon={<ArrowLeft className="h-4 w-4" />}>
           Về trang học sinh
@@ -54,7 +54,7 @@ export function PracticeHistory() {
       </div>
 
       {isInitialLoading ? (
-        <Card><CardContent className="p-6 text-center text-sm text-neutral-500">Đang tải lịch sử luyện tập…</CardContent></Card>
+        <Card><CardContent className="p-6 text-center text-sm theme-text-muted">Đang tải lịch sử luyện tập…</CardContent></Card>
       ) : showInitialError ? (
         <Card className="border-rose-200">
           <CardContent className="flex flex-col items-center gap-3 p-6 text-center">
@@ -68,14 +68,14 @@ export function PracticeHistory() {
         <>
           {(activeSessions.length > 0 || invalidatedSessions.length > 0) && (
             <section className="space-y-3">
-              <h2 className="text-lg font-bold text-neutral-900">Luyện tập đang dở</h2>
+              <h2 className="text-lg font-bold theme-text-primary">Luyện tập đang dở</h2>
               <Card className="overflow-hidden">
                 <div className="divide-y divide-neutral-100">
                   {activeSessions.map((session) => (
                     <div key={session.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                       <div>
-                        <p className="text-sm font-bold text-neutral-900">{session.quizTitle}</p>
-                        <p className="mt-1 text-xs text-neutral-500">
+                        <p className="text-sm font-bold theme-text-primary">{session.quizTitle}</p>
+                        <p className="mt-1 text-xs theme-text-muted">
                           {session.subject} · Đã kiểm tra {session.answeredCount}/{session.totalQuestions} câu · {new Date(session.startedAt).toLocaleString("vi-VN")}
                         </p>
                       </div>
@@ -86,7 +86,7 @@ export function PracticeHistory() {
                   ))}
                   {invalidatedSessions.map((session) => (
                     <div key={session.id} className="p-4 sm:px-5">
-                      <p className="text-sm font-bold text-neutral-800">{session.quizTitle}</p>
+                      <p className="text-sm font-bold theme-text-secondary">{session.quizTitle}</p>
                       <p className="mt-1 text-xs text-amber-800">{session.message || "Đề đã thay đổi nên lượt luyện này không thể tiếp tục."}</p>
                     </div>
                   ))}
@@ -97,8 +97,8 @@ export function PracticeHistory() {
 
           <section className="space-y-3">
             <div>
-              <h2 className="text-lg font-bold text-neutral-900">Đã hoàn thành ({completedSessions.length})</h2>
-              <p className="mt-1 text-xs text-neutral-500">Kết quả luyện tập được lưu riêng, không ảnh hưởng đến kết quả thi.</p>
+              <h2 className="text-lg font-bold theme-text-primary">Đã hoàn thành ({completedSessions.length})</h2>
+              <p className="mt-1 text-xs theme-text-muted">Kết quả luyện tập được lưu riêng, không ảnh hưởng đến kết quả thi.</p>
             </div>
 
             {completedSessions.length > 0 ? (
@@ -109,16 +109,16 @@ export function PracticeHistory() {
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="secondary" size="sm">{session.subject}</Badge>
-                          <h3 className="text-sm font-bold text-neutral-900">{session.quizTitle}</h3>
+                          <h3 className="text-sm font-bold theme-text-primary">{session.quizTitle}</h3>
                         </div>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs theme-text-muted">
                           Luyện lúc: {new Date(session.finishedAt || session.startedAt).toLocaleString("vi-VN")}
                         </p>
                       </div>
                       <div className="flex items-center justify-between gap-4 sm:justify-end">
                         <div className="text-right">
                           <p className="font-mono text-sm font-extrabold text-emerald-800">{session.correctCount}/{session.totalQuestions} câu</p>
-                          <p className="text-[11px] text-neutral-500">{session.percentage}% đúng · {session.durationSeconds}s</p>
+                          <p className="text-[11px] theme-text-muted">{session.percentage}% đúng · {session.durationSeconds}s</p>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => navigate(`/student/practice/${session.quizId}`)}>
                           Luyện lại
@@ -130,7 +130,7 @@ export function PracticeHistory() {
               </Card>
             ) : (
               <Card className="border-dashed">
-                <CardContent className="p-6 text-center text-sm text-neutral-500">
+                <CardContent className="p-6 text-center text-sm theme-text-muted">
                   {error ? `Không tải được lịch sử luyện tập: ${error}` : "Bạn chưa hoàn thành lượt luyện tập nào."}
                 </CardContent>
               </Card>

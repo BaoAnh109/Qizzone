@@ -41,8 +41,8 @@ export function ResizableSplitter() {
         isDragging ? "bg-teal-600" : "bg-transparent hover:bg-teal-500/20"
       }`}
     >
-      <div className="flex h-12 w-3 items-center justify-center rounded-full bg-white border border-neutral-300 shadow-xs group-hover:border-teal-400 group-hover:scale-110 transition">
-        <GripVertical className="h-3.5 w-3.5 text-neutral-400 group-hover:text-teal-700" />
+      <div className="flex h-12 w-3 items-center justify-center rounded-full theme-surface border theme-border-strong shadow-xs group-hover:border-teal-400 group-hover:scale-110 transition">
+        <GripVertical className="h-3.5 w-3.5 theme-text-muted group-hover:text-teal-700" />
       </div>
     </div>
   );

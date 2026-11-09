@@ -128,7 +128,7 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
             aria-selected={activeTab === 'profile'}
             aria-controls="account-profile-panel"
             onClick={() => setActiveTab('profile')}
-            className={`flex h-11 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-3 sm:text-sm ${activeTab === 'profile' ? 'theme-surface-raised theme-text-primary shadow-sm' : 'theme-text-muted hover:text-neutral-900'}`}
+            className={`flex h-11 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-3 sm:text-sm ${activeTab === 'profile' ? 'theme-surface-raised theme-text-primary shadow-sm' : 'theme-text-muted theme-hover-text-primary'}`}
           >
             <UserRound className="h-4 w-4" aria-hidden="true" />
             Thông tin cá nhân
@@ -140,7 +140,7 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
             aria-selected={activeTab === 'password'}
             aria-controls="account-password-panel"
             onClick={() => setActiveTab('password')}
-            className={`flex h-11 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-3 sm:text-sm ${activeTab === 'password' ? 'theme-surface-raised theme-text-primary shadow-sm' : 'theme-text-muted hover:text-neutral-900'}`}
+            className={`flex h-11 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-2 sm:px-3 sm:text-sm ${activeTab === 'password' ? 'theme-surface-raised theme-text-primary shadow-sm' : 'theme-text-muted theme-hover-text-primary'}`}
           >
             <KeyRound className="h-4 w-4" aria-hidden="true" />
             Mật khẩu
@@ -170,7 +170,7 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
                     disabled={isSavingProfile}
                     onChange={handleAvatarChange}
                   />
-                  <label htmlFor="account-avatar-file" className={`mt-2 inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border theme-border theme-surface-raised px-3 text-sm font-medium theme-text-secondary transition hover:bg-neutral-100 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 ${isSavingProfile ? 'pointer-events-none opacity-50' : ''}`}>
+                  <label htmlFor="account-avatar-file" className={`mt-2 inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg border theme-border theme-surface-raised px-3 text-sm font-medium theme-text-secondary transition theme-hover-surface peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 ${isSavingProfile ? 'pointer-events-none opacity-50' : ''}`}>
                     <Camera className="h-4 w-4" aria-hidden="true" />
                     Chọn ảnh
                   </label>

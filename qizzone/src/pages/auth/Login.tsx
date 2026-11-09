@@ -121,10 +121,10 @@ export function Login() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
+        <h1 className="text-2xl font-semibold tracking-tight theme-text-primary">
           Đăng nhập
         </h1>
-        <p className="mt-1.5 text-sm text-neutral-500">
+        <p className="mt-1.5 text-sm theme-text-muted">
           Sử dụng tài khoản Qizzone của bạn để tiếp tục.
         </p>
       </div>
@@ -160,7 +160,7 @@ export function Login() {
               aria-label={isPasswordVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               aria-pressed={isPasswordVisible}
               onClick={() => setIsPasswordVisible(visible => !visible)}
-              className="flex h-7 w-7 items-center justify-center rounded text-neutral-500 transition hover:text-neutral-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex h-7 w-7 items-center justify-center rounded theme-text-muted transition theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               {isPasswordVisible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
             </button>
@@ -187,10 +187,10 @@ export function Login() {
         </Button>
       </form>
 
-      <div className="relative flex items-center gap-3 text-xs text-neutral-400">
-        <span className="h-px flex-1 bg-neutral-200" />
+      <div className="relative flex items-center gap-3 text-xs theme-text-muted">
+        <span className="h-px flex-1 theme-surface-inset" />
         <span>hoặc</span>
-        <span className="h-px flex-1 bg-neutral-200" />
+        <span className="h-px flex-1 theme-surface-inset" />
       </div>
 
       <Button
@@ -204,7 +204,7 @@ export function Login() {
         {isGoogleLoading ? "Đang mở Google..." : "Tiếp tục với Google"}
       </Button>
 
-      <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
+      <div className="border-t theme-border pt-4 text-center text-sm theme-text-muted">
         Chưa có tài khoản?{" "}
         <Link
           to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"}

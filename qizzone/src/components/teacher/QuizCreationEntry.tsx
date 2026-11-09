@@ -18,10 +18,10 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
   return (
     <div className="space-y-6 pb-12">
       <div className="text-center space-y-1.5 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-extrabold theme-text-primary tracking-tight">
           Khởi tạo đề thi mới
         </h1>
-        <p className="text-xs sm:text-sm text-neutral-500 max-w-xl mx-auto">
+        <p className="text-xs sm:text-sm theme-text-muted max-w-xl mx-auto">
           Chọn phương thức tạo đề phù hợp: Tải tệp đề có sẵn / Dán văn bản để hệ thống tự động bóc tách hoặc tự soạn thảo thủ công từng câu hỏi.
         </p>
       </div>
@@ -30,7 +30,7 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* LEFT COLUMN: 50% Thả file hoặc Dán text */}
         <div className="flex flex-col space-y-2.5 h-full">
-          <div className="flex items-center gap-2 text-sm font-bold text-neutral-900 pb-1 border-b border-neutral-200">
+          <div className="flex items-center gap-2 text-sm font-bold theme-text-primary pb-1 border-b theme-border">
             <UploadCloud className="h-4 w-4 text-blue-600" />
             <span>Phương thức 1: Nhập đề tự động</span>
           </div>
@@ -42,22 +42,22 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
 
         {/* RIGHT COLUMN: 50% Tạo đề thủ công */}
         <div className="flex flex-col space-y-2.5 h-full">
-          <div className="flex items-center gap-2 text-sm font-bold text-neutral-900 pb-1 border-b border-neutral-200">
+          <div className="flex items-center gap-2 text-sm font-bold theme-text-primary pb-1 border-b theme-border">
             <PenTool className="h-4 w-4 text-teal-700" />
             <span>Phương thức 2: Soạn thảo câu hỏi trực tiếp</span>
           </div>
 
-          <Card className="flex-1 flex flex-col justify-between border-neutral-200 bg-white hover:border-teal-300 transition shadow-xs">
+          <Card className="flex-1 flex flex-col justify-between theme-border theme-surface hover:border-teal-300 transition shadow-xs">
             <CardHeader className="pb-3 pt-4 px-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700 border border-teal-100 shadow-2xs shrink-0">
                   <PenTool className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-base sm:text-lg font-bold text-neutral-900">
+                  <CardTitle className="text-base sm:text-lg font-bold theme-text-primary">
                     Tạo đề thi thủ công
                   </CardTitle>
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="text-xs theme-text-muted mt-0.5">
                     Tự soạn từng câu hỏi với công thức KaTeX & cấu hình phòng thi
                   </p>
                 </div>
@@ -65,31 +65,31 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
             </CardHeader>
 
             <CardContent className="space-y-3 flex-1 flex flex-col justify-between px-5 pb-5 pt-0">
-              <div className="space-y-2.5 text-xs text-neutral-600">
-                <div className="flex items-start gap-2.5 rounded-xl bg-neutral-50 p-2.5 border border-neutral-100">
+              <div className="space-y-2.5 text-xs theme-text-secondary">
+                <div className="flex items-start gap-2.5 rounded-xl theme-surface-muted p-2.5 border theme-border">
                   <Calculator className="h-4 w-4 text-teal-700 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-neutral-900 font-semibold block mb-0.5">
+                    <strong className="theme-text-primary font-semibold block mb-0.5">
                       Hỗ trợ công thức Toán LaTeX / KaTeX
                     </strong>
                     Soạn thảo công thức dạng $x^2 + y^2 = r^2$, phân số, tích phân với xem trước tức thì.
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 rounded-xl bg-neutral-50 p-2.5 border border-neutral-100">
+                <div className="flex items-start gap-2.5 rounded-xl theme-surface-muted p-2.5 border theme-border">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-neutral-900 font-semibold block mb-0.5">
+                    <strong className="theme-text-primary font-semibold block mb-0.5">
                       Đầy đủ 4 phương án trắc nghiệm A, B, C, D
                     </strong>
                     Tùy chọn đáp án đúng, thêm lời giải chi tiết giải thích cho từng câu hỏi khi học sinh xem lại.
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5 rounded-xl bg-neutral-50 p-2.5 border border-neutral-100">
+                <div className="flex items-start gap-2.5 rounded-xl theme-surface-muted p-2.5 border theme-border">
                   <SlidersHorizontal className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-neutral-900 font-semibold block mb-0.5">
+                    <strong className="theme-text-primary font-semibold block mb-0.5">
                       Cấu hình phòng thi linh hoạt
                     </strong>
                     Thiết lập thời gian làm bài, xáo trộn câu hỏi, xáo trộn đáp án, số lần làm tối đa.
@@ -97,7 +97,7 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-neutral-100">
+              <div className="pt-2 border-t theme-border">
                 <Button
                   variant="primary"
                   size="md"

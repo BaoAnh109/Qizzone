@@ -13,7 +13,7 @@ export function Unauthorized() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center theme-surface-muted px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
           <ShieldAlert className="h-10 w-10" />
@@ -23,10 +23,10 @@ export function Unauthorized() {
           <span className="text-sm font-semibold tracking-wider text-rose-600 uppercase">
             Mã lỗi: 403 Forbidden
           </span>
-          <h1 className="text-3xl font-extrabold text-neutral-900 tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold theme-text-primary tracking-tight sm:text-4xl">
             Không có quyền truy cập
           </h1>
-          <p className="text-sm text-neutral-500 max-w-sm mx-auto">
+          <p className="text-sm theme-text-muted max-w-sm mx-auto">
             {user ? (
               <>
                 Bạn đang đăng nhập với vai trò{" "}

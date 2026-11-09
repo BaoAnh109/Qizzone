@@ -78,10 +78,10 @@ export function Register() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-950">
+        <h1 className="text-2xl font-semibold tracking-tight theme-text-primary">
           Tạo tài khoản
         </h1>
-        <p className="mt-1.5 text-sm text-neutral-500">
+        <p className="mt-1.5 text-sm theme-text-muted">
           Tài khoản mới sẽ bắt đầu ở vai trò học sinh. Bạn có thể gửi yêu cầu cấp tài khoản giáo viên sau khi đăng nhập.
         </p>
       </div>
@@ -147,7 +147,7 @@ export function Register() {
         </Button>
       </form>
 
-      <div className="border-t border-neutral-100 pt-4 text-center text-sm text-neutral-500">
+      <div className="border-t theme-border pt-4 text-center text-sm theme-text-muted">
         Đã có tài khoản?{" "}
         <Link
           to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}

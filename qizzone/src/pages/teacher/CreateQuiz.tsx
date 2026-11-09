@@ -414,7 +414,7 @@ export function CreateQuiz() {
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-16">
       {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-neutral-200/80 pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b theme-border pb-5">
         <div>
           <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-blue-700">
             <ClipboardList className="h-3.5 w-3.5" />
@@ -432,7 +432,7 @@ export function CreateQuiz() {
               size="sm"
               onClick={() => setShowEntry(true)}
               leftIcon={<ArrowLeft className="h-4 w-4" />}
-              className="text-neutral-600 hover:text-neutral-900"
+              className="theme-text-secondary theme-hover-text-primary"
             >
               Đổi cách tạo đề
             </Button>
@@ -458,14 +458,14 @@ export function CreateQuiz() {
       </div>
 
       {/* 3-Step Wizard Navigation Tabs */}
-      <div className="grid grid-cols-3 gap-1 rounded-lg border border-neutral-200 bg-neutral-100 p-1 text-xs font-semibold sm:text-sm">
+      <div className="grid grid-cols-3 gap-1 rounded-lg border theme-border theme-surface-muted p-1 text-xs font-semibold sm:text-sm">
         <button
           type="button"
           onClick={() => setCurrentStep(1)}
           className={`flex items-center justify-center gap-2 py-3 px-2 rounded-xl transition cursor-pointer ${
             currentStep === 1
-              ? "bg-white text-teal-700 shadow-xs font-bold"
-              : "text-neutral-600 hover:text-neutral-900"
+              ? "theme-surface text-teal-700 shadow-xs font-bold"
+              : "theme-text-secondary theme-hover-text-primary"
           }`}
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-[11px] text-teal-700 font-mono font-bold">
@@ -479,8 +479,8 @@ export function CreateQuiz() {
           onClick={() => setCurrentStep(2)}
           className={`flex items-center justify-center gap-2 py-3 px-2 rounded-xl transition cursor-pointer ${
             currentStep === 2
-              ? "bg-white text-teal-700 shadow-xs font-bold"
-              : "text-neutral-600 hover:text-neutral-900"
+              ? "theme-surface text-teal-700 shadow-xs font-bold"
+              : "theme-text-secondary theme-hover-text-primary"
           }`}
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-[11px] text-teal-700 font-mono font-bold">
@@ -494,8 +494,8 @@ export function CreateQuiz() {
           onClick={() => setCurrentStep(3)}
           className={`flex items-center justify-center gap-2 py-3 px-2 rounded-xl transition cursor-pointer ${
             currentStep === 3
-              ? "bg-white text-teal-700 shadow-xs font-bold"
-              : "text-neutral-600 hover:text-neutral-900"
+              ? "theme-surface text-teal-700 shadow-xs font-bold"
+              : "theme-text-secondary theme-hover-text-primary"
           }`}
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-100 text-[11px] text-teal-700 font-mono font-bold">
@@ -523,7 +523,7 @@ export function CreateQuiz() {
 
           {/* Question List Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold theme-text-primary flex items-center gap-2">
               <FileQuestion className="h-5 w-5 text-teal-700" />
               <span>Danh sách câu hỏi ({questions.length} câu)</span>
             </h2>
@@ -543,14 +543,14 @@ export function CreateQuiz() {
             {questions.map((question, qIdx) => (
               <Card
                 key={question.id || qIdx}
-                className="border-neutral-200/90 shadow-xs"
+                className="theme-border shadow-xs"
               >
-                <CardHeader className="flex flex-row items-center justify-between pb-3 bg-neutral-50/50">
+                <CardHeader className="flex flex-row items-center justify-between pb-3 theme-surface-muted">
                   <div className="flex items-center gap-2">
                     <Badge variant="primary" size="md">
                       Câu {qIdx + 1}
                     </Badge>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs theme-text-muted">
                       (Điểm: {Number((question.points || 1).toFixed(2))} đ)
                     </span>
                   </div>
@@ -609,7 +609,7 @@ export function CreateQuiz() {
 
                   {/* 4 Options */}
                   <div className="space-y-3 pt-2">
-                    <p className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                    <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider">
                       Các lựa chọn đáp án (Click nút đáp án để chọn đáp án đúng):
                     </p>
 
@@ -624,7 +624,7 @@ export function CreateQuiz() {
                             className={`flex flex-col gap-2 rounded-xl border p-3 transition ${
                               isCorrect
                                 ? "border-emerald-500 bg-emerald-50/40"
-                                : "border-neutral-200 bg-white"
+                                : "theme-border theme-surface"
                             }`}
                           >
                             <div className="flex items-center justify-between">
@@ -636,7 +636,7 @@ export function CreateQuiz() {
                                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                                   isCorrect
                                     ? "bg-emerald-600 text-white shadow-2xs"
-                                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                                    : "theme-surface-muted theme-text-secondary theme-hover-surface"
                                 }`}
                               >
                                 {isCorrect && (
@@ -701,7 +701,7 @@ export function CreateQuiz() {
       {currentStep === 2 && (
         <div className="space-y-6">
           <Card>
-            <CardHeader className="bg-neutral-50">
+            <CardHeader className="theme-surface-muted">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <Badge
@@ -716,7 +716,7 @@ export function CreateQuiz() {
                   </CardTitle>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-3 rounded-md border border-neutral-200 bg-white px-4 py-2.5 text-xs font-medium text-neutral-600">
+                <div className="flex shrink-0 items-center gap-3 rounded-md border theme-border theme-surface px-4 py-2.5 text-xs font-medium theme-text-secondary">
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-4 w-4 text-teal-300" />
                     <span>
@@ -739,10 +739,10 @@ export function CreateQuiz() {
                 {questions.map((q, idx) => (
                   <div
                     key={idx}
-                    className="rounded-xl border border-neutral-200 bg-white p-5 space-y-4 shadow-2xs"
+                    className="rounded-xl border theme-border theme-surface p-5 space-y-4 shadow-2xs"
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div className="text-sm font-semibold text-neutral-900 flex items-start gap-2">
+                      <div className="text-sm font-semibold theme-text-primary flex items-start gap-2">
                         <span className="font-bold text-teal-700 shrink-0">
                           Câu {idx + 1}:
                         </span>
@@ -761,14 +761,14 @@ export function CreateQuiz() {
                             className={`flex items-center gap-3 rounded-lg border p-3 text-sm ${
                               isCorrect
                                 ? "border-emerald-500 bg-emerald-50/70 text-emerald-950 font-medium"
-                                : "border-neutral-200 bg-neutral-50/50 text-neutral-800"
+                                : "theme-border theme-surface-muted theme-text-secondary"
                             }`}
                           >
                             <span
                               className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-bold text-xs ${
                                 isCorrect
                                   ? "bg-emerald-600 text-white"
-                                  : "bg-neutral-200 text-neutral-700"
+                                  : "theme-surface-inset theme-text-secondary"
                               }`}
                             >
                               {opt.id}
@@ -796,7 +796,7 @@ export function CreateQuiz() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-6 border-t border-neutral-200">
+              <div className="flex items-center justify-between pt-6 border-t theme-border">
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep(1)}
@@ -846,19 +846,19 @@ export function CreateQuiz() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                 {/* Cột trái: Combo box Chọn môn học */}
                 <div className="space-y-1.5 text-left">
-                  <label className="text-sm font-semibold text-neutral-800 select-none">
+                  <label className="text-sm font-semibold theme-text-secondary select-none">
                     Môn học / Khối lớp *
                   </label>
 
                   <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 theme-text-muted">
                       <BookOpen className="h-4 w-4" />
                     </div>
 
                     <select
                       value={subjectPreset}
                       onChange={(e) => setSubjectPreset(e.target.value)}
-                      className="h-10 w-full appearance-none rounded-xl border border-neutral-300 bg-white px-3.5 pl-10 pr-9 text-sm text-neutral-900 shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:border-teal-600 cursor-pointer"
+                      className="h-10 w-full appearance-none rounded-xl border theme-border-strong theme-surface px-3.5 pl-10 pr-9 text-sm theme-text-primary shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:border-teal-600 cursor-pointer"
                     >
                       {POPULAR_SUBJECTS.map((subj) => (
                         <option key={subj} value={subj}>
@@ -868,7 +868,7 @@ export function CreateQuiz() {
                       <option value="custom">-- Môn khác (Tự nhập tay) --</option>
                     </select>
 
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 theme-text-muted">
                       <ChevronDown className="h-4 w-4" />
                     </div>
                   </div>
@@ -906,7 +906,7 @@ export function CreateQuiz() {
 
                   {/* Thông tin hiển thị & Badge màu đặt phía dưới Box nhập */}
                   <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
-                    <p className="text-[11px] font-medium text-neutral-500">
+                    <p className="text-[11px] font-medium theme-text-muted">
                       * Nhập <span className="font-mono font-bold text-teal-700">"0"</span>: Không giới hạn làm bài
                     </p>
 
@@ -935,13 +935,13 @@ export function CreateQuiz() {
               </div>
 
               {/* Quy chế phòng thi & Bảo mật */}
-              <div className="space-y-4 pt-3 border-t border-neutral-100">
-                <p className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+              <div className="space-y-4 pt-3 border-t theme-border">
+                <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider">
                   Quy chế phòng thi & Bảo mật:
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <label className="flex items-start gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer hover:bg-neutral-50 transition">
+                  <label className="flex items-start gap-3 rounded-xl border theme-border p-4 cursor-pointer theme-hover-surface transition">
                     <input
                       type="checkbox"
                       checked={settings.shuffleQuestions}
@@ -954,16 +954,16 @@ export function CreateQuiz() {
                       className="mt-0.5 h-4 w-4 rounded-sm text-teal-700 focus:ring-teal-500 cursor-pointer"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-neutral-900">
+                      <p className="text-sm font-semibold theme-text-primary">
                         Đảo thứ tự câu hỏi
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs theme-text-muted">
                         Mỗi học sinh sẽ nhận được thứ tự câu hỏi ngẫu nhiên.
                       </p>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer hover:bg-neutral-50 transition">
+                  <label className="flex items-start gap-3 rounded-xl border theme-border p-4 cursor-pointer theme-hover-surface transition">
                     <input
                       type="checkbox"
                       checked={settings.shuffleOptions}
@@ -976,16 +976,16 @@ export function CreateQuiz() {
                       className="mt-0.5 h-4 w-4 rounded-sm text-teal-700 focus:ring-teal-500 cursor-pointer"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-neutral-900">
+                      <p className="text-sm font-semibold theme-text-primary">
                         Đảo thứ tự đáp án (A, B, C, D)
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs theme-text-muted">
                         Xáo trộn các lựa chọn để chống nhìn bài.
                       </p>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-3 rounded-xl border border-neutral-200 p-4 cursor-pointer hover:bg-neutral-50 transition">
+                  <label className="flex items-start gap-3 rounded-xl border theme-border p-4 cursor-pointer theme-hover-surface transition">
                     <input
                       type="checkbox"
                       checked={settings.allowReview}
@@ -998,10 +998,10 @@ export function CreateQuiz() {
                       className="mt-0.5 h-4 w-4 rounded-sm text-teal-700 focus:ring-teal-500 cursor-pointer"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-neutral-900">
+                      <p className="text-sm font-semibold theme-text-primary">
                         Cho xem lại lời giải chi tiết
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs theme-text-muted">
                         Hiển thị đáp án đúng và lời giải sau khi nộp bài.
                       </p>
                     </div>
@@ -1020,17 +1020,17 @@ export function CreateQuiz() {
                       className="mt-0.5 h-4 w-4 rounded-sm text-emerald-700 focus:ring-emerald-600 cursor-pointer"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-neutral-900">
+                      <p className="text-sm font-semibold theme-text-primary">
                         Cho phép học sinh luyện tập đề này
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs theme-text-muted">
                         Mặc định bật, kể cả với đề đã tạo trước đây. Cài đặt và lượt thi vẫn giữ nguyên khi đổi mục này.
                       </p>
                     </div>
                   </label>
 
-                  <div className="rounded-xl border border-neutral-200 p-4 space-y-2">
-                    <p className="text-sm font-semibold text-neutral-900">
+                  <div className="rounded-xl border theme-border p-4 space-y-2">
+                    <p className="text-sm font-semibold theme-text-primary">
                       Điểm đạt yêu cầu (%):
                     </p>
                     <div className="flex items-center gap-3">
@@ -1055,13 +1055,13 @@ export function CreateQuiz() {
                   </div>
 
                   {/* Số lần làm bài tối đa */}
-                  <div className="rounded-xl border border-neutral-200 p-4 space-y-2.5 sm:col-span-2">
+                  <div className="rounded-xl border theme-border p-4 space-y-2.5 sm:col-span-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-neutral-900">
+                        <p className="text-sm font-semibold theme-text-primary">
                           Số lần làm bài tối đa:
                         </p>
-                        <p className="text-xs text-neutral-500 mt-0.5">
+                        <p className="text-xs theme-text-muted mt-0.5">
                           Nhập <span className="font-mono font-bold text-teal-700">"0"</span> để cho phép học sinh làm bài vô hạn số lần (không giới hạn).
                         </p>
                       </div>
@@ -1098,17 +1098,17 @@ export function CreateQuiz() {
               </div>
 
               {/* Phân phối đề thi & Giới hạn đối tượng */}
-              <div className="rounded-xl border border-teal-100 bg-white p-6 shadow-xs space-y-6">
-                <div className="border-b border-neutral-100 pb-3">
+              <div className="rounded-xl border border-teal-100 theme-surface p-6 shadow-xs space-y-6">
+                <div className="border-b theme-border pb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
                       <Users className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-neutral-900">
+                      <h3 className="text-base font-bold theme-text-primary">
                         Phân phối đề thi (Giao cho Lớp hoặc Email học sinh)
                       </h3>
-                      <p className="text-xs text-neutral-500 mt-0.5">
+                      <p className="text-xs theme-text-muted mt-0.5">
                         Học sinh thuộc lớp hoặc có email được giao sẽ thấy ngay đề thi trên trang chủ mà không cần nhập mã.
                       </p>
                     </div>
@@ -1118,11 +1118,11 @@ export function CreateQuiz() {
                 {/* 1. Giao theo Lớp */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-neutral-800 flex items-center gap-1.5">
+                    <label className="text-sm font-semibold theme-text-secondary flex items-center gap-1.5">
                       <GraduationCap className="h-4 w-4 text-teal-700" />
                       <span>Chỉ định theo Lớp học</span>
                     </label>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs theme-text-muted">
                       {(settings.assignedClasses || []).length} lớp đã chọn
                     </span>
                   </div>
@@ -1170,20 +1170,20 @@ export function CreateQuiz() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-neutral-400 italic">
+                    <p className="text-xs theme-text-muted italic">
                       Chưa gán cho lớp cụ thể nào.
                     </p>
                   )}
                 </div>
 
                 {/* 2. Giao theo Email học sinh */}
-                <div className="space-y-3 pt-4 border-t border-neutral-100">
+                <div className="space-y-3 pt-4 border-t theme-border">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-neutral-800 flex items-center gap-1.5">
+                    <label className="text-sm font-semibold theme-text-secondary flex items-center gap-1.5">
                       <Mail className="h-4 w-4 text-teal-700" />
                       <span>Chỉ định theo Email học sinh</span>
                     </label>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs theme-text-muted">
                       {(settings.assignedEmails || []).length} email đã thêm
                     </span>
                   </div>
@@ -1231,19 +1231,19 @@ export function CreateQuiz() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-neutral-400 italic">
+                    <p className="text-xs theme-text-muted italic">
                       Chưa gán email đích danh nào.
                     </p>
                   )}
                 </div>
 
                 {/* Scope Note */}
-                <div className="rounded-lg bg-neutral-50 p-3.5 border border-neutral-200/70 text-xs text-neutral-600 flex items-start gap-2.5">
+                <div className="rounded-lg theme-surface-muted p-3.5 border theme-border text-xs theme-text-secondary flex items-start gap-2.5">
                   <div className="mt-0.5 text-base">ℹ️</div>
                   <div>
                     {(!settings.assignedClasses?.length && !settings.assignedEmails?.length) ? (
                       <p>
-                        <strong className="text-neutral-800">Mặc định:</strong> Đề thi sẽ <strong>không hiển thị sẵn trên màn hình trang chủ học sinh</strong>. Học sinh vẫn có thể tham gia bình thường bằng cách <strong>nhập mã phòng</strong> hoặc <strong>nhấn vào link chia sẻ</strong>.
+                        <strong className="theme-text-secondary">Mặc định:</strong> Đề thi sẽ <strong>không hiển thị sẵn trên màn hình trang chủ học sinh</strong>. Học sinh vẫn có thể tham gia bình thường bằng cách <strong>nhập mã phòng</strong> hoặc <strong>nhấn vào link chia sẻ</strong>.
                       </p>
                     ) : (
                       <p>
@@ -1255,7 +1255,7 @@ export function CreateQuiz() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-neutral-200">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t theme-border">
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep(2)}

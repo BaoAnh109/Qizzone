@@ -29,8 +29,8 @@ export function ExamLayout({ mode = "exam" }: ExamLayoutProps) {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
               <GraduationCap className="h-5 w-5" />
             </div>
-            <span className="font-display text-base font-semibold text-neutral-900">
-              Qizzone <span className="text-xs font-normal text-neutral-500">· {isPractice ? "Phòng luyện tập" : "Phòng thi trực tuyến"}</span>
+            <span className="font-display text-base font-semibold theme-text-primary">
+              Qizzone <span className="text-xs font-normal theme-text-muted">· {isPractice ? "Phòng luyện tập" : "Phòng thi trực tuyến"}</span>
             </span>
           </div>
 

@@ -80,7 +80,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
       default:
         return {
           label: "Đã sửa thủ công",
-          color: "bg-neutral-100 text-neutral-800 border-neutral-200",
+          color: "theme-surface-muted theme-text-secondary theme-border",
         };
     }
   };
@@ -100,12 +100,12 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
       onClick={() => setSelectedQuestionId(question.id)}
       className={`cursor-pointer rounded-lg border transition-colors ${
         isSelected
-          ? "border-teal-600 ring-2 ring-teal-500/20 bg-white shadow-md"
-          : "border-neutral-200/90 bg-white hover:border-neutral-300 shadow-2xs"
+          ? "border-teal-600 ring-2 ring-teal-500/20 theme-surface shadow-md"
+          : "theme-border theme-surface theme-hover-border-strong shadow-2xs"
       }`}
     >
       {/* Header */}
-      <div className="p-4 border-b border-neutral-100 flex flex-wrap items-center justify-between gap-2 bg-neutral-50/50 rounded-t-2xl">
+      <div className="p-4 border-b theme-border flex flex-wrap items-center justify-between gap-2 theme-surface-muted rounded-t-2xl">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" size="md" className="font-bold">
             Câu {question.order}
@@ -128,7 +128,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
 
           {/* Confidence Badge */}
           {question.confidenceScore > 0 && (
-            <span className="text-[11px] font-mono font-semibold text-neutral-500">
+            <span className="text-[11px] font-mono font-semibold theme-text-muted">
               Tin cậy: {Math.round(question.confidenceScore * 100)}%
             </span>
           )}
@@ -136,7 +136,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
 
         <div className="flex items-center gap-2">
           {/* Points input */}
-          <div className="flex items-center gap-1 text-xs font-semibold text-neutral-600 bg-white px-2 py-1 rounded-lg border border-neutral-200">
+          <div className="flex items-center gap-1 text-xs font-semibold theme-text-secondary theme-surface px-2 py-1 rounded-lg border theme-border">
             <span>Điểm:</span>
             <input
               type="number"
@@ -150,7 +150,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                 })
               }
               onClick={(e) => e.stopPropagation()}
-              className="w-16 font-mono font-bold text-center text-neutral-900 bg-transparent focus:outline-hidden"
+              className="w-16 font-mono font-bold text-center theme-text-primary bg-transparent focus:outline-hidden"
             />
           </div>
 
@@ -160,7 +160,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
               e.stopPropagation();
               setIsEditing(!isEditing);
             }}
-            className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-200 transition cursor-pointer"
+            className="p-1.5 rounded-lg theme-text-muted theme-hover-surface transition cursor-pointer"
             title="Chỉnh sửa nội dung"
           >
             <Edit2 className="h-4 w-4" />
@@ -172,7 +172,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
               e.stopPropagation();
               deleteQuestion(question.id);
             }}
-            className="p-1.5 rounded-lg text-neutral-400 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
+            className="p-1.5 rounded-lg theme-text-muted hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer"
             title="Xóa câu hỏi này"
           >
             <Trash2 className="h-4 w-4" />
@@ -193,19 +193,19 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
         {isEditing ? (
           <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
             <div>
-              <label className="text-xs font-bold text-neutral-700 block mb-1">
+              <label className="text-xs font-bold theme-text-secondary block mb-1">
                 Nội dung câu hỏi (hỗ trợ $...$ LaTeX):
               </label>
               <textarea
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
                 rows={3}
-                className="w-full text-sm rounded-xl border border-neutral-300 p-3 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
+                className="w-full text-sm rounded-xl border theme-border-strong p-3 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-neutral-700 block mb-1">
+              <label className="text-xs font-bold theme-text-secondary block mb-1">
                 Lời giải chi tiết:
               </label>
               <textarea
@@ -213,7 +213,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                 onChange={(e) => setEditExplanation(e.target.value)}
                 rows={2}
                 placeholder="Nhập hướng dẫn giải..."
-                className="w-full text-xs rounded-xl border border-neutral-300 p-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
+                className="w-full text-xs rounded-xl border theme-border-strong p-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
               />
             </div>
 
@@ -236,14 +236,14 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
             </div>
           </div>
         ) : (
-          <div className="text-base text-neutral-900 leading-relaxed font-medium">
+          <div className="text-base theme-text-primary leading-relaxed font-medium">
             <MathRenderer content={question.content} />
           </div>
         )}
 
         {/* Options Grid */}
         <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+          <div className="flex items-center justify-between text-[11px] font-bold theme-text-muted uppercase tracking-wider">
             <span>Các lựa chọn (Click để chọn đáp án đúng):</span>
             {question.correctAnswers && question.correctAnswers.length > 0 ? (
               <span className="text-emerald-700 font-bold">
@@ -270,14 +270,14 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                   className={`flex items-start gap-3 rounded-xl border p-3 text-sm transition cursor-pointer select-none ${
                     isCorrect
                       ? "border-emerald-500 bg-emerald-50/90 text-emerald-950 ring-2 ring-emerald-500/30 font-semibold"
-                      : "border-neutral-200 bg-neutral-50/40 text-neutral-800 hover:border-teal-300 hover:bg-white"
+                      : "theme-border theme-surface-muted theme-text-secondary hover:border-teal-300 theme-hover-surface"
                   }`}
                 >
                   <span
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-mono font-bold mt-0.5 ${
                       isCorrect
                         ? "bg-emerald-600 text-white shadow-xs"
-                        : "bg-neutral-200 text-neutral-700"
+                        : "theme-surface-inset theme-text-secondary"
                     }`}
                   >
                     {opt.id}
