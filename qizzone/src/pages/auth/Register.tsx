@@ -8,6 +8,7 @@ import {
   User as UserIcon,
   ArrowRight,
   AlertCircle,
+  Check,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/Button";
@@ -44,6 +45,7 @@ export function Register() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -55,6 +57,35 @@ export function Register() {
       role: "student",
     },
   });
+  const password = watch("password", "");
+  const passwordChecks = [
+    { label: "Ít nhất 8 ký tự", passed: password.length >= 8 },
+    { label: "Có chữ hoa (A–Z)", passed: /[A-Z]/.test(password) },
+    { label: "Có số (0–9)", passed: /\d/.test(password) },
+    { label: "Có ký tự đặc biệt", passed: /[\p{P}\p{S}]/u.test(password) },
+  ];
+  const passwordScore = passwordChecks.filter(check => check.passed).length;
+  const passwordStrength = password.length === 0
+    ? "Chưa nhập"
+    : passwordScore === 4
+      ? "Mạnh"
+      : passwordScore === 3
+        ? "Trung bình"
+        : "Yếu";
+  const strengthColor = password.length === 0
+    ? "theme-text-muted"
+    : passwordScore === 4
+      ? "text-status-success"
+      : passwordScore === 3
+        ? "text-status-warning"
+        : "text-status-danger";
+  const strengthBarColor = passwordScore === 4
+    ? "bg-status-success"
+    : passwordScore === 3
+      ? "bg-status-warning"
+      : passwordScore > 0
+        ? "bg-status-danger"
+        : "theme-surface-inset";
   const onSubmit = async (data: RegisterFormData) => {
     setAuthError(null);
     try {
@@ -115,16 +146,45 @@ export function Register() {
           {...register("email")}
         />
 
-        <Input
-          label="Mật khẩu"
-          type="password"
-          placeholder="••••••••"
-          leftIcon={<Lock className="h-4 w-4" />}
-          error={errors.password?.message}
-          helperText="Tối thiểu 6 ký tự."
-          autoComplete="new-password"
-          {...register("password")}
-        />
+        <div className="space-y-2">
+          <Input
+            label="Mật khẩu"
+            type="password"
+            placeholder="••••••••"
+            leftIcon={<Lock className="h-4 w-4" />}
+            error={errors.password?.message}
+            helperText="Dùng chữ hoa, số và ký tự đặc biệt để tăng độ mạnh."
+            autoComplete="new-password"
+            {...register("password")}
+          />
+          <div role="group" aria-label="Độ mạnh mật khẩu" className="space-y-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="theme-text-muted">Độ mạnh mật khẩu</span>
+              <span className={`font-medium ${strengthColor}`}>{passwordStrength}</span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5" aria-hidden="true">
+              {passwordChecks.map((check, index) => (
+                <span
+                  key={check.label}
+                  className={`h-1.5 rounded-full transition-colors ${index < passwordScore ? strengthBarColor : "theme-surface-inset"}`}
+                />
+              ))}
+            </div>
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+              {passwordChecks.map(({ label, passed }) => (
+                <li key={label} className={`flex items-center gap-1.5 ${passed ? "text-status-success" : "theme-text-muted"}`}>
+                  {passed ? (
+                    <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <span className="ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+                  )}
+                  <span>{label}</span>
+                  <span className="sr-only">{passed ? "đã đạt" : "chưa đạt"}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
         <Input
           label="Xác nhận mật khẩu"
