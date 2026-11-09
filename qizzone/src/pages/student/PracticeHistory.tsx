@@ -31,7 +31,7 @@ export function PracticeHistory() {
     <div className="mx-auto max-w-5xl space-y-5 pb-12">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-neutral-900 sm:text-2xl">
+          <h1 className="page-heading flex items-center gap-2">
             <History className="h-5 w-5 text-emerald-700" />Lịch sử luyện tập
           </h1>
           <p className="mt-1 text-sm text-neutral-500">Tiếp tục lượt đang dở hoặc xem kết quả luyện tập đã hoàn thành.</p>

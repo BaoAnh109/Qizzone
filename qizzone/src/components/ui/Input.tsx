@@ -26,14 +26,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : undefined);
+    const generatedId = React.useId();
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, "-") : generatedId);
 
     return (
       <div className="w-full space-y-1.5 text-left">
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-neutral-800 select-none"
+            className="block text-sm font-medium theme-text-secondary select-none"
           >
             {label}
           </label>
@@ -41,7 +42,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative flex items-center">
           {leftIcon && (
-            <div className="pointer-events-none absolute left-3 flex items-center text-neutral-400">
+            <div className="pointer-events-none absolute left-3 flex items-center theme-text-muted">
               {leftIcon}
             </div>
           )}
@@ -60,13 +61,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 : undefined
             }
             className={cn(
-              "theme-control h-10 w-full rounded-md border px-3 py-2 text-sm placeholder:text-neutral-400",
+              "theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-base sm:text-sm placeholder:text-neutral-400",
               "transition-colors duration-150",
-              "focus-visible:outline-hidden focus-visible:ring-2",
+              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]",
               error
-                ? "border-rose-500 focus-visible:border-rose-500 focus-visible:ring-rose-500 text-rose-900"
-                : "focus-visible:border-blue-600 focus-visible:ring-blue-200",
-              disabled && "cursor-not-allowed bg-neutral-50 text-neutral-400 opacity-70",
+                ? "border-[var(--status-danger-border)] focus-visible:border-[var(--status-danger-foreground)] focus-visible:ring-[var(--status-danger-foreground)] text-[var(--status-danger-foreground)]"
+                : "focus-visible:border-primary focus-visible:ring-primary",
+              disabled && "cursor-not-allowed theme-surface-muted opacity-70",
               leftIcon && "pl-10",
               rightIcon && "pr-10",
               className
@@ -75,7 +76,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightIcon && (
-            <div className="absolute right-3 flex items-center text-neutral-400">
+            <div className="absolute right-3 flex items-center theme-text-muted">
               {rightIcon}
             </div>
           )}

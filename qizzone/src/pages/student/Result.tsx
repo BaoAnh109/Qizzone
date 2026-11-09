@@ -128,12 +128,12 @@ export function Result() {
               </Badge>
             )}
           </div>
-          <h1 className="text-3xl font-extrabold text-neutral-900 tracking-tight mt-2">
+          <h1 className="page-heading mt-2">
             Kết quả bài thi: {result.quizTitle}
           </h1>
           <p className="text-xs text-neutral-500 mt-1">
             Thí sinh: <strong>{result.studentName}</strong> · Mã phòng:{" "}
-            <span className="font-mono text-indigo-600 font-bold">{result.roomCode}</span> ·{" "}
+            <span className="font-mono text-teal-700 font-bold">{result.roomCode}</span> ·{" "}
             {new Date(result.submittedAt).toLocaleString("vi-VN")}
           </p>
         </div>
@@ -148,7 +148,7 @@ export function Result() {
             </span>
             <div
               className={`text-5xl font-black tracking-tight font-mono ${
-                result.isPassed ? "text-indigo-600" : "text-amber-600"
+                result.isPassed ? "text-teal-700" : "text-amber-600"
               }`}
             >
               {result.score.toFixed(2)}{" "}
@@ -178,10 +178,10 @@ export function Result() {
               </p>
             </div>
 
-            <div className="rounded-xl bg-indigo-50/80 p-3.5 border border-indigo-100">
-              <span className="text-xs text-indigo-700 font-medium">Thời gian hoàn thành</span>
-              <p className="text-sm font-bold text-indigo-950 mt-1 flex items-center justify-center gap-1">
-                <Clock className="h-3.5 w-3.5 text-indigo-600" />
+            <div className="rounded-xl bg-teal-50/80 p-3.5 border border-teal-100">
+              <span className="text-xs text-teal-700 font-medium">Thời gian hoàn thành</span>
+              <p className="text-sm font-bold text-teal-950 mt-1 flex items-center justify-center gap-1">
+                <Clock className="h-3.5 w-3.5 text-teal-700" />
                 <span>{formatTimeSpent(result.timeSpentSeconds)}</span>
               </p>
             </div>
@@ -266,7 +266,7 @@ export function Result() {
               onClick={() => setFilterTab("all")}
               className={`rounded-lg px-3 py-1.5 transition cursor-pointer ${
                 filterTab === "all"
-                  ? "bg-white text-indigo-700 shadow-xs font-bold"
+                  ? "bg-white text-teal-700 shadow-xs font-bold"
                   : "text-neutral-600 hover:text-neutral-900"
               }`}
             >
@@ -477,9 +477,9 @@ export function Result() {
 
                         {/* Step-by-step Explanation */}
                         {item.explanation && (
-                          <div className="rounded-xl bg-indigo-50/70 p-4 border border-indigo-100/90 text-xs text-indigo-950 space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold text-indigo-900 mb-1">
-                              <HelpCircle className="h-4 w-4 text-indigo-600" />
+                          <div className="rounded-xl bg-teal-50/70 p-4 border border-teal-100/90 text-xs text-teal-950 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-teal-900 mb-1">
+                              <HelpCircle className="h-4 w-4 text-teal-700" />
                               <span>Phương pháp & Lời giải chi tiết:</span>
                             </div>
                             <div className="leading-relaxed">

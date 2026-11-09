@@ -70,7 +70,7 @@ export function LegacyMigrationAssistant({ user, onCompleted }: Props) {
             ['Kết quả', preview.resultCount],
           ].map(([label, value]) => (
             <div key={String(label)} className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-center">
-              <div className="text-xl font-bold text-indigo-700">{value}</div>
+              <div className="text-xl font-bold text-teal-700">{value}</div>
               <div className="text-xs text-neutral-500">{label}</div>
             </div>
           ))}

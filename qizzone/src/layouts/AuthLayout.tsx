@@ -8,7 +8,7 @@ export function AuthLayout() {
         <div className="mb-7 text-center">
           <Link
             to="/"
-            className="inline-flex items-center gap-2.5 text-xl font-bold tracking-tight text-neutral-950 transition hover:opacity-80"
+            className="inline-flex items-center gap-2.5 font-display text-xl font-bold tracking-tight text-neutral-950 transition-opacity hover:opacity-80"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
               <GraduationCap className="h-5 w-5" />
@@ -20,7 +20,7 @@ export function AuthLayout() {
           <p className="mt-2 text-sm text-neutral-500">Tạo đề và tổ chức thi trực tuyến</p>
         </div>
 
-        <div className="rounded-lg border theme-border theme-surface p-6 shadow-sm sm:p-8">
+        <div className="rounded-2xl border theme-border theme-surface-raised p-5 shadow-md sm:p-8">
           <Outlet />
         </div>
 

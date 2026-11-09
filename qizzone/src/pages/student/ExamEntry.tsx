@@ -161,7 +161,7 @@ export function ExamEntry() {
           {/* Metadata Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <Clock className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
+              <Clock className="h-4 w-4 text-teal-700 mx-auto mb-1" />
               <p className="text-xs text-neutral-500 font-medium">Thời gian</p>
               <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
                 {quiz.settings.durationMinutes === 0
@@ -171,7 +171,7 @@ export function ExamEntry() {
             </div>
 
             <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <BookOpen className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
+              <BookOpen className="h-4 w-4 text-teal-700 mx-auto mb-1" />
               <p className="text-xs text-neutral-500 font-medium">Số lượng câu</p>
               <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
                 {quiz.totalQuestions} câu hỏi
@@ -179,7 +179,7 @@ export function ExamEntry() {
             </div>
 
             <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <RotateCcw className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
+              <RotateCcw className="h-4 w-4 text-teal-700 mx-auto mb-1" />
               <p className="text-xs text-neutral-500 font-medium">Số lần làm</p>
               <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
                 {maxAttempts === 0 ? "Vô hạn (∞)" : `${maxAttempts} lần`}
@@ -187,7 +187,7 @@ export function ExamEntry() {
             </div>
 
             <div className="rounded-xl bg-neutral-50 p-3 border border-neutral-200/70">
-              <Award className="h-4 w-4 text-indigo-600 mx-auto mb-1" />
+              <Award className="h-4 w-4 text-teal-700 mx-auto mb-1" />
               <p className="text-xs text-neutral-500 font-medium">Điểm đạt</p>
               <p className="text-sm font-bold text-neutral-900 font-mono mt-0.5">
                 {quiz.settings.passPercentage}%
@@ -223,12 +223,12 @@ export function ExamEntry() {
 
           {/* Rules & Regulations */}
           <div className="space-y-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-950">
-            <div className="flex items-center gap-1.5 font-bold text-indigo-900">
+            <div className="flex items-center gap-1.5 font-bold text-teal-900">
               <ShieldCheck className="h-4 w-4 text-blue-600" />
               <span>Quy chế và hướng dẫn làm bài:</span>
             </div>
 
-            <ol className="space-y-1.5 text-indigo-900/90 pl-5 list-decimal font-normal leading-relaxed">
+            <ol className="space-y-1.5 text-teal-900/90 pl-5 list-decimal font-normal leading-relaxed">
               <li>
                 Hệ thống tự động lưu đáp án sau mỗi lần chọn, chống mất bài khi mất kết nối.
               </li>
@@ -244,7 +244,7 @@ export function ExamEntry() {
               </li>
               {quiz.description?.trim() && (
                 <li className="pt-0.5">
-                  <span className="font-semibold text-indigo-950">Ghi chú từ giáo viên:</span>{" "}
+                  <span className="font-semibold text-teal-950">Ghi chú từ giáo viên:</span>{" "}
                   {quiz.description}
                 </li>
               )}
@@ -284,7 +284,7 @@ export function ExamEntry() {
                 variant="primary"
                 size="lg"
                 onClick={handleStartExam}
-                className="w-full h-12 text-base font-bold shadow-md shadow-indigo-600/20"
+                className="w-full h-12 text-base font-bold shadow-md shadow-teal-600/20"
                 leftIcon={<Play className="h-5 w-5 fill-current" />}
               >
                 Bắt đầu làm bài thi ngay

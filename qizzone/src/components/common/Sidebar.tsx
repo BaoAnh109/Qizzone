@@ -78,14 +78,14 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
   const sidebarContent = (
     <div className="theme-surface flex h-full flex-col">
       {/* Brand Logo Header */}
-      <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-5">
+      <div className="flex h-16 items-center justify-between border-b theme-border px-5">
         <NavLink to="/" className="flex items-center gap-2.5" onClick={onCloseMobile}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
             <GraduationCap className="h-[18px] w-[18px]" />
           </div>
           <div className="leading-tight">
-            <span className="text-lg font-bold tracking-tight text-neutral-950">
-              Qiz<span className="text-blue-600">zone</span>
+              <span className="font-display text-lg font-bold tracking-tight text-neutral-950">
+              Qiz<span className="text-primary">zone</span>
             </span>
           </div>
         </NavLink>
@@ -94,7 +94,8 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
           <button
             type="button"
             onClick={onCloseMobile}
-            className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 lg:hidden cursor-pointer"
+            aria-label="Đóng menu"
+            className="flex h-11 w-11 items-center justify-center rounded-lg theme-text-muted hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -118,9 +119,9 @@ export function Sidebar({ isOpenMobile, onCloseMobile }: SidebarProps) {
                 onClick={onCloseMobile}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                    "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary",
                     isActive
-                      ? "bg-blue-50 text-blue-700"
+                      ? "theme-nav-active"
                       : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
                   )
                 }

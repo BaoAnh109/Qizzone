@@ -193,7 +193,7 @@ export function StudentDashboard() {
           <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60">
             <span>Cổng học sinh</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+          <h1 className="page-heading">
             Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed">
@@ -202,7 +202,7 @@ export function StudentDashboard() {
         </div>
 
         {/* Right: Card Tham gia phòng thi qua mã phòng 6 ký tự */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-sky-600 p-5 sm:p-6 text-white shadow-lg shadow-indigo-600/20 border border-blue-400/40 shrink-0 lg:max-w-lg w-full lg:w-auto">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-teal-600 to-sky-600 p-5 sm:p-6 text-white shadow-lg shadow-teal-600/20 border border-blue-400/40 shrink-0 lg:max-w-lg w-full lg:w-auto">
           {/* Subtle Decorative Glow */}
           <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-28 rounded-full bg-white/20 blur-xl" />
           <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-sky-400/25 blur-lg" />
@@ -234,9 +234,9 @@ export function StudentDashboard() {
               />
               <button
                 type="submit"
-                className="theme-light-control theme-light-control-button h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-indigo-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+                className="theme-light-control theme-light-control-button h-11 w-full sm:w-auto px-5 rounded-xl bg-white text-teal-700 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
               >
-                <LogIn className="h-4 w-4 text-indigo-600" />
+                <LogIn className="h-4 w-4 text-teal-700" />
                 <span>Vào phòng thi</span>
               </button>
             </form>
@@ -276,7 +276,7 @@ export function StudentDashboard() {
                   </CardHeader>
                   <CardContent className="pt-3 space-y-3">
                     <div className="flex items-center justify-between text-xs text-neutral-600">
-                      <span>Mã: <strong className="font-mono text-indigo-700">{quiz.code}</strong></span>
+                      <span>Mã: <strong className="font-mono text-teal-700">{quiz.code}</strong></span>
                       <span>Thời gian: {quiz.settings.durationMinutes > 0 ? `${quiz.settings.durationMinutes} phút` : "Không giới hạn"}</span>
                     </div>
                     <Button
@@ -330,11 +330,11 @@ export function StudentDashboard() {
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-neutral-500">Điểm trung bình</p>
-              <p className="text-2xl font-extrabold text-violet-900 mt-1 font-mono">
+              <p className="text-2xl font-extrabold text-teal-900 mt-1 font-mono">
                 {avgScore} {avgScore !== "--" ? "đ" : ""}
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
               <TrendingUp className="h-5 w-5" />
             </div>
           </CardContent>
@@ -346,7 +346,7 @@ export function StudentDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-indigo-600" />
+              <Sparkles className="h-5 w-5 text-teal-700" />
               <h2 className="text-xl font-bold text-neutral-900">
                 Đề thi được giao cho bạn ({matchedQuizzes.length})
               </h2>
@@ -397,7 +397,7 @@ export function StudentDashboard() {
               return (
                 <Card
                   key={quiz.id}
-                  className="flex flex-col justify-between overflow-hidden border-indigo-100 hover:border-indigo-300 hover:shadow-md transition bg-white"
+                  className="flex flex-col justify-between overflow-hidden border-teal-100 hover:border-teal-300 hover:shadow-md transition bg-white"
                 >
                   <CardHeader className="pb-3 bg-neutral-50/70 border-b border-neutral-100">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -420,7 +420,7 @@ export function StudentDashboard() {
                     <div className="space-y-2 text-xs text-neutral-600">
                       <div className="grid grid-cols-2 gap-2 bg-neutral-50 p-2.5 rounded-lg border border-neutral-100">
                         <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                          <Clock className="h-3.5 w-3.5 text-teal-700 shrink-0" />
                           <span>
                             {quiz.settings.durationMinutes === 0
                               ? "Vô thời hạn"
@@ -428,15 +428,15 @@ export function StudentDashboard() {
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <BookOpen className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                          <BookOpen className="h-3.5 w-3.5 text-teal-700 shrink-0" />
                           <span>{quiz.totalQuestions} câu hỏi</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <KeyRound className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                          <span className="font-mono font-bold text-indigo-700">{quiz.code}</span>
+                          <KeyRound className="h-3.5 w-3.5 text-teal-700 shrink-0" />
+                          <span className="font-mono font-bold text-teal-700">{quiz.code}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Award className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                          <Award className="h-3.5 w-3.5 text-teal-700 shrink-0" />
                           <span>{quiz.settings.passPercentage}% đạt</span>
                         </div>
                       </div>
@@ -479,7 +479,7 @@ export function StudentDashboard() {
                         <Button
                           variant="primary"
                           size="sm"
-                          className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 shadow-xs"
+                          className="w-full font-bold bg-teal-700 hover:bg-teal-800 shadow-xs"
                           onClick={() => navigate(`/student/quiz/${quiz.id}/lobby`)}
                           leftIcon={<Play className="h-4 w-4 fill-current" />}
                         >
@@ -530,7 +530,7 @@ export function StudentDashboard() {
       <div className="space-y-4 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-xl font-bold text-neutral-900 flex items-center gap-2">
-            <History className="h-5 w-5 text-indigo-600" />
+            <History className="h-5 w-5 text-teal-700" />
             <span>Lịch sử các bài thi đã hoàn thành</span>
           </h2>
 
@@ -571,7 +571,7 @@ export function StudentDashboard() {
                     </div>
                     <p className="text-xs text-neutral-500">
                       Nộp bài lúc: {new Date(result.submittedAt).toLocaleString("vi-VN")} · Mã phòng:{" "}
-                      <span className="font-mono text-indigo-600 font-bold">{result.roomCode}</span>
+                      <span className="font-mono text-teal-700 font-bold">{result.roomCode}</span>
                     </p>
                   </div>
 

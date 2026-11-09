@@ -43,14 +43,14 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
         {/* RIGHT COLUMN: 50% Tạo đề thủ công */}
         <div className="flex flex-col space-y-2.5 h-full">
           <div className="flex items-center gap-2 text-sm font-bold text-neutral-900 pb-1 border-b border-neutral-200">
-            <PenTool className="h-4 w-4 text-indigo-600" />
+            <PenTool className="h-4 w-4 text-teal-700" />
             <span>Phương thức 2: Soạn thảo câu hỏi trực tiếp</span>
           </div>
 
-          <Card className="flex-1 flex flex-col justify-between border-neutral-200 bg-white hover:border-indigo-300 transition shadow-xs">
+          <Card className="flex-1 flex flex-col justify-between border-neutral-200 bg-white hover:border-teal-300 transition shadow-xs">
             <CardHeader className="pb-3 pt-4 px-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-2xs shrink-0">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700 border border-teal-100 shadow-2xs shrink-0">
                   <PenTool className="h-5 w-5" />
                 </div>
                 <div>
@@ -67,7 +67,7 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
             <CardContent className="space-y-3 flex-1 flex flex-col justify-between px-5 pb-5 pt-0">
               <div className="space-y-2.5 text-xs text-neutral-600">
                 <div className="flex items-start gap-2.5 rounded-xl bg-neutral-50 p-2.5 border border-neutral-100">
-                  <Calculator className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <Calculator className="h-4 w-4 text-teal-700 shrink-0 mt-0.5" />
                   <div>
                     <strong className="text-neutral-900 font-semibold block mb-0.5">
                       Hỗ trợ công thức Toán LaTeX / KaTeX
@@ -103,7 +103,7 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
                   size="md"
                   onClick={onManualCreate}
                   rightIcon={<ArrowRight className="h-4 w-4" />}
-                  className="w-full font-bold bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+                  className="w-full font-bold bg-teal-700 hover:bg-teal-800 shadow-sm"
                 >
                   Bắt đầu soạn đề thủ công
                 </Button>

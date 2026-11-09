@@ -88,11 +88,24 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   };
 
   const getPageTitle = () => {
-    if (location.pathname.startsWith("/teacher/create-quiz")) return "Soạn đề thi mới";
-    if (location.pathname.startsWith("/teacher/quizzes")) return "Quản lý danh sách đề";
-    if (location.pathname.startsWith("/teacher")) return "Bảng điều khiển Giáo viên";
-    if (location.pathname.startsWith("/admin/teacher-approvals")) return "Duyệt tài khoản Giáo viên";
-    if (location.pathname.startsWith("/student")) return "Cổng làm bài Học sinh";
+    const path = location.pathname;
+    if (path.startsWith("/teacher/edit-quiz/")) return "Chỉnh sửa đề thi";
+    if (path.startsWith("/teacher/create-quiz")) return "Soạn đề thi mới";
+    if (path.startsWith("/teacher/extract-quiz")) return "Tạo đề từ tài liệu";
+    if (path.startsWith("/teacher/quizzes")) return "Quản lý danh sách đề";
+    if (path.includes("/review")) return "Rà soát câu hỏi";
+    if (path.includes("/results")) return "Kết quả đề thi";
+    if (path === "/admin/teacher-approvals") return "Duyệt tài khoản giáo viên";
+    if (path === "/admin/accounts") return "Quản lý tài khoản";
+    if (path === "/student/practice") return "Lịch sử luyện tập";
+    if (path.startsWith("/student/practice/") && path.endsWith("/result")) return "Kết quả luyện tập";
+    if (path.startsWith("/student/practice/")) return "Thiết lập lượt luyện";
+    if (path.startsWith("/student/quiz/") && path.endsWith("/lobby")) return "Sẵn sàng làm bài";
+    if (path.startsWith("/student/result/")) return "Kết quả bài thi";
+    if (path === "/student") return "Cổng làm bài học sinh";
+    if (path.startsWith("/teacher")) return "Bảng điều khiển giáo viên";
+    if (path.startsWith("/admin")) return "Quản trị hệ thống";
+    if (path.startsWith("/student")) return "Khu vực học sinh";
     return "Tổng quan";
   };
 
@@ -110,13 +123,13 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                 type="button"
                 onClick={onToggleMobileSidebar}
                 aria-label="Mở menu"
-                className="rounded-lg p-2 text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 lg:hidden cursor-pointer"
+                className="flex h-11 w-11 items-center justify-center rounded-lg theme-text-secondary hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary lg:hidden cursor-pointer"
               >
                 <Menu className="h-5 w-5" />
               </button>
             )}
             <div>
-              <h2 className="text-sm font-semibold text-neutral-900 leading-none">{getPageTitle()}</h2>
+              <h2 className="font-display text-sm font-semibold text-neutral-900 leading-none">{getPageTitle()}</h2>
             </div>
           </div>
 
@@ -136,12 +149,12 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                   aria-label="Mở tài khoản"
                   aria-expanded={isProfileOpen}
                   onClick={() => setIsProfileOpen((open) => !open)}
-                  className="flex h-9 items-center gap-1.5 rounded-full p-0.5 text-blue-700 transition hover:bg-blue-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="flex h-11 items-center gap-1.5 rounded-full p-1 text-primary transition-colors hover:bg-blue-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
                 >
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt="Ảnh đại diện" referrerPolicy="no-referrer" className="h-8 w-8 rounded-full object-cover" />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                       {user?.fullName?.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" />}
                     </span>
                   )}

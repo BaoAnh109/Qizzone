@@ -43,7 +43,7 @@ export function SplitExamEditor() {
       {!extractionResult ? (
         <div className="max-w-4xl mx-auto space-y-6 pt-4">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            <h1 className="page-heading">
               Nhập và kiểm tra đề thi từ tệp
             </h1>
             <p className="text-xs sm:text-sm text-neutral-500 max-w-xl mx-auto">

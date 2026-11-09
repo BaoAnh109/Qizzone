@@ -54,7 +54,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
       case "underline":
         return {
           label: "Gạch chân <u>",
-          color: "bg-indigo-100 text-indigo-800 border-indigo-200",
+          color: "bg-teal-100 text-teal-800 border-teal-200",
         };
       case "highlight_color":
         return {
@@ -64,7 +64,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
       case "distinct_bold":
         return {
           label: "In đậm duy nhất <b>",
-          color: "bg-purple-100 text-purple-800 border-purple-200",
+          color: "bg-teal-100 text-teal-800 border-teal-200",
         };
       case "explanation_text":
         return {
@@ -74,7 +74,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
       case "ai_inference":
         return {
           label: "AI Gợi ý tự giải",
-          color: "bg-violet-100 text-violet-800 border-violet-200",
+          color: "bg-teal-100 text-teal-800 border-teal-200",
         };
       case "manual":
       default:
@@ -100,7 +100,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
       onClick={() => setSelectedQuestionId(question.id)}
       className={`cursor-pointer rounded-lg border transition-colors ${
         isSelected
-          ? "border-indigo-600 ring-2 ring-indigo-500/20 bg-white shadow-md"
+          ? "border-teal-600 ring-2 ring-teal-500/20 bg-white shadow-md"
           : "border-neutral-200/90 bg-white hover:border-neutral-300 shadow-2xs"
       }`}
     >
@@ -200,7 +200,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                 value={editPrompt}
                 onChange={(e) => setEditPrompt(e.target.value)}
                 rows={3}
-                className="w-full text-sm rounded-xl border border-neutral-300 p-3 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono"
+                className="w-full text-sm rounded-xl border border-neutral-300 p-3 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
               />
             </div>
 
@@ -213,7 +213,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                 onChange={(e) => setEditExplanation(e.target.value)}
                 rows={2}
                 placeholder="Nhập hướng dẫn giải..."
-                className="w-full text-xs rounded-xl border border-neutral-300 p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-mono"
+                className="w-full text-xs rounded-xl border border-neutral-300 p-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-hidden font-mono"
               />
             </div>
 
@@ -270,7 +270,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                   className={`flex items-start gap-3 rounded-xl border p-3 text-sm transition cursor-pointer select-none ${
                     isCorrect
                       ? "border-emerald-500 bg-emerald-50/90 text-emerald-950 ring-2 ring-emerald-500/30 font-semibold"
-                      : "border-neutral-200 bg-neutral-50/40 text-neutral-800 hover:border-indigo-300 hover:bg-white"
+                      : "border-neutral-200 bg-neutral-50/40 text-neutral-800 hover:border-teal-300 hover:bg-white"
                   }`}
                 >
                   <span
@@ -301,9 +301,9 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
 
         {/* Explanation Box */}
         {question.explanation && !isEditing && (
-          <div className="rounded-xl bg-indigo-50/70 p-3.5 border border-indigo-100 text-xs text-indigo-950 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-indigo-900">
-              <HelpCircle className="h-3.5 w-3.5 text-indigo-600" />
+          <div className="rounded-xl bg-teal-50/70 p-3.5 border border-teal-100 text-xs text-teal-950 space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-teal-900">
+              <HelpCircle className="h-3.5 w-3.5 text-teal-700" />
               <span>Phương pháp & Lời giải:</span>
             </div>
             <div className="leading-relaxed">

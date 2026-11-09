@@ -77,10 +77,10 @@ export function TeacherApprovals() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
             <ShieldCheck className="h-3.5 w-3.5" /> Quản trị hệ thống
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-neutral-950">Duyệt tài khoản giáo viên</h1>
+          <h1 className="page-heading">Duyệt tài khoản giáo viên</h1>
           <p className="mt-1 text-sm text-neutral-500">Tài khoản học sinh chỉ được chuyển sang màn hình giáo viên sau khi admin duyệt yêu cầu.</p>
         </div>
         <Button variant="outline" onClick={() => void load()} isLoading={isLoading} leftIcon={<RefreshCw className="h-4 w-4" />}>

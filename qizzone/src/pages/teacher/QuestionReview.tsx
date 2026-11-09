@@ -51,7 +51,7 @@ export function QuestionReview() {
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 tracking-tight">
+              <h1 className="page-heading">
                 Kiểm duyệt câu hỏi & Xem trước
               </h1>
               <Badge variant={quiz.status} size="sm" dot>
@@ -146,7 +146,7 @@ export function QuestionReview() {
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate(`/teacher/edit-quiz/${quiz.id}`)}
-                  className="h-8 text-xs text-neutral-600 hover:text-indigo-600"
+                  className="h-8 text-xs text-neutral-600 hover:text-teal-700"
                   leftIcon={<Edit className="h-3.5 w-3.5" />}
                 >
                   Sửa câu này
@@ -200,9 +200,9 @@ export function QuestionReview() {
 
               {/* Explanation Section */}
               {q.explanation && (
-                <div className="rounded-xl bg-indigo-50/70 p-4 border border-indigo-100/90 text-xs text-indigo-950 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-indigo-900 mb-1">
-                    <HelpCircle className="h-4 w-4 text-indigo-600" />
+                <div className="rounded-xl bg-teal-50/70 p-4 border border-teal-100/90 text-xs text-teal-950 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-teal-900 mb-1">
+                    <HelpCircle className="h-4 w-4 text-teal-700" />
                     <span>Lời giải & Hướng dẫn chi tiết:</span>
                   </div>
                   <div className="leading-relaxed">

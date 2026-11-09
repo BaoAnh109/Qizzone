@@ -132,7 +132,7 @@ export function AccountManagement() {
       {/* Top Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b border-neutral-200 pb-5">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
             <Users className="h-3.5 w-3.5" /> Quản trị người dùng
           </div>
           <h1 className="page-heading">Quản lý tài khoản</h1>
@@ -161,13 +161,13 @@ export function AccountManagement() {
             onClick={() => setActiveTab("teacher")}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition cursor-pointer ${
               activeTab === "teacher"
-                ? "bg-white text-indigo-700 shadow-xs font-bold"
+                ? "bg-white text-teal-700 shadow-xs font-bold"
                 : "text-neutral-600 hover:text-neutral-900"
             }`}
           >
             <GraduationCap className="h-4 w-4" />
             <span>Giáo viên</span>
-            <span className="ml-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">
+            <span className="ml-1 rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">
               {teachersList.length}
             </span>
           </button>
@@ -177,13 +177,13 @@ export function AccountManagement() {
             onClick={() => setActiveTab("student")}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition cursor-pointer ${
               activeTab === "student"
-                ? "bg-white text-indigo-700 shadow-xs font-bold"
+                ? "bg-white text-teal-700 shadow-xs font-bold"
                 : "text-neutral-600 hover:text-neutral-900"
             }`}
           >
             <Users className="h-4 w-4" />
             <span>Học sinh</span>
-            <span className="ml-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-800">
+            <span className="ml-1 rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">
               {studentsList.length}
             </span>
           </button>
@@ -220,7 +220,7 @@ export function AccountManagement() {
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-neutral-400">
-                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-indigo-600" />
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-teal-700" />
                     Đang tải danh sách tài khoản...
                   </td>
                 </tr>
@@ -257,7 +257,7 @@ export function AccountManagement() {
                     >
                       <td className="px-5 py-4 font-semibold text-neutral-900">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-sm">
+                          <div className="h-9 w-9 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center font-bold text-teal-700 text-sm">
                             {account.fullName.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -277,7 +277,7 @@ export function AccountManagement() {
 
                       <td className="px-5 py-4 text-center font-mono font-bold text-neutral-900">
                         {activeTab === "teacher" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2.5 py-0.5 text-xs text-indigo-700">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2.5 py-0.5 text-xs text-teal-700">
                             {teacherQuizzesCount} đề
                           </span>
                         ) : (
@@ -309,7 +309,7 @@ export function AccountManagement() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-xs font-semibold text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                              className="text-xs font-semibold text-teal-700 border-teal-200 hover:bg-teal-50"
                               onClick={() => handleOpenTeacherQuizzes(account)}
                               leftIcon={<BookOpen className="h-3.5 w-3.5" />}
                             >
@@ -381,7 +381,7 @@ export function AccountManagement() {
                           ? "Bản nháp"
                           : "Đã đóng"}
                       </Badge>
-                      <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                      <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
                         {quiz.code}
                       </span>
                     </div>
@@ -408,7 +408,7 @@ export function AccountManagement() {
                         setIsQuizzesModalOpen(false);
                         navigate(`/teacher/quiz/${quiz.id}/results`);
                       }}
-                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-indigo-600" />}
+                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-teal-700" />}
                       className="text-xs font-semibold"
                     >
                       Bảng điểm
@@ -422,7 +422,7 @@ export function AccountManagement() {
                         navigate(`/teacher/edit-quiz/${quiz.id}`);
                       }}
                       leftIcon={<Edit className="h-3.5 w-3.5" />}
-                      className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700"
+                      className="text-xs font-bold bg-teal-700 hover:bg-teal-800"
                     >
                       Chỉnh sửa đề
                     </Button>

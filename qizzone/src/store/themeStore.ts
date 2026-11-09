@@ -35,10 +35,10 @@ function applyTheme(isDark: boolean) {
   const theme = isDark ? "dark" : "light";
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
-  document.documentElement.style.backgroundColor = isDark ? "#0E1524" : "#f6f7f9";
+  document.documentElement.style.backgroundColor = isDark ? "#0b1220" : "#eff6ff";
 
   const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  themeColor?.setAttribute("content", isDark ? "#0E1524" : "#f6f7f9");
+  themeColor?.setAttribute("content", isDark ? "#0b1220" : "#eff6ff");
 }
 
 interface ThemeState {

@@ -187,12 +187,12 @@ export function DocumentViewer() {
         <div className="p-4 sm:p-6 transition-all origin-top">
           {/* Active Highlight Target Banner */}
           {selectedQuestion && (
-            <div className="mb-4 rounded-xl bg-indigo-50 p-3 border border-indigo-200 text-xs text-indigo-950 flex items-center justify-between shadow-2xs">
+            <div className="mb-4 rounded-xl bg-teal-50 p-3 border border-teal-200 text-xs text-teal-950 flex items-center justify-between shadow-2xs">
               <span className="flex items-center gap-1.5 font-bold">
-                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <Sparkles className="h-4 w-4 text-teal-700" />
                 <span>Đang đồng bộ xem câu {selectedQuestion.order}:</span>
               </span>
-              <span className="font-mono text-[11px] text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-100">
+              <span className="font-mono text-[11px] text-teal-700 bg-white px-2 py-0.5 rounded-md border border-teal-100">
                 Đáp án: {selectedQuestion.correctAnswers.join(", ")} ({selectedQuestion.detectionStrategy})
               </span>
             </div>
@@ -229,7 +229,7 @@ export function DocumentViewer() {
             >
               {document?.rawHtml ? (
                 <div
-                  className="prose prose-sm max-w-none [&_u]:underline [&_u]:decoration-indigo-600 [&_u]:decoration-2 [&_strong]:text-indigo-950 [&_mark]:bg-yellow-200 [&_.text-color-red]:text-rose-600 [&_table]:border-collapse [&_table]:border [&_table]:border-neutral-300 [&_td]:border [&_td]:border-neutral-300 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-300 [&_th]:p-2"
+                  className="prose prose-sm max-w-none [&_u]:underline [&_u]:decoration-teal-600 [&_u]:decoration-2 [&_strong]:text-teal-950 [&_mark]:bg-yellow-200 [&_.text-color-red]:text-rose-600 [&_table]:border-collapse [&_table]:border [&_table]:border-neutral-300 [&_td]:border [&_td]:border-neutral-300 [&_td]:p-2 [&_th]:border [&_th]:border-neutral-300 [&_th]:p-2"
                   dangerouslySetInnerHTML={{ __html: sanitizedRawHtml }}
                 />
               ) : (

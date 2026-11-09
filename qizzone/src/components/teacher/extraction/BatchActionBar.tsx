@@ -212,7 +212,7 @@ export function BatchActionBar() {
               </h2>
               <p className="text-xs text-neutral-500">
                 Tổng số: <strong>{questions.length} câu</strong> · Tổng điểm:{" "}
-                <strong className="font-mono text-indigo-700">{Math.round(totalPoints * 100) / 100}đ</strong>
+                <strong className="font-mono text-teal-700">{Math.round(totalPoints * 100) / 100}đ</strong>
                 {totalWarnings > 0 && (
                   <span className="text-amber-700 font-semibold ml-2">
                     · ⚠️ {totalWarnings} cảnh báo cần xem
@@ -248,7 +248,7 @@ export function BatchActionBar() {
               onClick={handleConfigureQuiz}
               disabled={questions.length === 0}
               rightIcon={<ArrowRight className="h-4 w-4" />}
-              className="font-bold bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+              className="font-bold bg-teal-700 hover:bg-teal-800 shadow-sm"
             >
               Chuyển sang cấu hình đề ({questions.length} câu)
             </Button>
@@ -265,10 +265,10 @@ export function BatchActionBar() {
                   variant="outline"
                   size="sm"
                   disabled={true}
-                  leftIcon={<Sparkles className="h-3.5 w-3.5 text-violet-600 animate-spin" />}
-                  className="text-xs font-bold border-violet-400 bg-violet-100 text-violet-950 ring-2 ring-violet-400/50 shadow-sm"
+                  leftIcon={<Sparkles className="h-3.5 w-3.5 text-teal-700 animate-spin" />}
+                  className="text-xs font-bold border-teal-400 bg-teal-100 text-teal-950 ring-2 ring-teal-400/50 shadow-sm"
                 >
-                  <Clock className="h-3 w-3 mr-1 inline animate-pulse text-violet-700" />
+                  <Clock className="h-3 w-3 mr-1 inline animate-pulse text-teal-700" />
                   <span>{solveElapsed.toFixed(1)}s: {solveStatusMessage || `Đang giải ${unansweredCount} câu...`}</span>
                 </Button>
               ) : (
@@ -276,8 +276,8 @@ export function BatchActionBar() {
                   variant="outline"
                   size="sm"
                   onClick={handleSolveAI}
-                  leftIcon={<Sparkles className="h-3.5 w-3.5 text-violet-600 animate-pulse" />}
-                  className="text-xs font-bold border-violet-300 bg-violet-50 text-violet-900 hover:bg-violet-100 shadow-xs"
+                  leftIcon={<Sparkles className="h-3.5 w-3.5 text-teal-700 animate-pulse" />}
+                  className="text-xs font-bold border-teal-300 bg-teal-50 text-teal-900 hover:bg-teal-100 shadow-xs"
                 >
                   ✨ AI Giải tự động ({unansweredCount} câu)
                 </Button>
@@ -288,7 +288,7 @@ export function BatchActionBar() {
               variant="outline"
               size="sm"
               onClick={() => autoBalancePoints(10)}
-              leftIcon={<Calculator className="h-3.5 w-3.5 text-indigo-600" />}
+              leftIcon={<Calculator className="h-3.5 w-3.5 text-teal-700" />}
               className="text-xs font-semibold"
             >
               Chia đều 10 điểm ({questions.length > 0 ? Number((10 / questions.length).toFixed(3)) : 0}đ/câu)
@@ -309,7 +309,7 @@ export function BatchActionBar() {
               size="sm"
               onClick={addEmptyQuestion}
               leftIcon={<PlusCircle className="h-3.5 w-3.5" />}
-              className="text-xs text-indigo-600 font-semibold"
+              className="text-xs text-teal-700 font-semibold"
             >
               Thêm câu hỏi
             </Button>

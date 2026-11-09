@@ -78,7 +78,7 @@ export function MathEditorPreview({
             className={cn(
               "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition cursor-pointer",
               activeTab === "write"
-                ? "bg-white text-indigo-700 shadow-2xs font-semibold"
+                ? "bg-white text-teal-700 shadow-2xs font-semibold"
                 : "text-neutral-600 hover:text-neutral-900"
             )}
           >
@@ -92,7 +92,7 @@ export function MathEditorPreview({
             className={cn(
               "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition cursor-pointer hidden sm:flex",
               activeTab === "split"
-                ? "bg-white text-indigo-700 shadow-2xs font-semibold"
+                ? "bg-white text-teal-700 shadow-2xs font-semibold"
                 : "text-neutral-600 hover:text-neutral-900"
             )}
           >
@@ -106,7 +106,7 @@ export function MathEditorPreview({
             className={cn(
               "flex items-center gap-1 rounded-md px-2 py-1 font-medium transition cursor-pointer",
               activeTab === "preview"
-                ? "bg-white text-indigo-700 shadow-2xs font-semibold"
+                ? "bg-white text-teal-700 shadow-2xs font-semibold"
                 : "text-neutral-600 hover:text-neutral-900"
             )}
           >
@@ -117,9 +117,9 @@ export function MathEditorPreview({
       </div>
 
       {/* Quick Insert Math Toolbar */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-indigo-50/60 p-2 border border-indigo-100 text-xs">
-        <span className="text-[11px] font-semibold text-indigo-800 flex items-center gap-1 mr-1">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-teal-50/60 p-2 border border-teal-100 text-xs">
+        <span className="text-[11px] font-semibold text-teal-800 flex items-center gap-1 mr-1">
+          <Sparkles className="h-3.5 w-3.5 text-teal-700" />
           Chèn nhanh:
         </span>
         {MATH_SHORTCUTS.map((item, idx) => (
@@ -130,7 +130,7 @@ export function MathEditorPreview({
             size="sm"
             onClick={() => insertSnippet(item.snippet)}
             title={item.tip}
-            className="h-6 px-2 text-[11px] bg-white border-indigo-200 text-indigo-900 hover:bg-indigo-100 hover:text-indigo-950 font-mono"
+            className="h-6 px-2 text-[11px] bg-white border-teal-200 text-teal-900 hover:bg-teal-100 hover:text-teal-950 font-mono"
           >
             {item.label}
           </Button>
@@ -155,10 +155,10 @@ export function MathEditorPreview({
               placeholder={placeholder}
               className={cn(
                 "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 font-mono shadow-xs",
-                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-500",
+                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-teal-500",
                 error
                   ? "border-rose-500 text-rose-950"
-                  : "border-neutral-300 focus-visible:border-indigo-600"
+                  : "border-neutral-300 focus-visible:border-teal-600"
               )}
             />
           </div>

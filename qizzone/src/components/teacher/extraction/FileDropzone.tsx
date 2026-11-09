@@ -223,7 +223,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           onClick={() => setActiveTab("file")}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "file"
-              ? "bg-white text-indigo-700 shadow-2xs"
+              ? "bg-white text-teal-700 shadow-2xs"
               : "text-neutral-500 hover:text-neutral-800"
           }`}
         >
@@ -235,7 +235,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           onClick={() => setActiveTab("paste")}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
             activeTab === "paste"
-              ? "bg-white text-indigo-700 shadow-2xs"
+              ? "bg-white text-teal-700 shadow-2xs"
               : "text-neutral-500 hover:text-neutral-800"
           }`}
         >
@@ -255,8 +255,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           onDrop={handleDrop}
           className={`flex-1 flex flex-col justify-center items-center border-2 border-dashed p-5 sm:p-6 text-center transition cursor-pointer min-h-[295px] ${
             isDragOver
-              ? "border-indigo-600 bg-indigo-50/50 scale-[1.01]"
-              : "border-neutral-300 hover:border-indigo-400 bg-neutral-50/40"
+              ? "border-teal-600 bg-teal-50/50 scale-[1.01]"
+              : "border-neutral-300 hover:border-teal-400 bg-neutral-50/40"
           }`}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -316,7 +316,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         <Card className="flex-1 flex flex-col justify-between p-4 sm:p-5 bg-white border-neutral-200 shadow-xs min-h-[295px] space-y-3">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-1.5 text-neutral-900 font-bold">
-              <ClipboardPaste className="h-4 w-4 text-indigo-600" />
+              <ClipboardPaste className="h-4 w-4 text-teal-700" />
               <span>Dán toàn bộ nội dung đề thi vào khung:</span>
             </div>
             <span className="text-[11px] text-neutral-400">Hỗ trợ KaTeX $...$ · Tối đa 5 MB</span>
@@ -334,7 +334,7 @@ Lời giải: Thay x = 1 vào biểu thức ta được 2(1) - 3(1) + 1 = 0. Ch�
 
 BẢNG ĐÁP ÁN:
 1.A  2.B`}
-            className="w-full flex-1 min-h-[155px] rounded-xl border border-neutral-300 p-3 text-xs font-mono leading-relaxed text-neutral-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden resize-none"
+            className="w-full flex-1 min-h-[155px] rounded-xl border border-neutral-300 p-3 text-xs font-mono leading-relaxed text-neutral-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden resize-none"
           />
 
           <div className="flex items-center justify-between pt-1">
@@ -348,7 +348,7 @@ BẢNG ĐÁP ÁN:
               disabled={!pastedText.trim() || isProcessing}
               leftIcon={<Sparkles className="h-3.5 w-3.5" />}
               rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
-              className="font-bold bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+              className="font-bold bg-teal-700 hover:bg-teal-800 shadow-sm"
             >
               Bóc tách đề thi ngay
             </Button>
@@ -358,17 +358,17 @@ BẢNG ĐÁP ÁN:
 
       {/* Progress Loading Bar (Hiển thị ngay dưới card, bố cục vừa vặn gọn gàng) */}
       {isProcessing && (
-        <Card className="p-3 bg-indigo-50 border-indigo-200 space-y-1.5 animate-pulse">
-          <div className="flex items-center justify-between text-xs font-bold text-indigo-900">
+        <Card className="p-3 bg-teal-50 border-teal-200 space-y-1.5 animate-pulse">
+          <div className="flex items-center justify-between text-xs font-bold text-teal-900">
             <span className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-spin" />
+              <Sparkles className="h-3.5 w-3.5 text-teal-700 animate-spin" />
               <span>Hệ thống đang bóc tách câu hỏi, công thức Toán LaTeX và nhận diện đáp án...</span>
             </span>
             <span>{processProgress}%</span>
           </div>
-          <div className="w-full bg-indigo-200 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-teal-200 rounded-full h-1.5 overflow-hidden">
             <div
-              className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
+              className="bg-teal-600 h-1.5 rounded-full transition-all duration-300"
               style={{ width: `${processProgress}%` }}
             />
           </div>

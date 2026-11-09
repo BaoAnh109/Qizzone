@@ -265,7 +265,7 @@ export function QuizRoom() {
                   ? "bg-rose-50 border-rose-300 text-rose-700 animate-pulse"
                   : isWarning
                   ? "bg-amber-50 border-amber-300 text-amber-800"
-                  : "bg-indigo-50 border-indigo-200 text-indigo-950"
+                  : "bg-teal-50 border-teal-200 text-teal-950"
               }`}
             >
               <Clock
@@ -274,7 +274,7 @@ export function QuizRoom() {
                     ? "text-rose-600"
                     : isWarning
                     ? "text-amber-600"
-                    : "text-indigo-600"
+                    : "text-teal-700"
                 }`}
               />
               <span>{isUnlimited ? `∞ ${formattedTime}` : formattedTime}</span>
@@ -285,7 +285,7 @@ export function QuizRoom() {
               variant="primary"
               size="sm"
               onClick={() => setIsSubmitModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 font-bold shadow-xs px-3 sm:px-4"
+              className="bg-teal-700 hover:bg-teal-800 font-bold shadow-xs px-3 sm:px-4"
               leftIcon={<Send className="h-3.5 w-3.5" />}
             >
               Nộp bài
@@ -386,11 +386,11 @@ export function QuizRoom() {
                       onClick={() => handleSelectOption(opt.id)}
                       className={isSelected
                         ? "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-blue-600 bg-blue-50 p-4 text-left ring-2 ring-blue-100 transition-colors sm:p-5"
-                        : "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-indigo-300 hover:bg-neutral-50/80 sm:p-5"}
+                        : "flex w-full cursor-pointer items-start gap-4 rounded-lg border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-teal-300 hover:bg-neutral-50/80 sm:p-5"}
                     >
                       <span
                         className={isSelected
-                          ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs transition sm:text-sm"
+                          ? "flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-600 text-xs font-bold text-white shadow-2xs transition sm:text-sm"
                           : "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-neutral-100 text-xs font-bold text-neutral-700 transition sm:text-sm"}
                       >
                         {String.fromCharCode(65 + index)}
@@ -401,7 +401,7 @@ export function QuizRoom() {
                       </div>
 
                       {isSelected && (
-                        <CheckCircle2 className="ml-auto mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
+                        <CheckCircle2 className="ml-auto mt-0.5 h-5 w-5 shrink-0 text-teal-700" />
                       )}
                     </button>
                   );
@@ -495,7 +495,7 @@ export function QuizRoom() {
                           onClick={() => setQuestionIndex(quiz.id, idx)}
                           className={`h-10 w-full rounded-xl text-xs flex items-center justify-center font-mono transition cursor-pointer relative ${bgClass} ${
                             isCurrent
-                              ? "ring-2 ring-indigo-600 ring-offset-2 scale-105 shadow-xs z-10"
+                              ? "ring-2 ring-teal-600 ring-offset-2 scale-105 shadow-xs z-10"
                               : ""
                           }`}
                         >

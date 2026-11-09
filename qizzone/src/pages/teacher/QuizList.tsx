@@ -275,12 +275,12 @@ export function QuizList() {
                 <CardContent className="pt-3 space-y-4 flex-1 flex flex-col justify-between">
                   <div className="space-y-2.5">
                     {/* Room Code Box */}
-                    <div className="flex items-center justify-between rounded-xl bg-indigo-50/60 p-2.5 border border-indigo-100">
+                    <div className="flex items-center justify-between rounded-xl bg-teal-50/60 p-2.5 border border-teal-100">
                       <div>
-                        <p className="text-[10px] font-bold text-indigo-900/70 uppercase tracking-wider">
+                        <p className="text-[10px] font-bold text-teal-900/70 uppercase tracking-wider">
                           Mã phòng thi:
                         </p>
-                        <p className="font-mono font-black text-base text-indigo-950 tracking-wider">
+                        <p className="font-mono font-black text-base text-teal-950 tracking-wider">
                           {quiz.code}
                         </p>
                       </div>
@@ -289,7 +289,7 @@ export function QuizList() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-2 text-xs bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-100"
+                          className="h-8 px-2 text-xs bg-white text-teal-900 border-teal-200 hover:bg-teal-100"
                           onClick={() => handleCopyCode(quiz.code)}
                           title="Sao chép mã phòng"
                           leftIcon={
@@ -306,7 +306,7 @@ export function QuizList() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-2 text-xs bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-100"
+                          className="h-8 px-2 text-xs bg-white text-teal-900 border-teal-200 hover:bg-teal-100"
                           onClick={() => handleCopyLink(quiz.code)}
                           title="Sao chép link làm bài trực tiếp"
                           leftIcon={
@@ -340,7 +340,7 @@ export function QuizList() {
                     {/* Phân phối đề thi (Lớp / Email) */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
                       {quiz.settings.assignedClasses && quiz.settings.assignedClasses.length > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200/60">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 font-semibold border border-teal-200/60">
                           <GraduationCap className="h-3 w-3" />
                           <span>Lớp: {quiz.settings.assignedClasses.join(", ")}</span>
                         </span>
@@ -366,7 +366,7 @@ export function QuizList() {
                     <Button
                       variant="primary"
                       size="sm"
-                      className="w-full font-bold shadow-xs bg-indigo-600 hover:bg-indigo-700"
+                      className="w-full font-bold shadow-xs bg-teal-700 hover:bg-teal-800"
                       onClick={() => navigate(`/teacher/quiz/${quiz.id}/results`)}
                       leftIcon={<BarChart2 className="h-3.5 w-3.5" />}
                     >
@@ -377,9 +377,9 @@ export function QuizList() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full text-indigo-700 hover:bg-indigo-50 border-indigo-200"
+                      className="w-full text-teal-700 hover:bg-teal-50 border-teal-200"
                       onClick={() => handleOpenAssignModal(quiz)}
-                      leftIcon={<Users className="h-3.5 w-3.5 text-indigo-600" />}
+                      leftIcon={<Users className="h-3.5 w-3.5 text-teal-700" />}
                     >
                       Giao đề cho Lớp / Email
                     </Button>
@@ -408,7 +408,7 @@ export function QuizList() {
                       <button
                         type="button"
                         onClick={() => handleTogglePublish(quiz.id)}
-                        className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 hover:text-indigo-600 transition cursor-pointer"
+                        className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 hover:text-teal-700 transition cursor-pointer"
                       >
                         {quiz.status === "published" ? (
                           <>
@@ -496,7 +496,7 @@ export function QuizList() {
           onClose={() => setAssignTarget(null)}
           title={
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-600" />
+              <Users className="h-5 w-5 text-teal-700" />
               <span>Giao đề thi cho Lớp hoặc Email học sinh</span>
             </div>
           }
@@ -523,7 +523,7 @@ export function QuizList() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 uppercase tracking-wide">
-                  <GraduationCap className="h-4 w-4 text-indigo-600" />
+                  <GraduationCap className="h-4 w-4 text-teal-700" />
                   <span>Chỉ định theo Lớp ({assignClasses.length})</span>
                 </label>
               </div>
@@ -557,13 +557,13 @@ export function QuizList() {
                   {assignClasses.map((cls, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-700 border border-teal-200"
                     >
                       <span>{cls}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveAssignClass(idx)}
-                        className="text-indigo-400 hover:text-rose-600 transition cursor-pointer"
+                        className="text-teal-400 hover:text-rose-600 transition cursor-pointer"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -581,7 +581,7 @@ export function QuizList() {
             <div className="space-y-2 pt-3 border-t border-neutral-100">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 uppercase tracking-wide">
-                  <Mail className="h-4 w-4 text-indigo-600" />
+                  <Mail className="h-4 w-4 text-teal-700" />
                   <span>Chỉ định theo Email học sinh ({assignEmails.length})</span>
                 </label>
               </div>

@@ -190,7 +190,7 @@ export function TeacherDashboard() {
                       <span>•</span>
                       <span>
                         Mã phòng:{" "}
-                        <strong className="font-mono text-indigo-600">
+                        <strong className="font-mono text-teal-700">
                           {quiz.code}
                         </strong>
                       </span>
@@ -202,7 +202,7 @@ export function TeacherDashboard() {
                       variant="outline"
                       size="sm"
                       onClick={() => navigate(`/teacher/quiz/${quiz.id}/results`)}
-                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-indigo-600" />}
+                      leftIcon={<BarChart2 className="h-3.5 w-3.5 text-teal-700" />}
                       className="font-semibold text-xs"
                     >
                       Bảng điểm {submissionCount > 0 && `(${submissionCount})`}

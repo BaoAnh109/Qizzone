@@ -115,9 +115,9 @@ export function JoinByLink() {
   if (!cleanCode) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center border-indigo-100 shadow-xl bg-white">
+        <Card className="max-w-md w-full text-center border-teal-100 shadow-xl bg-white">
           <CardContent className="pt-8 pb-6 px-6 space-y-5">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
               <Play className="h-7 w-7 fill-current ml-0.5" />
             </div>
             <div>
@@ -161,7 +161,7 @@ export function JoinByLink() {
   if (!isInitialized || checking || (isAuthenticated && isLoading)) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-3">
-        <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+        <Loader2 className="h-8 w-8 text-teal-700 animate-spin" />
         <p className="text-sm font-semibold text-neutral-700">
           Đang kết nối tới phòng thi {cleanCode}...
         </p>
@@ -174,13 +174,13 @@ export function JoinByLink() {
     const returnUrl = `/join/${cleanCode}`;
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center border-indigo-200 shadow-xl bg-white">
+        <Card className="max-w-md w-full text-center border-teal-200 shadow-xl bg-white">
           <CardContent className="pt-8 pb-6 px-6 space-y-5">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
               <Play className="h-7 w-7 fill-current ml-0.5" />
             </div>
             <div>
-              <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-indigo-100 text-indigo-800 mb-2 font-mono">
+              <span className="inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full bg-teal-100 text-teal-800 mb-2 font-mono">
                 Mã phòng: {cleanCode}
               </span>
               <h2 className="text-xl font-bold text-neutral-900">
@@ -323,7 +323,7 @@ export function JoinByLink() {
   // State 6: Redirecting to room
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6 space-y-3">
-      <Loader2 className="h-8 w-8 text-indigo-600 animate-spin" />
+      <Loader2 className="h-8 w-8 text-teal-700 animate-spin" />
       <p className="text-sm font-semibold text-neutral-700">
         Đang chuyển hướng vào phòng thi...
       </p>

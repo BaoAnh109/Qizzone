@@ -131,7 +131,7 @@ export function PracticeResult() {
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card><CardContent className="p-4 text-center"><p className="text-xs text-neutral-500">Số câu đúng</p><p className="mt-1 text-2xl font-extrabold text-emerald-800">{cachedResult.correctCount}<span className="text-base font-semibold text-neutral-400"> / {cachedResult.totalQuestions}</span></p></CardContent></Card>
-        <Card><CardContent className="p-4 text-center"><p className="text-xs text-neutral-500">Tỉ lệ đúng</p><p className="mt-1 text-2xl font-extrabold text-indigo-800">{cachedResult.percentage}%</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-xs text-neutral-500">Tỉ lệ đúng</p><p className="mt-1 text-2xl font-extrabold text-teal-800">{cachedResult.percentage}%</p></CardContent></Card>
         <Card><CardContent className="p-4 text-center"><p className="flex items-center justify-center gap-1 text-xs text-neutral-500"><Clock3 className="h-3.5 w-3.5" />Thời gian đã luyện</p><p className="mt-1 font-mono text-2xl font-extrabold text-neutral-800">{formatDuration(cachedResult.durationSeconds)}</p></CardContent></Card>
       </div>
 
