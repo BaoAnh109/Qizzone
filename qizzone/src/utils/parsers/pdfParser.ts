@@ -312,12 +312,7 @@ export async function getPdfPagePaintMarks(page: PdfJsTypes.PDFPageProxy, textIt
         const visualBounds = transformedBounds(coordinates, transform);
         if (visualBounds && args[0] !== undefined) pathBounds.push(visualBounds);
         if (!isYellowFill || !allowedPaintOps.has(args[0] as number)) continue;
-        vectorHighlights.push([
-          Math.min(...coordinates.map(([x]) => x)),
-          Math.min(...coordinates.map(([, y]) => y)),
-          Math.max(...coordinates.map(([x]) => x)),
-          Math.max(...coordinates.map(([, y]) => y)),
-        ]);
+        if (visualBounds) vectorHighlights.push(visualBounds);
       }
     }
   }

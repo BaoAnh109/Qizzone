@@ -57,6 +57,19 @@ describe("PDF visual region detection", () => {
       && region.bbox[2] >= 270 && region.bbox[3] >= 520)).toBe(true);
   });
 
+  it("applies PDF transforms to yellow answer highlights before matching text", async () => {
+    const pdf = makePdf("q 1 1 0 rg 1 0 0 1 0 500 cm 100 100 80 20 re f Q");
+    const loadingTask = pdfjsLib.getDocument({ data: pdf });
+    const document = await loadingTask.promise;
+    try {
+      const page = await document.getPage(1);
+      const marks = await getPdfPagePaintMarks(page, []);
+      expect(marks.vectorHighlights).toEqual([[100, 600, 180, 620]]);
+    } finally {
+      await loadingTask.destroy();
+    }
+  });
+
   it("detects the placement bounds of embedded PDF image objects", async () => {
     const imageBytes = new Uint8Array([1, 2, 3]);
     const content = "q 200 0 0 120 180 450 cm /Figure Do Q";

@@ -8,7 +8,7 @@ import { cleanPdfExtractedText } from "@/utils/parsers/pdfCleaner";
 import { shouldUseAIExtractionFallback } from "@/services/aiExtractionService";
 import { parseDocxFile } from "@/utils/parsers/docxParser";
 import { recognizeOcrPages } from "@/utils/parsers/ocrService";
-import { parsePdfFile } from "@/utils/parsers/pdfParser";
+import { getPdfPagePaintMarks, parsePdfFile } from "@/utils/parsers/pdfParser";
 
 // The standard build targets browsers. Vitest uses PDF.js's Node-compatible build.
 vi.mock("pdfjs-dist", async () => import("pdfjs-dist/legacy/build/pdf.mjs"));
@@ -153,6 +153,66 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
     expect(result.questions[300].options[3].content).not.toContain("Khái niệm dân tộc hiện nay");
     expect(result.questions[301].content).toContain("Khái niệm dân tộc hiện nay");
   }, 120_000);
+
+  const q10AnswerMarkIt = benchmarkDirectory && existsSync(longPdfPath) ? it : it.skip;
+  q10AnswerMarkIt("detects the highlighted D answer for question 10 in the actual PDF", async () => {
+    const bytes = await readFile(longPdfPath);
+    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(bytes) });
+    const pdf = await loadingTask.promise;
+    try {
+      const page = await pdf.getPage(2);
+      const content = await page.getTextContent();
+      const items = content.items.flatMap(item => {
+        if (!("str" in item) || !item.str.trim()) return [];
+        return [{
+          text: item.str,
+          x: item.transform[4] || 0,
+          y: item.transform[5] || 0,
+          width: item.width || 0,
+          height: Math.max(1, item.height || Math.abs(item.transform[3]) || 1),
+        }];
+      });
+      const marks = await getPdfPagePaintMarks(page, items.map(item => item.text));
+      const rows: Array<typeof items> = [];
+      for (const item of [...items].sort((first, second) => second.y - first.y || first.x - second.x)) {
+        const row = rows.find(candidate => Math.abs(candidate[0].y - item.y) <= Math.max(3, item.height * 0.35));
+        if (row) row.push(item);
+        else rows.push([item]);
+      }
+      const found = rows.flatMap(row => {
+        if (row[0].y < 200 || row[0].y > 270) return [];
+        const text = [...row].sort((first, second) => first.x - second.x).map(item => item.text).join("");
+        const optionId = text.match(/^\s*([A-D])\./i)?.[1]?.toUpperCase();
+        if (!optionId) return [];
+        const bounds = [
+          Math.min(...row.map(item => item.x)),
+          Math.min(...row.map(item => item.y - item.height * 0.2)),
+          Math.max(...row.map(item => item.x + item.width)),
+          Math.max(...row.map(item => item.y + item.height * 0.9)),
+        ];
+        const highlighted = marks.vectorHighlights.some(mark =>
+          mark[0] < bounds[2] && mark[2] > bounds[0] && mark[1] < bounds[3] && mark[3] > bounds[1]);
+        return [{ optionId, text, highlighted }];
+      });
+
+      expect(found.map(option => option.optionId).sort()).toEqual(["A", "B", "C", "D"]);
+      expect(found.find(option => option.optionId === "D")?.text).toContain("Rôbớt Ôoen");
+      expect(found.filter(option => option.highlighted).map(option => option.optionId)).toEqual(["D"]);
+    } finally {
+      await loadingTask.destroy();
+    }
+  }, 30_000);
+
+  const q10FullExtractionIt = benchmarkDirectory && existsSync(longPdfPath) ? it : it.skip;
+  q10FullExtractionIt("extracts the highlighted D answer for question 10 end to end", async () => {
+    const bytes = await readFile(longPdfPath);
+    const parsed = await parsePdfFile(new File([bytes], "CNXHKH 2024 HUIT.docx.pdf"));
+    const question = parsed.result.questions.find(item => item.order === 10);
+    expect(question?.content).toContain("Nhà tư tưởng xã hội chủ nghĩa nào");
+    expect(question?.options.map(option => option.id)).toEqual(["A", "B", "C", "D"]);
+    expect(question?.correctAnswers).toEqual(["D"]);
+    expect(question?.detectionStrategy).toBe("highlight_color");
+  }, 150_000);
 
   const markedDocxPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.docx");
   const markedPdfPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.pdf");
