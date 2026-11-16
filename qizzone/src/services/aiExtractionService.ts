@@ -23,7 +23,7 @@ interface AIQuestionPayload {
 }
 
 const SYSTEM_PROMPT = `Bạn là chuyên gia bóc tách đề thi trắc nghiệm Việt Nam. Trả về JSON hợp lệ duy nhất.
-Phải giữ đủ câu hỏi, nội dung phương án, đáp án đúng nếu có trong tài liệu hoặc suy luận được, lời giải và LaTeX.
+Chỉ trích xuất dữ liệu xuất hiện trong tài liệu, giữ nguyên câu hỏi, phương án, hình và LaTeX. Chỉ trả đáp án khi có bằng chứng rõ ràng trong tài liệu (đánh dấu, đáp án ghi sẵn, bảng đáp án). Không giải đề, không suy đoán. Nếu không có bằng chứng, correctAnswers phải là []. Không tự tạo câu hoặc phương án bị thiếu.
 Schema: {"title":string,"subject":string,"questions":[{"order":number,"content":string,"options":[{"id":"A|B|C|D","content":string}],"correctAnswers":["A"],"explanation":string,"confidenceScore":number,"detectionStrategy":"ai_inference"}]}`;
 
 function cleanJson(value: string): string {
@@ -48,10 +48,10 @@ function parseAIResult(result: unknown, fileName: string, fileType: ExtractionRe
       correctAnswers: answers,
       explanation: question.explanation,
       points: payload.questions?.length ? 10 / payload.questions.length : 1,
-      confidenceScore: typeof question.confidenceScore === 'number' ? question.confidenceScore : 0.9,
+      confidenceScore: typeof question.confidenceScore === 'number' ? Math.max(0, Math.min(1, question.confidenceScore)) : 0,
       detectionStrategy: (question.detectionStrategy || 'ai_inference') as DetectionStrategy,
       rawTextSegment: question.content || '',
-      warningFlags: options.length < 2 || answers.length === 0 ? ['Cần kiểm tra đáp án'] : undefined,
+      warningFlags: [ ...(options.length < 2 ? ['Không đủ 2 phương án; cần kiểm tra'] : []), ...(answers.length === 0 ? ['Chưa có bằng chứng đáp án trong tài liệu'] : []) ],
     };
   });
   return {
@@ -91,15 +91,25 @@ export async function extractQuizWithAI(params: AIExtractParams): Promise<Extrac
   const fileName = file?.name || (imageBase64 ? 'DeThi_AI.png' : 'DeThi_VanBan.txt');
   const fileType: ExtractionResult['fileType'] = imageBase64 ? 'image' : file?.name.toLowerCase().endsWith('.pdf') ? 'pdf' : file?.name.toLowerCase().endsWith('.docx') ? 'docx' : 'text';
   const source = text?.trim() ? `\nNội dung tài liệu:\n${text}` : '';
+  // Parser-first: văn bản có cấu trúc hợp lệ không cần gọi Gemini.
+  // Chỉ chuyển sang AI nếu parser không tìm thấy câu hoặc có câu thiếu phương án.
+  if (text?.trim()) {
+    const parsed = parseRawExamText(text, { fileName, fileType });
+    const complete = parsed.questions.length > 0 &&
+      parsed.questions.every(question => question.options.length >= 2 &&
+        question.options.length <= 4 &&
+        question.options.every(option => option.content.trim().length > 0));
+    if (complete) return parsed;
+  }
   if (imageBase64 || text?.trim()) {
     try {
       const result = parseAIResult(await requestAI(`${SYSTEM_PROMPT}\n${source}`, imageBase64), fileName, fileType, file?.size || text?.length || 0);
       if (result) return result;
     } catch {
-      // Text still has a deterministic parser fallback; image will receive a useful error below.
+      // Preserve partial parser output when Gemini is unavailable.
     }
   }
-  if (text?.trim()) return parseRawExamText(text, { fileName, fileType: 'text' });
+  if (text?.trim()) return parseRawExamText(text, { fileName, fileType });
   throw new Error('Không thể bóc tách ảnh. Kiểm tra đăng nhập, quyền giáo viên và cấu hình Gemini trên server.');
 }
 
