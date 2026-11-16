@@ -146,6 +146,79 @@ export interface PdfPagePaintMarks {
 type PdfMatrix = [number, number, number, number, number, number];
 type PdfBounds = [number, number, number, number];
 
+function isLikelyChartLabel(text: string): boolean {
+  const value = text.trim();
+  if (!value || value.length > 8 || /^[A-D][.)]$/iu.test(value)) return false;
+  const allowedPunctuation = "°◦%.,:+-−×÷=()[]_/";
+  return [...value].every(character => /[\p{N}\p{L}\p{M}]/u.test(character) || allowedPunctuation.includes(character));
+}
+
+function pointWithinBounds(x: number, y: number, bounds: PdfBounds): boolean {
+  return x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3];
+}
+
+function expandPdfShapeRegionsWithLabels(
+  regions: PdfPagePaintMarks["visualRegions"],
+  records: PdfTextRecord[],
+): PdfPagePaintMarks["visualRegions"] {
+  return regions.map(region => {
+    if (region.type !== "shape") return region;
+    const labels = records.filter(record => isLikelyChartLabel(record.text) && boundsDistance(region.bbox, record.bbox) <= 40);
+    if (!labels.length) return region;
+    return {
+      ...region,
+      bbox: [
+        Math.min(region.bbox[0], ...labels.map(label => label.bbox[0])),
+        Math.min(region.bbox[1], ...labels.map(label => label.bbox[1])),
+        Math.max(region.bbox[2], ...labels.map(label => label.bbox[2])),
+        Math.max(region.bbox[3], ...labels.map(label => label.bbox[3])),
+      ] as PdfBounds,
+    };
+  });
+}
+
+function hasNearbyPromptVisualCue(region: PdfPagePaintMarks["visualRegions"][number], records: PdfTextRecord[]): boolean {
+  const cue = /(?:hình(?:\s+(?:bên|vẽ|dưới|sau))?|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|atlat|graph|chart|diagram|map|plot)/iu;
+  return records.some(record => record.text.trim().length >= 8
+    && cue.test(record.text)
+    && boundsDistance(region.bbox, record.bbox) <= 90);
+}
+
+function questionReferencesPromptVisual(content: string): boolean {
+  return /(?:hình(?:\s+(?:bên|vẽ|dưới|sau))?|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|atlat|graph|chart|diagram|map|plot)/iu.test(content);
+}
+
+/** @internal Used by the PDF association regression tests. */
+export function isPdfVisualSourcePageEligible(referencedPageCount: number, hasPageLocalCue: boolean): boolean {
+  return referencedPageCount <= 2 || (hasPageLocalCue && referencedPageCount <= 4);
+}
+
+/** @internal Used by the PDF association regression tests. */
+export function isPdfVisualPositionConsistentWithPromptCue(
+  visualBounds: PdfBounds,
+  promptBounds: PdfBounds,
+  promptText: string,
+): boolean {
+  const visualCenterY = (visualBounds[1] + visualBounds[3]) / 2;
+  const promptCenterY = (promptBounds[1] + promptBounds[3]) / 2;
+  const pointsBelow = /(?:hình|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|bảng|graph|chart|map|diagram|plot)[^.!?]{0,55}(?:dưới|below|beneath|under)\b/iu.test(promptText);
+  const pointsAbove = /(?:hình|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|bảng|graph|chart|map|diagram|plot)[^.!?]{0,55}(?:phía trên|ở trên|above)\b/iu.test(promptText);
+
+  if (pointsBelow) return visualCenterY < promptCenterY - 6;
+  if (pointsAbove) return visualCenterY > promptCenterY + 6;
+  return true;
+}
+
+function isTextEmbeddedInVisualLabel(
+  record: PdfTextRecord,
+  regions: PdfPagePaintMarks["visualRegions"],
+): boolean {
+  if (!isLikelyChartLabel(record.text)) return false;
+  const centerX = (record.bbox[0] + record.bbox[2]) / 2;
+  const centerY = (record.bbox[1] + record.bbox[3]) / 2;
+  return regions.some(region => region.type === "shape" && pointWithinBounds(centerX, centerY, region.bbox));
+}
+
 function multiplyPdfMatrix(left: PdfMatrix, right: number[]): PdfMatrix {
   return [
     left[0] * right[0] + left[2] * right[1],
@@ -578,6 +651,18 @@ export async function parsePdfFile(
       });
       readingOrder += 1;
     }
+    const visualRegions = expandPdfShapeRegionsWithLabels(pagePaintMarks.visualRegions, records);
+    const nearbyFigureRegions = visualRegions.filter(region => region.type === "shape" && hasNearbyPromptVisualCue(region, records));
+    const visualLabelRuns = new Set(records.flatMap((record, index) =>
+      isTextEmbeddedInVisualLabel(record, nearbyFigureRegions) ? [index] : [],
+    ));
+    const questionTextRecords = records.filter((_record, index) => !visualLabelRuns.has(index));
+    if (visualLabelRuns.size) {
+      for (let index = blocks.length - 1; index >= 0; index -= 1) {
+        const block = blocks[index];
+        if (block.type === "text_span" && visualLabelRuns.has(block.sourceRef.run ?? -1)) blocks.splice(index, 1);
+      }
+    }
     for (const record of markAreas) {
       blocks.push({
         id: "p" + pageNum + "_annotation_" + blocks.length,
@@ -588,7 +673,7 @@ export async function parsePdfFile(
         sourceRef: { page: pageNum },
       });
     }
-    for (const [visualIndex, visual] of pagePaintMarks.visualRegions.entries()) {
+    for (const [visualIndex, visual] of visualRegions.entries()) {
       blocks.push({
         id: "p" + pageNum + "_visual_" + visualIndex,
         type: visual.type,
@@ -598,7 +683,8 @@ export async function parsePdfFile(
       });
     }
 
-    const pageData = plainTextPageRecords(records, pageWidth);
+    const pageData = plainTextPageRecords(questionTextRecords, pageWidth);
+    const rawPageData = visualLabelRuns.size ? plainTextPageRecords(records, pageWidth) : pageData;
     blocks.push(...pageData.lines.map((line, index) => ({
       id: "p" + pageNum + "_line" + index,
       type: "paragraph" as const,
@@ -613,7 +699,7 @@ export async function parsePdfFile(
       },
       sourceRef: { page: pageNum },
     })));
-    pagesText.push(pageData.plain);
+    pagesText.push(rawPageData.plain);
     styledPages.push(pageData.styled);
     if (isLikelyScan(pageData.plain)) scanPageNumbers.push(pageNum);
     irPages.push({ pageNumber: pageNum, width: pageWidth, height: pageHeight, blocks });
@@ -960,10 +1046,15 @@ export async function attachPdfVisualMediaToQuestions(
         const block = textBlocksById.get(id);
         return block?.sourceRef.page === undefined ? [] : [block.sourceRef.page];
       }));
+      const localCueBlocks = fallbackPromptBlocks.filter(block => questionReferencesPromptVisual(block.text || block.normalizedText || ""));
+      const hasPageLocalVisualCue = localCueBlocks.length > 0;
+      const localCueText = localCueBlocks.map(block => block.text || block.normalizedText || "").join(" ");
+      const localCueBounds = unionBounds(localCueBlocks);
       // A prompt mapped across many pages is usually an ambiguous source match;
-      // avoid attaching unrelated charts to a catch-all pseudo-question.
-      if (referencedPages.size > 2 || !fallbackPromptBlocks.length) return [];
-      const promptDistance = Math.min(...fallbackPromptBlocks.map(block => boundsDistance(block.bbox as PdfBounds, visualBounds)));
+      // even a generic figure phrase must not make a catch-all question own a chart.
+      if (!isPdfVisualSourcePageEligible(referencedPages.size, hasPageLocalVisualCue) || !fallbackPromptBlocks.length) return [];
+      const promptAnchorBlocks = localCueBlocks.length ? localCueBlocks : fallbackPromptBlocks;
+      const promptDistance = Math.min(...promptAnchorBlocks.map(block => boundsDistance(block.bbox as PdfBounds, visualBounds)));
       const optionTargets = question.options.flatMap(option => {
         const optionBlocks = (option.sourceRefs || []).flatMap(id => {
           const sourceBlock = textBlocksById.get(id);
@@ -975,12 +1066,20 @@ export async function attachPdfVisualMediaToQuestions(
       }).sort((first, second) => first.distance - second.distance);
       const nearestOption = optionTargets[0];
       const optionThreshold = visualBlock.type === "shape" ? 10 : 16;
-      const promptThreshold = visualBlock.type === "shape" ? 22 : 52;
-      const optionIsCloser = nearestOption && nearestOption.distance <= optionThreshold && nearestOption.distance <= promptDistance;
+      const explicitVisualCue = hasPageLocalVisualCue;
+      if (explicitVisualCue && localCueBounds
+        && !isPdfVisualPositionConsistentWithPromptCue(visualBounds, localCueBounds, localCueText)) return [];
+      const promptThreshold = visualBlock.type === "shape"
+        ? 22
+        : (explicitVisualCue ? 84 : 52);
+      const imageBelongsToPrompt = explicitVisualCue && nearestOption && promptDistance <= nearestOption.distance + 28;
+      const optionIsCloser = nearestOption && !imageBelongsToPrompt
+        && nearestOption.distance <= optionThreshold && nearestOption.distance <= promptDistance;
       const distance = optionIsCloser ? nearestOption.distance : promptDistance;
       if (distance > (optionIsCloser ? optionThreshold : promptThreshold)) return [];
-      return [{ question, option: optionIsCloser ? nearestOption.option : undefined, distance }];
-    }).sort((first, second) => first.distance - second.distance);
+      const promptPriority = !optionIsCloser && explicitVisualCue && promptDistance <= promptThreshold ? 0 : 1;
+      return [{ question, option: optionIsCloser ? nearestOption.option : undefined, distance, promptPriority }];
+    }).sort((first, second) => first.promptPriority - second.promptPriority || first.distance - second.distance);
     const target = questionTargets[0];
     if (!target || assetCount >= maxAssets || mediaBytes >= 15_000_000) continue;
 
@@ -990,13 +1089,15 @@ export async function attachPdfVisualMediaToQuestions(
     const targetLimit = target.option ? maxMediaPerOption : maxMediaPerQuestion;
     if (!hasRoomForTarget(targetKey, targetLimit, pageNumber, visualBounds)) continue;
 
-    const image = await renderPdfRegion(pdf, pageNumber, visualBounds, pageCanvases, visualBlock.type === "shape" ? 18 : 8);
+    const image = await renderPdfRegion(pdf, pageNumber, visualBounds, pageCanvases, 8);
     if (!image) continue;
     assetCount += 1;
     mediaBytes += image.length;
     rememberTargetRegion(targetKey, pageNumber, visualBounds);
     const existing = mediaByQuestion.get(target.question.id) || { images: [], optionImages: new Map<string, string[]>() };
-    const textVisualBounds = expandBounds(visualBounds, visualBlock.type === "shape" ? 18 : 8);
+    // Do not strip text that only touches the image's visual padding. The visual
+    // bounds already include chart labels where detected; keep adjacent prompt text.
+    const textVisualBounds = visualBounds;
 
     if (target.option) {
       const optionId = target.option.id;

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import { getPdfPagePaintMarks, getScannedPdfPromptBounds, normalizePdfGlyphText, parsePdfFile } from "@/utils/parsers/pdfParser";
+import {
+  getPdfPagePaintMarks,
+  getScannedPdfPromptBounds,
+  isPdfVisualPositionConsistentWithPromptCue,
+  isPdfVisualSourcePageEligible,
+  normalizePdfGlyphText,
+  parsePdfFile,
+} from "@/utils/parsers/pdfParser";
 import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
 import type { DocumentIRBlock } from "@/types/documentIR";
 
@@ -115,6 +122,38 @@ describe("PDF visual region detection", () => {
     );
     const parsed = await parsePdfFile(new File([pdfBytes.buffer as ArrayBuffer], "math-exponent.pdf"));
     expect(parsed.pagesText[0]).toContain("x³");
+  });
+
+  it("keeps graph axis labels in the figure crop instead of merging them into the prompt", async () => {
+    const font = { value: "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>" };
+    const content = [
+      "q 0 0 0 RG 2 w 300 500 m 300 650 l S 300 500 m 500 500 l S 320 500 30 70 re f 380 500 30 110 re f Q",
+      "BT /F1 12 Tf 70 650 Td (Graph of temperature changes in a city today.) Tj 210 -50 Td (t) Tj 20 0 Td (34) Tj ET",
+    ].join(" ");
+    const pdfBytes = makePdf(content, "<< /Font << /F1 5 0 R >> >>", [font]);
+    const parsed = await parsePdfFile(new File([pdfBytes.buffer as ArrayBuffer], "graph-labels.pdf"));
+    const visual = parsed.documentIR.pages[0].blocks.find(block => block.type === "shape");
+
+    expect(visual?.bbox?.[0]).toBeLessThanOrEqual(280);
+    expect(parsed.documentIR.pages[0].blocks.some(block => block.type === "text_span" && block.text === "34")).toBe(false);
+    expect(parsed.documentIR.pages[0].blocks.find(block => block.type === "paragraph")?.text)
+      .toContain("Graph of temperature changes in a city today.");
+  });
+
+  it("does not attach a figure above a prompt that explicitly refers to a figure below", () => {
+    const prompt = [300, 520, 520, 545] as [number, number, number, number];
+    const figureAbove = [320, 560, 500, 730] as [number, number, number, number];
+    const figureBelow = [320, 300, 500, 500] as [number, number, number, number];
+
+    expect(isPdfVisualPositionConsistentWithPromptCue(figureAbove, prompt, "như hình vẽ dưới đây")).toBe(false);
+    expect(isPdfVisualPositionConsistentWithPromptCue(figureBelow, prompt, "như hình vẽ dưới đây")).toBe(true);
+    expect(isPdfVisualPositionConsistentWithPromptCue(figureAbove, prompt, "Hình bên cho biết nhiệt độ")).toBe(true);
+  });
+
+  it("rejects catch-all questions with source matches across many pages", () => {
+    expect(isPdfVisualSourcePageEligible(3, true)).toBe(true);
+    expect(isPdfVisualSourcePageEligible(3, false)).toBe(false);
+    expect(isPdfVisualSourcePageEligible(43, true)).toBe(false);
   });
 
   it("normalizes Greek letters from embedded PDF Symbol fonts", () => {
