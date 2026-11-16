@@ -34,8 +34,39 @@ export function DocumentViewer() {
   const [rotation, setRotation] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const documentContentRef = useRef<HTMLDivElement>(null);
+  const selectedQuestion = extractionResult?.questions.find(q => q.id === selectedQuestionId);
+  const selectedSourceRefs = useMemo(() => selectedQuestion?.sourceRefs || [], [selectedQuestion?.sourceRefs]);
+  const sourceBlocks = (() => {
+    const refs = new Set(selectedSourceRefs);
+    return [...(document?.documentIR?.pages.flatMap(page => page.blocks) || []), ...(document?.documentIR?.flowBlocks || [])]
+      .filter(block => refs.has(block.id));
+  })();
+  const currentPageIR = document?.documentIR?.pages.find(page => page.pageNumber === currentPage);
 
   const totalPages = document?.totalPages || 1;
+
+  useEffect(() => {
+    const refs = new Set(selectedSourceRefs);
+    const pageForQuestion = document?.documentIR?.pages.find(page => page.blocks.some(block => refs.has(block.id)));
+    let pageUpdateFrame: number | undefined;
+    if (document?.fileType === "pdf" && pageForQuestion && pageForQuestion.pageNumber !== currentPage) {
+      pageUpdateFrame = window.requestAnimationFrame(() => setCurrentPage(pageForQuestion.pageNumber));
+    }
+    const sourceNodes = documentContentRef.current?.querySelectorAll<HTMLElement>("[data-source-id]") || [];
+    let firstMatch: HTMLElement | undefined;
+    sourceNodes.forEach(node => {
+      const active = refs.has(node.dataset.sourceId || "");
+      node.classList.toggle("border-l-4", active);
+      node.classList.toggle("border-teal-500", active);
+      node.classList.toggle("bg-teal-50", active);
+      if (active && !firstMatch) firstMatch = node;
+    });
+    firstMatch?.scrollIntoView({ block: "center", behavior: "smooth" });
+    return () => {
+      if (pageUpdateFrame !== undefined) window.cancelAnimationFrame(pageUpdateFrame);
+    };
+  }, [selectedSourceRefs, document?.fileType, document?.documentIR, currentPage]);
 
   // Render PDF page onto canvas whenever page or zoom changes
   useEffect(() => {
@@ -71,10 +102,6 @@ export function DocumentViewer() {
       setTimeout(() => setIsCopied(false), 2000);
     }
   };
-
-  const selectedQuestion = extractionResult?.questions.find(
-    (q) => q.id === selectedQuestionId
-  );
 
   return (
     <Card
@@ -184,7 +211,7 @@ export function DocumentViewer() {
 
       {/* Document Content View */}
         <CardContent className="theme-surface-inset p-0 flex-1 overflow-y-auto font-sans">
-        <div className="p-4 sm:p-6 transition-all origin-top">
+        <div ref={documentContentRef} className="p-4 sm:p-6 transition-all origin-top">
           {/* Active Highlight Target Banner */}
           {selectedQuestion && (
             <div className="mb-4 rounded-xl bg-teal-50 p-3 border border-teal-200 text-xs text-teal-950 flex items-center justify-between shadow-2xs">
@@ -193,7 +220,7 @@ export function DocumentViewer() {
                 <span>Đang đồng bộ xem câu {selectedQuestion.order}:</span>
               </span>
               <span className="font-mono text-[11px] text-teal-700 theme-surface px-2 py-0.5 rounded-md border border-teal-100">
-                Đáp án: {selectedQuestion.correctAnswers.join(", ")} ({selectedQuestion.detectionStrategy})
+                Đáp án: {selectedQuestion.correctAnswers.length ? selectedQuestion.correctAnswers.join(", ") : "Chưa xác định"} ({selectedQuestion.answerStatus || "chờ duyệt"})
               </span>
             </div>
           )}
@@ -201,15 +228,26 @@ export function DocumentViewer() {
           {/* Render PDF Canvas */}
           {document?.fileType === "pdf" && document.pdfDoc ? (
             <div className="flex flex-col items-center justify-center p-2">
-              <div className="theme-document-canvas rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
+              <div className="theme-document-canvas relative rounded-xl shadow-lg border border-neutral-300 bg-white overflow-hidden max-w-full">
                 <canvas ref={canvasRef} className="max-w-full h-auto block" />
+                {currentPageIR && sourceBlocks.filter(block => block.sourceRef.page === currentPage && block.type === "paragraph" && block.bbox).map(block => {
+                  const bbox = block.bbox!;
+                  const width = currentPageIR.width || 1;
+                  const height = currentPageIR.height || 1;
+                  return <div key={block.id} aria-label="Vùng nguồn của câu đang chọn" className="pointer-events-none absolute border-2 border-amber-400 bg-amber-300/20" style={{
+                    left: `${(bbox[0] / width) * 100}%`,
+                    top: `${((height - bbox[3]) / height) * 100}%`,
+                    width: `${((bbox[2] - bbox[0]) / width) * 100}%`,
+                    height: `${Math.max(0.8, ((bbox[3] - bbox[1]) / height) * 100)}%`,
+                  }} />;
+                })}
               </div>
             </div>
           ) : document?.fileType === "image" && (document.imageBase64 || document.previewUrl) ? (
             /* Render Image Viewer */
             <div className="flex flex-col items-center justify-center p-2">
               <div
-                className="theme-document-canvas overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
+                className="theme-document-canvas relative overflow-hidden rounded-lg border border-neutral-200 bg-white p-2"
                 style={{
                   transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
                 }}
@@ -219,6 +257,17 @@ export function DocumentViewer() {
                   alt={document.fileName}
                   className="max-w-full h-auto rounded-xl object-contain"
                 />
+                {currentPageIR && sourceBlocks.filter(block => block.sourceRef.page === currentPage && block.bbox).map(block => {
+                  const bbox = block.bbox!;
+                  const width = currentPageIR.width || 1;
+                  const height = currentPageIR.height || 1;
+                  return <div key={block.id} aria-label="Vùng OCR của câu đang chọn" className="pointer-events-none absolute border-2 border-amber-400 bg-amber-300/20" style={{
+                    left: `${(bbox[0] / width) * 100}%`,
+                    top: `${(bbox[1] / height) * 100}%`,
+                    width: `${((bbox[2] - bbox[0]) / width) * 100}%`,
+                    height: `${Math.max(0.8, ((bbox[3] - bbox[1]) / height) * 100)}%`,
+                  }} />;
+                })}
               </div>
             </div>
           ) : (

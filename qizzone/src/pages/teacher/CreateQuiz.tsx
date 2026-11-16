@@ -45,6 +45,7 @@ interface CreateQuizLocationState {
   initialSubject?: string;
   initialDescription?: string;
   initialStep?: 1 | 2 | 3;
+  requiresSourceReview?: boolean;
 }
 
 const POPULAR_SUBJECTS = [
@@ -80,6 +81,7 @@ export function CreateQuiz() {
 
   const isEditing = !!quizId;
   const existingQuiz = quizId ? getQuizById(quizId) : undefined;
+  const requiresSourceReview = !isEditing && locationState?.requiresSourceReview === true;
 
   const [showEntry, setShowEntry] = useState<boolean>(() => {
     if (isEditing) return false;
@@ -211,6 +213,8 @@ export function CreateQuiz() {
       ]
     );
   });
+  const [reviewedQuestions, setReviewedQuestions] = useState<Question[] | null>(null);
+  const sourceReviewed = reviewedQuestions === questions;
 
   const hydratedQuizId = useRef<string | null>(null);
   useEffect(() => {
@@ -238,7 +242,7 @@ export function CreateQuiz() {
         { id: "C", content: "Đáp án C" },
         { id: "D", content: "Đáp án D" },
       ],
-      correctAnswers: ["A"],
+      correctAnswers: [],
       explanation: "",
       points: 1,
     };
@@ -332,6 +336,11 @@ export function CreateQuiz() {
 
   // Validate and Save
   const handleSaveQuiz = async (status: "draft" | "published") => {
+    if (status === "published" && requiresSourceReview && !sourceReviewed) {
+      toast.error("Vui lòng xác nhận đã rà soát câu hỏi, phương án và đáp án theo tài liệu gốc.");
+      setCurrentStep(2);
+      return;
+    }
     if (!title.trim()) {
       toast.error("Vui lòng nhập tiêu đề bài thi");
       setCurrentStep(3);
@@ -352,8 +361,19 @@ export function CreateQuiz() {
         setCurrentStep(1);
         return;
       }
+      const optionIds = q.options.map(option => option.id);
+      if (q.options.length < 2 || q.options.length > 4 || q.options.some(option => !option.content.trim()) || new Set(optionIds).size !== optionIds.length) {
+        toast.error(`Câu ${i + 1} cần có từ 2 đến 4 phương án hợp lệ, không trùng nhãn.`);
+        setCurrentStep(1);
+        return;
+      }
       if (!q.correctAnswers || q.correctAnswers.length === 0) {
         toast.error(`Vui lòng chọn đáp án đúng cho câu hỏi ${i + 1}`);
+        setCurrentStep(1);
+        return;
+      }
+      if (q.correctAnswers.some(answer => !optionIds.includes(answer))) {
+        toast.error(`Đáp án đúng của câu ${i + 1} không có trong các phương án.`);
         setCurrentStep(1);
         return;
       }
@@ -450,12 +470,28 @@ export function CreateQuiz() {
             variant="primary"
             size="sm"
             onClick={() => handleSaveQuiz("published")}
+            disabled={requiresSourceReview && !sourceReviewed}
             leftIcon={<CheckCircle2 className="h-4 w-4" />}
           >
             {isEditing ? "Cập nhật & Xuất bản" : "Xuất bản đề thi"}
           </Button>
         </div>
       </div>
+
+      {requiresSourceReview && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          <label className="flex cursor-pointer items-start gap-3 font-medium">
+            <input
+              type="checkbox"
+              checked={sourceReviewed}
+              onChange={(event) => setReviewedQuestions(event.target.checked ? questions : null)}
+              className="mt-0.5 h-4 w-4 accent-teal-700"
+            />
+            <span>Tôi đã đối chiếu toàn bộ câu hỏi, phương án và đáp án với tài liệu gốc; đã xử lý các cảnh báo trước khi xuất bản.</span>
+          </label>
+          <p className="mt-2 pl-7 text-xs">Nếu còn câu thiếu phương án hoặc đáp án, hãy quay lại bước bóc tách để bổ sung thủ công. Hệ thống không tự chọn đáp án thay bạn.</p>
+        </div>
+      )}
 
       {/* 3-Step Wizard Navigation Tabs */}
       <div className="grid grid-cols-3 gap-1 rounded-lg border theme-border theme-surface-muted p-1 text-xs font-semibold sm:text-sm">
@@ -1276,6 +1312,7 @@ export function CreateQuiz() {
                   <Button
                     variant="primary"
                     onClick={() => handleSaveQuiz("published")}
+                    disabled={requiresSourceReview && !sourceReviewed}
                     leftIcon={<CheckCircle2 className="h-4 w-4" />}
                     className="flex-1 sm:flex-none font-bold"
                   >

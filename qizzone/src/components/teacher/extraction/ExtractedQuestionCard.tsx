@@ -76,6 +76,11 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
           label: "AI Gợi ý tự giải",
           color: "bg-teal-100 text-teal-800 border-teal-200",
         };
+      case "unknown":
+        return {
+          label: "Chưa rõ bằng chứng",
+          color: "bg-rose-100 text-rose-800 border-rose-200",
+        };
       case "manual":
       default:
         return {
@@ -122,7 +127,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
           ) : (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-rose-100 text-rose-800 border-rose-200">
               <AlertTriangle className="h-3 w-3 text-rose-600" />
-              <span>Chưa có đáp án</span>
+              <span>{question.answerStatus === "ambiguous" ? "Bằng chứng đáp án mâu thuẫn" : "Chưa có bằng chứng đáp án"}</span>
             </span>
           )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Mail,
@@ -45,7 +45,7 @@ export function Register() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -57,7 +57,7 @@ export function Register() {
       role: "student",
     },
   });
-  const password = watch("password", "");
+  const password = useWatch({ control, name: "password", defaultValue: "" });
   const passwordChecks = [
     { label: "Ít nhất 8 ký tự", passed: password.length >= 8 },
     { label: "Có chữ hoa (A–Z)", passed: /[A-Z]/.test(password) },

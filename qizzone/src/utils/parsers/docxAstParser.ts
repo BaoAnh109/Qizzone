@@ -2,6 +2,34 @@ import JSZip from "jszip";
 import { DOMParser as XmldomParser } from "@xmldom/xmldom";
 import type { OptionId } from "@/types/quiz";
 
+const MAX_DOCX_ARCHIVE_ENTRIES = 5_000;
+const MAX_DOCX_ENTRY_UNCOMPRESSED_BYTES = 40 * 1024 * 1024;
+const MAX_DOCX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+const MAX_DOCX_COMPRESSION_RATIO = 500;
+
+interface DocxArchiveEntryMetadata {
+  dir?: boolean;
+  _data?: { uncompressedSize?: number; compressedSize?: number };
+}
+
+export function validateDocxArchive(files: Record<string, DocxArchiveEntryMetadata>): void {
+  const entries = Object.entries(files).filter(([, file]) => !file.dir);
+  if (entries.length > MAX_DOCX_ARCHIVE_ENTRIES) throw new Error("DOCX archive has too many entries");
+  let totalUncompressed = 0;
+  for (const [name, file] of entries) {
+    if (name.startsWith("/") || name.split(/[\\/]/).includes("..")) throw new Error("DOCX archive contains an invalid path");
+    const uncompressed = file._data?.uncompressedSize;
+    const compressed = file._data?.compressedSize;
+    if (!Number.isFinite(uncompressed) || !Number.isFinite(compressed)) throw new Error("DOCX archive metadata is invalid");
+    totalUncompressed += uncompressed as number;
+    if ((uncompressed as number) > MAX_DOCX_ENTRY_UNCOMPRESSED_BYTES) throw new Error("DOCX entry exceeds size limit");
+    if ((uncompressed as number) > 5 * 1024 * 1024 && (uncompressed as number) / Math.max(1, compressed as number) > MAX_DOCX_COMPRESSION_RATIO) {
+      throw new Error("DOCX entry compression ratio exceeds limit");
+    }
+    if (totalUncompressed > MAX_DOCX_TOTAL_UNCOMPRESSED_BYTES) throw new Error("DOCX archive exceeds uncompressed size limit");
+  }
+}
+
 export function parseXmlString(xmlString: string): Document {
   if (typeof DOMParser !== "undefined") {
     return new DOMParser().parseFromString(xmlString, "application/xml");
@@ -32,10 +60,12 @@ export interface DocxParagraph {
   text: string; // Plain text representation with LaTeX & marker tags
   html: string; // Styled HTML representation preserving bold, underline, mark, color
   images: string[]; // Base64 data URLs of images in this paragraph
+  numberingLabel?: string;
 }
 
 export interface DocxTableCell {
   paragraphs: DocxParagraph[];
+  nestedTables?: DocxTable[];
   text: string;
   html: string;
 }
@@ -59,16 +89,99 @@ export interface ParsedDocxAst {
   answerKeyMap: Record<number, OptionId>;
 }
 
+interface NumberingLevel {
+  format: string;
+  text: string;
+  start: number;
+}
+
+function xmlAttribute(element: Element | undefined, name: string): string | undefined {
+	const localName = name.split(":").at(-1) || name;
+	return element?.getAttribute(name) || element?.getAttribute(localName) || undefined;
+}
+
+function formatListNumber(value: number, format: string): string {
+  if (format === "upperLetter" || format === "lowerLetter") {
+    let current = Math.max(1, value);
+    let label = "";
+    while (current > 0) {
+      current -= 1;
+      label = String.fromCharCode(65 + (current % 26)) + label;
+      current = Math.floor(current / 26);
+    }
+    return format === "lowerLetter" ? label.toLowerCase() : label;
+  }
+  if (format === "upperRoman" || format === "lowerRoman") {
+    let remaining = Math.max(1, value);
+    const roman: Array<[number, string]> = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"], [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];
+    let label = "";
+    for (const [amount, symbol] of roman) while (remaining >= amount) { label += symbol; remaining -= amount; }
+    return format === "lowerRoman" ? label.toLowerCase() : label;
+  }
+  return String(value);
+}
+
+function createNumberingLabelResolver(numberingXml: string): (paragraph: Element) => string | undefined {
+  if (!numberingXml) return () => undefined;
+  const numberingDocument = parseXmlString(numberingXml);
+  const abstractLevels = new Map<string, Map<number, NumberingLevel>>();
+  for (const abstract of Array.from(numberingDocument.getElementsByTagName("w:abstractNum"))) {
+    const abstractId = xmlAttribute(abstract as Element, "w:abstractNumId");
+    if (!abstractId) continue;
+    const levels = new Map<number, NumberingLevel>();
+    for (const level of Array.from((abstract as Element).getElementsByTagName("w:lvl"))) {
+      const index = Number(xmlAttribute(level as Element, "w:ilvl") || 0);
+      const format = xmlAttribute((level as Element).getElementsByTagName("w:numFmt")[0] as Element | undefined, "w:val") || "decimal";
+      const text = xmlAttribute((level as Element).getElementsByTagName("w:lvlText")[0] as Element | undefined, "w:val") || "%" + (index + 1) + ".";
+      const start = Number(xmlAttribute((level as Element).getElementsByTagName("w:start")[0] as Element | undefined, "w:val") || 1);
+      levels.set(index, { format, text, start });
+    }
+    abstractLevels.set(abstractId, levels);
+  }
+  const numToAbstract = new Map<string, string>();
+  for (const num of Array.from(numberingDocument.getElementsByTagName("w:num"))) {
+    const numId = xmlAttribute(num as Element, "w:numId");
+    const abstractId = xmlAttribute((num as Element).getElementsByTagName("w:abstractNumId")[0] as Element | undefined, "w:val");
+    if (numId && abstractId) numToAbstract.set(numId, abstractId);
+  }
+  const countersByNum = new Map<string, number[]>();
+  return paragraph => {
+    const numPr = paragraph.getElementsByTagName("w:numPr")[0] as Element | undefined;
+    if (!numPr) return undefined;
+    const numId = xmlAttribute(numPr.getElementsByTagName("w:numId")[0] as Element | undefined, "w:val");
+    if (!numId || numId === "0") return undefined;
+    const abstractId = numToAbstract.get(numId);
+    const levels = abstractId ? abstractLevels.get(abstractId) : undefined;
+    if (!levels) return undefined;
+    const levelIndex = Number(xmlAttribute(numPr.getElementsByTagName("w:ilvl")[0] as Element | undefined, "w:val") || 0);
+    const level = levels.get(levelIndex);
+    if (!level) return undefined;
+    const counters = countersByNum.get(numId) || [];
+    counters.length = levelIndex + 1;
+    counters[levelIndex] = (counters[levelIndex] ?? (level.start - 1)) + 1;
+    countersByNum.set(numId, counters);
+    const label = level.text.replace(/%(\d+)/g, (_match, rawIndex: string) => {
+      const index = Number(rawIndex) - 1;
+      const referenced = levels.get(index);
+      return referenced ? formatListNumber(counters[index] || referenced.start, referenced.format) : "";
+    });
+    return label.trim() ? label + " " : undefined;
+  };
+}
+
 /**
  * Phân tích trực tiếp tệp DOCX từ ArrayBuffer bằng OpenXML AST Parser
  */
 export async function parseDocxDirectAst(arrayBuffer: ArrayBuffer): Promise<ParsedDocxAst> {
   const zip = await JSZip.loadAsync(arrayBuffer);
+  validateDocxArchive(zip.files as unknown as Record<string, DocxArchiveEntryMetadata>);
 
   // 1. Đọc relationships để trích xuất hình ảnh (word/_rels/document.xml.rels)
   const relsFile = zip.file("word/_rels/document.xml.rels");
   const relsXml = relsFile ? await relsFile.async("text") : "";
   const relationships = parseRelationships(relsXml);
+  const numberingFile = zip.file("word/numbering.xml");
+  const numberingLabel = createNumberingLabelResolver(numberingFile ? await numberingFile.async("text") : "");
 
   // 2. Trích xuất tất cả các tệp hình ảnh trong word/media/
   const extractedImages: Record<string, string> = {};
@@ -119,12 +232,12 @@ export async function parseDocxDirectAst(arrayBuffer: ArrayBuffer): Promise<Pars
     const nodeName = elem.nodeName.toLowerCase();
 
     if (nodeName === "w:p") {
-      const p = parseParagraphElement(elem, extractedImages);
+      const p = parseParagraphElement(elem, extractedImages, numberingLabel);
       if (p.text.trim().length > 0 || p.images.length > 0) {
         paragraphs.push(p);
       }
     } else if (nodeName === "w:tbl") {
-      const table = parseTableElement(elem, extractedImages);
+      const table = parseTableElement(elem, extractedImages, numberingLabel);
       tables.push(table);
 
       // Nếu bảng này là bảng đáp án, gộp vào globalAnswerKeyMap
@@ -164,7 +277,8 @@ export async function parseDocxDirectAst(arrayBuffer: ArrayBuffer): Promise<Pars
  */
 function parseParagraphElement(
   pElem: Element,
-  imagesMap: Record<string, string>
+  imagesMap: Record<string, string>,
+  numberingLabel: (paragraph: Element) => string | undefined = () => undefined,
 ): DocxParagraph {
   const runs: DocxRun[] = [];
   const paragraphImages: string[] = [];
@@ -209,6 +323,10 @@ function parseParagraphElement(
     }
   }
 
+  const label = numberingLabel(pElem);
+  const currentText = runs.map(run => run.text).join("").trim();
+  if (label && !currentText.startsWith(label.trim())) runs.unshift({ text: label, style: {} });
+
   // Tạo text và html đại diện
   let text = "";
   let html = "";
@@ -239,6 +357,7 @@ function parseParagraphElement(
     text,
     html,
     images: paragraphImages,
+    numberingLabel: label,
   };
 }
 
@@ -374,31 +493,50 @@ function extractImageIdFromDrawing(drawingElem: Element): string | null {
  */
 function parseTableElement(
   tblElem: Element,
-  imagesMap: Record<string, string>
+  imagesMap: Record<string, string>,
+  numberingLabel: (paragraph: Element) => string | undefined,
 ): DocxTable {
   const rows: DocxTableRow[] = [];
-  const trElems = Array.from(tblElem.getElementsByTagName("w:tr"));
+  const trElems = Array.from(tblElem.childNodes).filter(
+    (node): node is Element => node.nodeType === 1 && node.nodeName.toLowerCase() === "w:tr"
+  );
 
   for (const tr of trElems) {
     const cells: DocxTableCell[] = [];
-    const tcElems = Array.from(tr.getElementsByTagName("w:tc"));
+    const tcElems = Array.from(tr.childNodes).filter(
+      (node): node is Element => node.nodeType === 1 && node.nodeName.toLowerCase() === "w:tc"
+    );
 
     for (const tc of tcElems) {
-      const pElems = Array.from(tc.getElementsByTagName("w:p"));
       const cellParagraphs: DocxParagraph[] = [];
-
-      for (const p of pElems) {
-        const parsedP = parseParagraphElement(p, imagesMap);
-        if (parsedP.text.trim().length > 0 || parsedP.images.length > 0) {
-          cellParagraphs.push(parsedP);
+      const nestedTables: DocxTable[] = [];
+      const cellTextParts: string[] = [];
+      const cellHtmlParts: string[] = [];
+      for (const child of Array.from(tc.childNodes)) {
+        if (child.nodeType !== 1) continue;
+        const element = child as Element;
+        const name = element.nodeName.toLowerCase();
+        if (name === "w:p") {
+          const parsedP = parseParagraphElement(element, imagesMap, numberingLabel);
+          if (parsedP.text.trim().length > 0 || parsedP.images.length > 0) {
+            cellParagraphs.push(parsedP);
+            cellTextParts.push(parsedP.text);
+            cellHtmlParts.push(parsedP.html);
+          }
+        } else if (name === "w:tbl") {
+          const nestedTable = parseTableElement(element, imagesMap, numberingLabel);
+          nestedTables.push(nestedTable);
+          cellTextParts.push(nestedTable.rows.flatMap(row => row.cells.map(cell => cell.text)).join("\t"));
+          cellHtmlParts.push(nestedTable.rows.map(row => "<tr>" + row.cells.map(cell => "<td>" + cell.html + "</td>").join("") + "</tr>").join("\n"));
         }
       }
 
-      const cellText = cellParagraphs.map((p) => p.text).join(" ").trim();
-      const cellHtml = cellParagraphs.map((p) => p.html).join(" ").trim();
+      const cellText = cellTextParts.join(" ").trim();
+      const cellHtml = cellHtmlParts.join(" ").trim();
 
       cells.push({
         paragraphs: cellParagraphs,
+        nestedTables,
         text: cellText,
         html: cellHtml,
       });

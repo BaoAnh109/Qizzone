@@ -109,6 +109,45 @@ BẢNG ĐÁP ÁN:
     expect(result.questions[1].detectionStrategy).toBe("answer_table");
   });
 
+  it("Nhận diện tiêu đề ĐÁP ÁN đứng riêng và không phân tích phần giải thích thành câu hỏi", () => {
+    const rawExam = `Câu 1. Vật chất được hiểu là gì?
+A. Những gì nhìn thấy trực tiếp.
+B. Thực tại khách quan tồn tại độc lập với ý thức.
+C. Cảm giác chủ quan.
+D. Vật có khối lượng.
+
+ĐÁP ÁN
+Câu 1: B
+Giải thích ngắn:
+1. Vật chất tồn tại khách quan.
+`;
+
+    const result = parseRawExamText(rawExam);
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].correctAnswers).toEqual(["B"]);
+    expect(result.questions[0].detectionStrategy).toBe("answer_table");
+    expect(result.hasAnswerKeyTable).toBe(true);
+    expect(result.coverage?.sourceQuestionNumbers).toEqual([1]);
+  });
+
+  it("does not silently choose one of two conflicting answer-key entries", () => {
+    const raw = `Câu 1: Chọn đáp án đúng?
+A. Một
+B. Hai
+C. Ba
+D. Bốn
+
+BẢNG ĐÁP ÁN:
+1.A 1.B`;
+    const result = parseRawExamText(raw);
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].correctAnswers).toEqual([]);
+    expect(result.questions[0].answerStatus).toBe("ambiguous");
+    expect(result.questions[0].answerEvidence?.some(evidence => evidence.ruleId === "conflicting_answer_key_entries_v1")).toBe(true);
+    expect(result.qualityFlags).toContain("answer_key_table_conflict");
+  });
+
   it("Chiến lược 2 (Ký hiệu tiền tố): Nhận diện dấu sao *A, ✓A hoặc [x]", () => {
     const rawBlock = `
 Câu 1: Giá trị của $\\log_2 8$ là:

@@ -14,10 +14,16 @@ import { Card } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
 import { parseDocxFile } from "@/utils/parsers/docxParser";
 import { parsePdfFile } from "@/utils/parsers/pdfParser";
-import { extractQuizWithAI } from "@/services/aiExtractionService";
+import { extractQuizWithAI, mergeExtractionResults, MAX_AI_FALLBACK_SOURCE_CHARS, shouldUseAIExtractionFallback } from "@/services/aiExtractionService";
+import { recognizeOcrPages } from "@/utils/parsers/ocrService";
+import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
+import { attachQuestionSourceReferences } from "@/utils/parsers/sourceReference";
+import type { ExtractionResult } from "@/types/extractor";
+import type { DocumentIR } from "@/types/documentIR";
 import { useExtractionStore } from "@/store/extractionStore";
 import {
   validateImportFile,
+  validateImportFileSignature,
   validatePastedTextSize,
 } from "@/utils/fileImportValidation";
 
@@ -41,6 +47,30 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   const [pastedText, setPastedText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
 
+  const maybeUseAiFallback = async (file: File, sourceText: string, nativeResult: ExtractionResult, imageBase64?: string) => {
+    if (!shouldUseAIExtractionFallback(nativeResult) || !sourceText.trim()) return nativeResult;
+    if (sourceText.length > MAX_AI_FALLBACK_SOURCE_CHARS) {
+      return {
+        ...nativeResult,
+        qualityFlags: [...new Set([...(nativeResult.qualityFlags || []), "ai_fallback_skipped_large_document"])],
+        warningsCount: nativeResult.warningsCount + 1,
+      };
+    }
+    try {
+      const fallback = await extractQuizWithAI({ file, text: sourceText, imageBase64 });
+      return mergeExtractionResults(nativeResult, fallback);
+    } catch {
+      return nativeResult;
+    }
+  };
+
+  const readDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Không đọc được tệp ảnh."));
+    reader.onerror = () => reject(new Error("Không đọc được tệp ảnh."));
+    reader.readAsDataURL(file);
+  });
+
   const handleFinishExtraction = () => {
     if (onSuccess) {
       onSuccess();
@@ -55,6 +85,11 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
       toast.error(validationError);
       return;
     }
+    const signatureError = await validateImportFileSignature(file);
+    if (signatureError) {
+      toast.error(signatureError);
+      return;
+    }
 
     const normalizedName = file.name.toLowerCase();
     const isDocx = normalizedName.endsWith(".docx");
@@ -66,7 +101,11 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
     try {
       if (isDocx) {
         setIsProcessing(true, 50);
-        const { rawHtml, rawText, result } = await parseDocxFile(file);
+        const { rawHtml, rawText, result: nativeResult, documentIR } = await parseDocxFile(file);
+        const result = attachQuestionSourceReferences(
+          await maybeUseAiFallback(file, rawText, nativeResult),
+          documentIR,
+        );
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -75,6 +114,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           fileSize: file.size,
           rawHtml,
           rawText,
+          documentIR,
           uploadedAt: new Date().toISOString(),
         });
         setIsProcessing(true, 100);
@@ -85,7 +125,13 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         handleFinishExtraction();
       } else if (isPdf) {
         setIsProcessing(true, 50);
-        const { rawText, totalPages, result, pdfDoc } = await parsePdfFile(file);
+        const { rawText, totalPages, result: nativeResult, pdfDoc, documentIR, ocrPageCount } = await parsePdfFile(file, (percent) => {
+          setIsProcessing(true, 50 + Math.round(percent * 0.35));
+        });
+        const result = attachQuestionSourceReferences(
+          await maybeUseAiFallback(file, rawText, nativeResult),
+          documentIR,
+        );
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -95,47 +141,73 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           rawText,
           totalPages,
           pdfDoc,
+          documentIR,
           uploadedAt: new Date().toISOString(),
         });
         setIsProcessing(true, 100);
         setExtractionResult(result);
         toast.success(
-          `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ PDF (${totalPages} trang)!`
+          `Đã bóc tách ${result.totalQuestionsDetected} câu từ PDF (${totalPages} trang${ocrPageCount ? `, OCR ${ocrPageCount} trang` : ""}). Kiểm tra kết quả trước khi lưu.`
         );
         handleFinishExtraction();
       } else if (isImage) {
         setIsProcessing(true, 40);
-        const reader = new FileReader();
-        reader.onload = async () => {
-          try {
-            const imageBase64 = reader.result as string;
-            setDocument({
-              id: `doc-${Date.now().toString(36)}`,
-              file,
-              fileName: file.name,
-              fileType: "image",
-              fileSize: file.size,
-              previewUrl: imageBase64,
-              imageBase64,
-              uploadedAt: new Date().toISOString(),
-            });
-
-            setIsProcessing(true, 70);
-            const result = await extractQuizWithAI({ file, imageBase64 });
-            setIsProcessing(true, 100);
-            setExtractionResult(result);
-            toast.success(
-              `AI đã phân tích ảnh và trích xuất ${result.totalQuestionsDetected} câu hỏi!`
-            );
-            handleFinishExtraction();
-          } catch {
-            toast.error("Không thể phân tích ảnh đề thi. Vui lòng kiểm tra lại chất lượng ảnh!");
-          } finally {
-            setIsProcessing(false, 0);
-          }
+        const imageBase64 = await readDataUrl(file);
+        const [ocr] = await recognizeOcrPages([{ pageNumber: 1, image: file }], (percent) => {
+          setIsProcessing(true, 40 + Math.round(percent * 0.4));
+        });
+        const nativeResult = parseRawExamText(ocr?.text || "", { fileName: file.name, fileType: "image" });
+        nativeResult.fileSize = file.size;
+        nativeResult.extractionMethod = "ocr";
+        nativeResult.qualityFlags = [...new Set([...(nativeResult.qualityFlags || []), ...(ocr && ocr.confidence < 0.72 ? ["ocr_low_confidence"] : [])])];
+        const result = await maybeUseAiFallback(file, ocr?.text || "", nativeResult, imageBase64);
+        let imageWidth: number | undefined;
+        let imageHeight: number | undefined;
+        try {
+          const bitmap = await createImageBitmap(file);
+          imageWidth = bitmap.width;
+          imageHeight = bitmap.height;
+          bitmap.close();
+        } catch {
+          // OCR blocks remain usable for review even when image dimensions are unavailable.
+        }
+        const documentIR: DocumentIR = {
+          schemaVersion: "2.0",
+          sourceFormat: "image",
+          parserVersion: "tesseract-browser-v1",
+          pages: [{
+            pageNumber: 1,
+            width: imageWidth,
+            height: imageHeight,
+            blocks: (ocr?.regions || []).map((region, index) => ({
+              id: "image_ocr_" + index,
+              type: "text_span",
+              text: region.text,
+              normalizedText: region.text.normalize("NFKC"),
+              bbox: region.bbox,
+              readingOrder: index,
+              sourceRef: { page: 1 },
+            })),
+          }],
+          warnings: ocr && ocr.confidence < 0.72 ? ["ocr_low_confidence"] : [],
         };
-        reader.readAsDataURL(file);
-        return;
+        const linkedResult = attachQuestionSourceReferences(result, documentIR);
+        setDocument({
+          id: `doc-${Date.now().toString(36)}`,
+          file,
+          fileName: file.name,
+          fileType: "image",
+          fileSize: file.size,
+          previewUrl: imageBase64,
+          imageBase64,
+          rawText: ocr?.text || "",
+          documentIR,
+          uploadedAt: new Date().toISOString(),
+        });
+        setIsProcessing(true, 100);
+        setExtractionResult(linkedResult);
+        toast.success(`Đã OCR ảnh và nhận diện ${linkedResult.totalQuestionsDetected} câu. Kiểm tra nội dung và đáp án trước khi lưu.`);
+        handleFinishExtraction();
       } else {
         const text = await file.text();
         const result = await extractQuizWithAI({

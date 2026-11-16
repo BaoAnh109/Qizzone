@@ -10,7 +10,8 @@ export function cleanPdfExtractedText(rawPages: string[]): string {
     const filteredLines: string[] = [];
 
     for (const line of lines) {
-      const trimmed = line.trim();
+      const plainLine = line.replace(/<[^>]*>/g, "");
+      const trimmed = plainLine.trim();
 
       // Bỏ qua các dòng watermark Studocu / tài liệu tải về
       if (

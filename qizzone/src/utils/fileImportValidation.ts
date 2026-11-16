@@ -35,6 +35,33 @@ export function validateImportFile(
   return null;
 }
 
+export async function validateImportFileSignature(
+  file: Pick<File, "name" | "slice">,
+): Promise<string | null> {
+  const extension = getExtension(file.name);
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const startsWith = (...signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
+
+  if (extension === "pdf" && !(startsWith(0x25, 0x50, 0x44, 0x46, 0x2d))) {
+    return "Tệp không phải PDF hợp lệ hoặc phần mở rộng không khớp nội dung.";
+  }
+  if (extension === "docx" && !startsWith(0x50, 0x4b, 0x03, 0x04) && !startsWith(0x50, 0x4b, 0x05, 0x06)) {
+    return "Tệp Word không có cấu trúc DOCX hợp lệ hoặc phần mở rộng không khớp nội dung.";
+  }
+  if (["png"].includes(extension) && !startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) {
+    return "Tệp không phải ảnh PNG hợp lệ.";
+  }
+  if (["jpg", "jpeg"].includes(extension) && !startsWith(0xff, 0xd8, 0xff)) {
+    return "Tệp không phải ảnh JPEG hợp lệ.";
+  }
+  if (extension === "webp") {
+    const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+    if (!isWebp) return "Tệp không phải ảnh WebP hợp lệ.";
+  }
+  return null;
+}
+
 export function validatePastedTextSize(text: string): string | null {
   const size = new TextEncoder().encode(text).byteLength;
   if (size > MAX_AI_IMPORT_BYTES) {

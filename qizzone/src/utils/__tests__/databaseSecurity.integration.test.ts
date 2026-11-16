@@ -17,6 +17,16 @@ describe('Supabase migration, RLS, and server-side grading', () => {
       create role authenticated nologin;
       create role service_role nologin bypassrls;
       create schema auth;
+      -- Supabase migrations configure a bucket through the platform-provided
+      -- Storage schema; mirror the minimal contract in this PGlite harness.
+      create schema storage;
+      create table storage.buckets (
+        id text primary key,
+        name text not null,
+        public boolean not null default false,
+        file_size_limit bigint,
+        allowed_mime_types text[]
+      );
       create function auth.jwt() returns jsonb language sql stable as
         $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
       grant usage on schema auth to anon, authenticated, service_role;

@@ -90,7 +90,15 @@ describe("extractionStore Unit Tests", () => {
 
     expect(updatedQ1?.correctAnswers).toEqual(["B"]);
     expect(updatedQ1?.detectionStrategy).toBe("manual");
+    expect(updatedQ1?.answerStatus).toBe("manually_confirmed");
     expect(updatedQ1?.confidenceScore).toBe(1.0);
+  });
+
+  it("không tự gán A khi giáo viên bỏ chọn đáp án cuối cùng", () => {
+    useExtractionStore.getState().toggleCorrectAnswer("q1", "A");
+    const question = useExtractionStore.getState().extractionResult?.questions.find(q => q.id === "q1");
+    expect(question?.correctAnswers).toEqual([]);
+    expect(question?.answerStatus).toBe("unknown");
   });
 
   it("chia đều 10 điểm tự động tính chuẩn barem điểm mỗi câu", () => {
@@ -138,6 +146,7 @@ describe("extractionStore Unit Tests", () => {
 
     expect(questions.length).toBe(5);
     expect(questions[4].order).toBe(5);
-    expect(questions[4].detectionStrategy).toBe("manual");
+    expect(questions[4].detectionStrategy).toBe("unknown");
+    expect(questions[4].correctAnswers).toEqual([]);
   });
 });

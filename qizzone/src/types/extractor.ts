@@ -1,4 +1,5 @@
 import type { OptionId } from "./quiz";
+import type { DocumentIR } from "./documentIR";
 
 export type DetectionStrategy =
   | "answer_table"     // Bảng đáp án cuối đề (1.A 2.B 3.C)
@@ -9,7 +10,19 @@ export type DetectionStrategy =
   | "distinct_bold"    // In đậm duy nhất <b>A.</b>
   | "explanation_text" // Trích xuất từ lời giải "Chọn A vì..."
   | "ai_inference"     // AI Gemini tự suy luận và gợi ý
+  | "unknown"          // Chưa có bằng chứng đáp án trong nguồn
   | "manual";          // Giáo viên tự chọn thủ công
+
+export type AnswerStatus = "unknown" | "evidence_supported" | "ambiguous" | "manually_confirmed";
+export type ExtractionReviewStatus = "pending" | "approved" | "rejected";
+
+export interface AnswerEvidence {
+  kind: DetectionStrategy;
+  optionIds: OptionId[];
+  ruleId: string;
+  sourceText?: string;
+  sourceRef?: { page?: number; blockId?: string; paragraph?: number; run?: number };
+}
 
 export interface ExtractedOption {
   id: OptionId;
@@ -34,6 +47,10 @@ export interface ExtractedQuestion {
   confidenceScore: number; // 0.0 - 1.0 (0% - 100%)
   detectionStrategy: DetectionStrategy;
   warningFlags?: string[]; // "Thiếu đáp án D", "Chưa có đáp án đúng", "Độ tin cậy thấp"
+  answerStatus?: AnswerStatus;
+  answerEvidence?: AnswerEvidence[];
+  reviewStatus?: ExtractionReviewStatus;
+  sourceRefs?: string[];
   rawTextSegment: string; // Đoạn text gốc tương ứng trong file
   images?: string[]; // Danh sách URL hoặc Base64 ảnh đính kèm câu hỏi
 }
@@ -51,10 +68,14 @@ export interface UploadedExamDocument {
   totalPages?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pdfDoc?: any;
+  documentIR?: DocumentIR;
   uploadedAt: string;
 }
 
 export interface ExtractionResult {
+  schemaVersion?: "2.0";
+  extractionMethod?: "native_parser" | "ocr" | "ai_fallback" | "hybrid";
+  sourceHash?: string;
   fileName: string;
   fileType: "docx" | "pdf" | "image" | "text";
   fileSize: number;
@@ -64,5 +85,11 @@ export interface ExtractionResult {
   questions: ExtractedQuestion[];
   hasAnswerKeyTable: boolean;
   warningsCount: number;
+  qualityFlags?: string[];
+  coverage?: {
+    expectedQuestions: number;
+    extractedQuestions: number;
+    sourceQuestionNumbers: number[];
+  };
   extractedAt: string;
 }

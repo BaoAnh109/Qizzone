@@ -52,8 +52,8 @@ describe("extractedQuestionMapper", () => {
     expect(result[0].points).toBe(2);
     expect(result[0].explanation).toBe("Lời giải chi tiết câu 1");
 
-    // Fallback default answer if empty
-    expect(result[1].correctAnswers).toEqual(["A"]);
+    // Missing source evidence must stay unanswered until the teacher chooses.
+    expect(result[1].correctAnswers).toEqual([]);
     expect(result[1].order).toBe(2);
   });
 });

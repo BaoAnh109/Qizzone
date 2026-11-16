@@ -133,6 +133,7 @@ export function BatchActionBar() {
         initialSubject: extractionResult?.subject || "Toán học 12",
         initialDescription: `Bóc tách tự động từ file ${extractionResult?.fileName || "tài liệu"}.`,
         initialStep: 3,
+        requiresSourceReview: true,
       },
     });
   };
@@ -337,6 +338,7 @@ export function BatchActionBar() {
                 <option value="highlight_color">Tô màu / Chữ đỏ</option>
                 <option value="special_marker">Ký hiệu *</option>
                 <option value="ai_inference">AI Gợi ý tự giải</option>
+                <option value="unknown">Chưa có bằng chứng đáp án</option>
                 <option value="warnings">Cảnh báo ({totalWarnings})</option>
               </select>
             </div>

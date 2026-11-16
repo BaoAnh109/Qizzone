@@ -91,6 +91,8 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
             ...q,
             correctAnswers: [answer],
             detectionStrategy: "manual" as DetectionStrategy,
+            answerStatus: "manually_confirmed" as const,
+            answerEvidence: [{ kind: "manual" as const, optionIds: [answer], ruleId: "teacher_selected_answer_v1" }],
             confidenceScore: 1.0,
           };
         }
@@ -116,9 +118,11 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
             : [...current, answer];
           return {
             ...q,
-            correctAnswers: next.length > 0 ? next : [("A" as OptionId)],
-            detectionStrategy: "manual" as DetectionStrategy,
-            confidenceScore: 1.0,
+            correctAnswers: next,
+            detectionStrategy: next.length ? "manual" as DetectionStrategy : "unknown" as DetectionStrategy,
+            answerStatus: next.length ? "manually_confirmed" as const : "unknown" as const,
+            answerEvidence: next.length ? [{ kind: "manual" as const, optionIds: next, ruleId: "teacher_toggled_answer_v1" }] : [],
+            confidenceScore: next.length ? 1.0 : 0,
           };
         }
         return q;
@@ -167,10 +171,13 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
           { id: "C", content: "Lựa chọn C", rawContent: "C. Lựa chọn C" },
           { id: "D", content: "Lựa chọn D", rawContent: "D. Lựa chọn D" },
         ],
-        correctAnswers: ["A"],
+        correctAnswers: [],
         points: 1,
-        confidenceScore: 1.0,
-        detectionStrategy: "manual",
+        confidenceScore: 0,
+        detectionStrategy: "unknown",
+        answerStatus: "unknown",
+        answerEvidence: [],
+        reviewStatus: "pending",
         rawTextSegment: "Câu hỏi thêm mới thủ công",
       };
 
@@ -227,6 +234,8 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
             ...q,
             correctAnswers: [map[q.order]],
             detectionStrategy: "answer_table" as DetectionStrategy,
+            answerStatus: "manually_confirmed" as const,
+            answerEvidence: [{ kind: "manual" as const, optionIds: [map[q.order]], ruleId: "teacher_entered_answer_key_v1" }],
             confidenceScore: 0.99,
           };
         }

@@ -39,12 +39,18 @@ function removeTrailingAnswer(rawBlock: string): string {
  * Phân tích bảng đáp án ở cuối đề thi (Answer Key Table / Grid)
  * Chỉ kích hoạt khi có khu vực tiêu đề bảng đáp án rõ ràng (BẢNG ĐÁP ÁN, ĐÁP ÁN, HƯỚNG DẪN CHẤM,...)
  */
-export function extractAnswerKeyTable(rawText: string): Record<number, OptionId> {
+export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<number, OptionId[]>): Record<number, OptionId> {
   const answerMap: Record<number, OptionId> = {};
+  const candidates: Record<number, Set<OptionId>> = {};
+  const recordAnswer = (questionNumber: number, answer: OptionId) => {
+    candidates[questionNumber] ??= new Set<OptionId>();
+    candidates[questionNumber].add(answer);
+    answerMap[questionNumber] ??= answer;
+  };
 
   // Tìm khu vực bảng đáp án ở cuối đề nếu có (phải là tiêu đề rõ ràng hoặc có dấu hai chấm)
   const tableSectionMatch = rawText.match(
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s+ÁN\s*[:-]|\b(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s+ÁN\s+ĐỀ\s+THI|ĐÁP\s+ÁN\s+CHI\s+TIẾT|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s*ÁN(?=\s*(?:<\/[^>]*>\s*)*(?:\r?\n|$))|ĐÁP\s+ÁN\s*[:-]|\b(?:ĐÁP\s+ÁN\s+ĐỀ\s+THI|ĐÁP\s+ÁN\s+CHI\s+TIẾT|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i
   );
 
   // Bắt buộc phải có phần tiêu đề bảng đáp án mới quét (tránh nhận diện nhầm số trong đề bài)
@@ -93,7 +99,7 @@ export function extractAnswerKeyTable(rawText: string): Record<number, OptionId>
           const qNum = parseInt(qRow[c].replace(/\D/g, ""), 10);
           const ans = aRow[c].toUpperCase().trim() as OptionId;
           if (qNum > 0 && qNum <= 300 && ["A", "B", "C", "D"].includes(ans)) {
-            answerMap[qNum] = ans;
+            recordAnswer(qNum, ans);
           }
         }
       }
@@ -105,31 +111,36 @@ export function extractAnswerKeyTable(rawText: string): Record<number, OptionId>
         const qNum = parseInt(row[c].replace(/\D/g, ""), 10);
         const ans = row[c + 1].toUpperCase().trim() as OptionId;
         if (qNum > 0 && qNum <= 300 && ["A", "B", "C", "D"].includes(ans)) {
-          answerMap[qNum] = ans;
+          recordAnswer(qNum, ans);
         }
       }
     }
   }
 
-  // 2. Quét regex dạng cặp 1.A, 1-A, 1:A, 1A, Câu 1: A
+  // Bỏ HTML trước khi quét để xử lý nhất quán cả DOCX AST và văn bản thường.
+  // Hỗ trợ các dấu bọc/đánh dấu thường gặp: [A], (A), ✓ A, → B, ★ C, “Đáp án C”.
+  const answerText = cleanMathAndHtml(textToScan);
   const pairRegexes = [
-    /(?:(?:Câu|Question|Bài)\s*)?(\d+)[\s.:\-)_]+([A-D])\b/gi,
-    /\b(\d+)\s*([A-D])\b/gi,
+    /(?:Câu|Question|Bài|Q)\s*(\d{1,3})\s*[:.)-]\s*(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gim,
+    /\b(\d{1,3})\s*(?:[.:)-]\s*)?(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gi,
   ];
 
   for (const regex of pairRegexes) {
     let match: RegExpExecArray | null;
-    while ((match = regex.exec(textToScan)) !== null) {
+    while ((match = regex.exec(answerText)) !== null) {
       const questionNum = parseInt(match[1], 10);
       const answer = match[2].toUpperCase() as OptionId;
       if (questionNum > 0 && questionNum <= 300 && ["A", "B", "C", "D"].includes(answer)) {
-        if (!answerMap[questionNum]) {
-          answerMap[questionNum] = answer;
-        }
+        recordAnswer(questionNum, answer);
       }
     }
   }
 
+  if (conflictSink) {
+    for (const [questionNumber, answers] of Object.entries(candidates)) {
+      if (answers.size > 1) conflictSink[Number(questionNumber)] = [...answers];
+    }
+  }
   return answerMap;
 }
 
@@ -142,7 +153,7 @@ export function splitOptionsFromBlock(questionBlockText: string): {
 } {
   // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
   const headerRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D])\s*([*✓])?\s*([.:)/-])(?!\d)/g;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D]|[①②③④])\s*([*✓])?\s*([.:)/-])?(?![\p{L}\p{N}])/giu;
 
   const matches: Array<{
     index: number;
@@ -153,8 +164,10 @@ export function splitOptionsFromBlock(questionBlockText: string): {
 
   let match: RegExpExecArray | null;
   while ((match = headerRegex.exec(questionBlockText)) !== null) {
+    if (!match[4] && !/[①②③④]/.test(match[2])) continue;
     const marker = match[1] || match[3] || undefined;
-    const letter = match[2].toUpperCase() as OptionId;
+    const rawLetter = match[2].toUpperCase();
+    const letter = (rawLetter === "①" ? "A" : rawLetter === "②" ? "B" : rawLetter === "③" ? "C" : rawLetter === "④" ? "D" : rawLetter) as OptionId;
     matches.push({
       index: match.index,
       letter,
@@ -234,11 +247,11 @@ export function splitOptionsFromBlock(questionBlockText: string): {
     const hasSpecialMarker =
       (current.marker && /[*✓xX]/.test(current.marker)) ||
       /(?:^|\s)[*✓]\s*[A-D]/i.test(rawSlice) ||
-      /\([A-D]\)/i.test(rawSlice);
+      /[*✓]\s*[A-D]/i.test(rawSlice);
 
     // Bỏ phần chữ cái "A.", "B." ở đầu để lấy nội dung đáp án
     const contentWithoutHeader = rawSlice.replace(
-      /^(?:[\s\n\r]|<[^>]*>|[*✓•[\]xX()])*[A-D]\s*[.:)/-](?:<\/[^>]*>)*/i,
+      /^(?:[\s\n\r]|<[^>]*>|[*✓•[\]xX()])*(?:[A-D]|[①②③④])\s*[.:)/-]?(?:<\/[^>]*>)*/i,
       ""
     );
 
@@ -317,18 +330,18 @@ export function parseSingleQuestionBlock(
   // THUẬT TOÁN PRIORITY WATERFALL XÁC ĐỊNH ĐÁP ÁN ĐÚNG
   // -------------------------------------------------------------
   let correctAnswers: OptionId[] = [];
-  let detectionStrategy: DetectionStrategy = "ai_inference";
+  let detectionStrategy: DetectionStrategy = "unknown";
   let confidenceScore = 0.85;
 
   // Chiến lược 1: Bảng đáp án cuối đề (Answer Key Table) -> 99%
-  if (tableAnswer && ["A", "B", "C", "D"].includes(tableAnswer)) {
+  if (tableAnswer && ["A", "B", "C", "D"].includes(tableAnswer) && options.some(option => option.id === tableAnswer)) {
     correctAnswers = [tableAnswer];
     detectionStrategy = "answer_table";
     confidenceScore = 0.99;
   }
 
   // Chiến lược 2: Dòng đáp án ở cuối câu ("Đáp án: A") -> 99%
-  if (correctAnswers.length === 0 && trailingAnswer) {
+  if (correctAnswers.length === 0 && trailingAnswer && options.some(option => option.id === trailingAnswer)) {
     correctAnswers = [trailingAnswer];
     detectionStrategy = "answer_at_end";
     confidenceScore = 0.99;
@@ -336,9 +349,9 @@ export function parseSingleQuestionBlock(
 
   // Chiến lược 3: Ký hiệu tiền tố đặc biệt (*A, ✓A, [x]) -> 98%
   if (correctAnswers.length === 0) {
-    const markerOption = options.find((opt) => opt.hasSpecialMarker);
-    if (markerOption) {
-      correctAnswers = [markerOption.id];
+    const markerOptions = options.filter((opt) => opt.hasSpecialMarker);
+    if (markerOptions.length) {
+      correctAnswers = markerOptions.map(option => option.id);
       detectionStrategy = "special_marker";
       confidenceScore = 0.98;
     }
@@ -346,9 +359,9 @@ export function parseSingleQuestionBlock(
 
   // Chiến lược 4: Định dạng gạch chân (Underline <u>A.</u>) -> 95%
   if (correctAnswers.length === 0) {
-    const underlineOption = options.find((opt) => opt.isUnderline);
-    if (underlineOption) {
-      correctAnswers = [underlineOption.id];
+    const underlineOptions = options.filter((opt) => opt.isUnderline);
+    if (underlineOptions.length) {
+      correctAnswers = underlineOptions.map(option => option.id);
       detectionStrategy = "underline";
       confidenceScore = 0.95;
     }
@@ -356,18 +369,18 @@ export function parseSingleQuestionBlock(
 
   // Chiến lược 5: Tô màu Highlight / Chữ đỏ -> 95%
   if (correctAnswers.length === 0) {
-    const highlightOption = options.find((opt) => opt.isHighlighted);
-    if (highlightOption) {
-      correctAnswers = [highlightOption.id];
+    const highlightOptions = options.filter((opt) => opt.isHighlighted);
+    if (highlightOptions.length) {
+      correctAnswers = highlightOptions.map(option => option.id);
       detectionStrategy = "highlight_color";
       confidenceScore = 0.95;
     }
   }
 
   // Chiến lược 6: In đậm duy nhất (Distinct Bold <b>A.</b>) -> 90%
+  const boldOptions = options.filter((opt) => opt.isBold);
   if (correctAnswers.length === 0) {
-    const boldOptions = options.filter((opt) => opt.isBold);
-    if (boldOptions.length === 1) {
+    if (boldOptions.length === 1 && options.some((opt) => !opt.isBold)) {
       correctAnswers = [boldOptions[0].id];
       detectionStrategy = "distinct_bold";
       confidenceScore = 0.9;
@@ -387,12 +400,40 @@ export function parseSingleQuestionBlock(
     }
   }
 
+  const allEvidence: Array<{ kind: DetectionStrategy; optionIds: OptionId[]; ruleId: string }> = [];
+  const addEvidence = (kind: DetectionStrategy, ids: OptionId[], ruleId: string) => {
+    const validIds = [...new Set(ids)].filter(id => options.some(option => option.id === id));
+    if (validIds.length) allEvidence.push({ kind, optionIds: validIds, ruleId });
+  };
+  if (tableAnswer) addEvidence("answer_table", [tableAnswer], "answer_key_mapping_v1");
+  if (trailingAnswer) addEvidence("answer_at_end", [trailingAnswer], "explicit_answer_line_v1");
+  addEvidence("special_marker", options.filter(option => option.hasSpecialMarker).map(option => option.id), "option_marker_v1");
+  addEvidence("underline", options.filter(option => option.isUnderline).map(option => option.id), "option_underline_v1");
+  addEvidence("highlight_color", options.filter(option => option.isHighlighted).map(option => option.id), "option_highlight_or_color_v1");
+  const explanationEvidence = explanation?.match(
+    /(?:Chọn|Đáp\s*án(?:\s*đúng)?|Câu\s*trả\s*lời(?:\s*là)?|Suy\s*ra(?:\s*chọn)?|Do\s*đó(?:\s*chọn)?)[\s.:\->]*([A-D])\b/i
+  );
+  if (explanationEvidence) {
+    addEvidence("explanation_text", [explanationEvidence[1].toUpperCase() as OptionId], "explicit_explanation_choice_v1");
+  }
+  if (boldOptions.length === 1 && options.some(option => !option.isBold)) {
+    addEvidence("distinct_bold", [boldOptions[0].id], "unique_bold_among_options_v1");
+  }
+  const evidenceAnswers = new Set(allEvidence.map(item => [...item.optionIds].sort().join(",")));
+  const answerIsAmbiguous = evidenceAnswers.size > 1;
+  if (answerIsAmbiguous) {
+    correctAnswers = [];
+    detectionStrategy = "unknown";
+    confidenceScore = 0;
+    warningFlags.push("Bằng chứng đáp án trong tài liệu mâu thuẫn; cần giáo viên xác nhận");
+  }
+
   // Chiến lược 8: Không tìm thấy đáp án đánh dấu trong tài liệu
   if (correctAnswers.length === 0) {
     correctAnswers = []; // Để rỗng: KHÔNG tự ý gán bừa đáp án A
-    detectionStrategy = "ai_inference";
+    detectionStrategy = "unknown";
     confidenceScore = 0.0;
-    warningFlags.push("Chưa có đáp án (Cần chọn đáp án hoặc dùng AI giải)");
+    if (!answerIsAmbiguous) warningFlags.push("Chưa có đáp án (chưa tìm thấy bằng chứng trong tài liệu)");
   }
 
   const tempId = `ext-${order}-${Date.now().toString(36)}`;
@@ -401,15 +442,18 @@ export function parseSingleQuestionBlock(
     id: `q-ext-${order}`,
     tempId,
     order,
-    content: questionPrompt || `Câu hỏi ${order}`,
+    content: questionPrompt,
     options,
     correctAnswers,
     explanation,
     points: 1,
     confidenceScore,
     detectionStrategy,
+    answerStatus: answerIsAmbiguous ? "ambiguous" : correctAnswers.length ? "evidence_supported" : "unknown",
+    answerEvidence: allEvidence,
+    reviewStatus: "pending",
     warningFlags: warningFlags.length > 0 ? warningFlags : undefined,
-    rawTextSegment: rawBlock.substring(0, 300),
+    rawTextSegment: rawBlock.substring(0, 1500),
   };
 }
 
@@ -430,15 +474,24 @@ export function parseRawExamText(
   const fileType = options?.fileType || "docx";
 
   // 1. Quét bảng đáp án cuối đề trước (chỉ khi có tiêu đề rõ ràng)
-  const scannedAnswerKey = extractAnswerKeyTable(rawContent);
+  const scannedAnswerKeyConflicts: Record<number, OptionId[]> = {};
+  const scannedAnswerKey = extractAnswerKeyTable(rawContent, scannedAnswerKeyConflicts);
+  const answerKeyConflicts = { ...scannedAnswerKeyConflicts };
+  for (const [questionNumber, scannedAnswer] of Object.entries(scannedAnswerKey)) {
+    const initialAnswer = options?.initialAnswerKey?.[Number(questionNumber)];
+    if (initialAnswer && initialAnswer !== scannedAnswer) {
+      answerKeyConflicts[Number(questionNumber)] = [...new Set([initialAnswer, scannedAnswer])];
+    }
+  }
   const globalAnswerKey = { ...(options?.initialAnswerKey || {}), ...scannedAnswerKey };
-  const hasAnswerKeyTable = Object.keys(globalAnswerKey).length > 0;
+  for (const questionNumber of Object.keys(answerKeyConflicts)) delete globalAnswerKey[Number(questionNumber)];
+  const hasAnswerKeyTable = Object.keys(globalAnswerKey).length > 0 || Object.keys(answerKeyConflicts).length > 0;
 
   // Cắt bỏ phần bảng đáp án khỏi nội dung bóc tách câu hỏi CHỈ KHI thực sự quét được bảng đáp án (>= 2 câu)
   let contentToScan = rawContent;
-  if (Object.keys(scannedAnswerKey).length >= 2) {
+  if (Object.keys(scannedAnswerKey).length > 0 || Object.keys(answerKeyConflicts).length > 0) {
     const tableSectionMatch = rawContent.match(
-      /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s+ÁN\s*[:-]|\b(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s+ÁN\s+ĐỀ\s+THI|ĐÁP\s+ÁN\s+CHI\s+TIẾT|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i
+      /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s*ÁN(?=\s*(?:<\/[^>]*>\s*)*(?:\r?\n|$))|ĐÁP\s+ÁN\s*[:-]|\b(?:ĐÁP\s+ÁN\s+ĐỀ\s+THI|ĐÁP\s+ÁN\s+CHI\s+TIẾT|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i
     );
     if (tableSectionMatch && tableSectionMatch.index !== undefined) {
       contentToScan = rawContent.substring(0, tableSectionMatch.index);
@@ -502,6 +555,18 @@ export function parseRawExamText(
           globalAnswerKey[current.sourceOrder]
         );
         if (parsed) {
+          const conflictingAnswers = answerKeyConflicts[current.sourceOrder];
+          if (conflictingAnswers) {
+            parsed.correctAnswers = [];
+            parsed.answerStatus = "ambiguous";
+            parsed.detectionStrategy = "unknown";
+            parsed.confidenceScore = 0;
+            parsed.warningFlags = [...new Set([...(parsed.warningFlags || []), "Bảng đáp án có nhiều giá trị mâu thuẫn; cần giáo viên xác nhận"])];
+            parsed.answerEvidence = [
+              ...(parsed.answerEvidence || []),
+              { kind: "answer_table", optionIds: conflictingAnswers, ruleId: "conflicting_answer_key_entries_v1" },
+            ];
+          }
           extractedQuestions.push(parsed);
         }
       }
@@ -533,17 +598,38 @@ export function parseRawExamText(
     (sum, q) => sum + (q.warningFlags?.length || 0),
     0
   );
+  const sourceQuestionNumbers = boundaries.map(boundary => boundary.sourceOrder);
+  const qualityFlags: string[] = [];
+  if (boundaries.length && extractedQuestions.length !== boundaries.length) qualityFlags.push("question_count_mismatch");
+  if (sourceQuestionNumbers.some((number, index) => index > 0 && number !== sourceQuestionNumbers[index - 1] + 1)) {
+    qualityFlags.push("question_number_gap_or_duplicate");
+  }
+  if (extractedQuestions.some(question => question.options.length < 2 || question.options.length > 4 || question.options.some(option => !option.content.trim()))) {
+    qualityFlags.push("invalid_option_structure");
+  }
+  if (extractedQuestions.some(question => question.answerStatus === "ambiguous")) qualityFlags.push("answer_evidence_conflict");
+  if (Object.keys(answerKeyConflicts).length) qualityFlags.push("answer_key_table_conflict");
+  if (extractedQuestions.some(question => question.answerStatus === "unknown")) qualityFlags.push("answer_evidence_missing");
+  const expectedQuestions = boundaries.length || extractedQuestions.length;
 
   return {
+    schemaVersion: "2.0",
+    extractionMethod: "native_parser",
     fileName,
     fileType,
     fileSize: rawContent.length,
     title: fileName.replace(/\.[^/.]+$/, "").replace(/_/g, " "),
-    subject: "Toán học",
+    subject: "",
     totalQuestionsDetected: extractedQuestions.length,
     questions: extractedQuestions,
     hasAnswerKeyTable,
     warningsCount,
+    qualityFlags,
+    coverage: {
+      expectedQuestions,
+      extractedQuestions: extractedQuestions.length,
+      sourceQuestionNumbers,
+    },
     extractedAt: new Date().toISOString(),
   };
 }

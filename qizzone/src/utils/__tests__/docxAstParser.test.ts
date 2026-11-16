@@ -1,8 +1,41 @@
 import { describe, it, expect } from "vitest";
-import { convertOmmlToLatex, parseXmlString } from "@/utils/parsers/docxAstParser";
+import JSZip from "jszip";
+import { convertOmmlToLatex, parseDocxDirectAst, parseXmlString, validateDocxArchive } from "@/utils/parsers/docxAstParser";
 import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
 
 describe("Direct OpenXML OMML Math Converter Tests", () => {
+  it("rejects DOCX zip traversal and expansion bombs before XML decompression", () => {
+    expect(() => validateDocxArchive({
+      "word/document.xml": { _data: { uncompressedSize: 1_000, compressedSize: 500 } },
+    })).not.toThrow();
+    expect(() => validateDocxArchive({
+      "word/document.xml": { _data: { uncompressedSize: 50 * 1024 * 1024, compressedSize: 100 } },
+    })).toThrow(/size|ratio/i);
+    expect(() => validateDocxArchive({
+      "word/../secret.xml": { _data: { uncompressedSize: 100, compressedSize: 100 } },
+    })).toThrow(/path/i);
+  });
+
+  it("restores automatic DOCX list numbering as source text for segmentation", async () => {
+    const zip = new JSZip();
+    zip.file("word/document.xml", `<?xml version="1.0"?>
+      <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+          <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>First question</w:t></w:r></w:p>
+          <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Second question</w:t></w:r></w:p>
+        </w:body>
+      </w:document>`);
+    zip.file("word/numbering.xml", `<?xml version="1.0"?>
+      <w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/></w:lvl></w:abstractNum>
+        <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+      </w:numbering>`);
+    const buffer = await zip.generateAsync({ type: "arraybuffer" });
+    const ast = await parseDocxDirectAst(buffer);
+    expect(ast.fullText).toContain("1. First question");
+    expect(ast.fullText).toContain("2. Second question");
+  });
+
   it("Chuyển đổi phân số OMML <m:f> sang LaTeX \\frac{num}{den}", () => {
     const xml = `
       <m:f xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">

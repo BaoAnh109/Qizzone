@@ -1,33 +1,59 @@
-# AIV3 — Trạng thái triển khai
+# Qizzone — tình trạng triển khai nhận diện đề
 
-Nguồn kế hoạch: `Qizzone_Comprehensive_Document_Extraction_Implementation_Plan.md` (16/11/2026).
+**Cập nhật:** 17/11/2026
+**Branch:** `devolop/AIV3`
+**Kế hoạch:** `Qizzone_Comprehensive_Document_Extraction_Implementation_Plan.md` (16/11/2026)
+**Trạng thái:** Đã triển khai và kiểm thử trên local; chưa triển khai Vercel/Supabase production. `main` chưa thay đổi.
 
-## Đã thực hiện (bước đầu P0)
+## Phần đã triển khai
 
-- Tạo branch `devolop/AIV3` từ `main`, không thay đổi `main`.
-- Bỏ hành vi tự tạo bốn phương án giả khi parser không nhận diện được lựa chọn.
-- Chấp nhận câu có 2 hoặc 3 phương án mà không mặc định báo thiếu D.
-- Thay prompt trích xuất AI: không suy luận/giải đáp án trong chế độ extraction.
-- Chuyển đường trích xuất văn bản trong `aiExtractionService` sang parser-first, Gemini fallback khi câu bị thiếu lựa chọn hoặc không có câu.
-- Thêm regression tests cho các trường hợp trên.
+- Nhập DOCX, PDF, PNG, JPG/JPEG và WebP; kiểm tra phần mở rộng/chữ ký tệp, giới hạn kích thước và bảo vệ DOCX trước archive có đường dẫn hoặc kích thước giải nén bất thường.
+- DOCX được đọc trực tiếp từ OpenXML để giữ thứ tự đoạn/bảng, danh sách, công thức OMML và kiểu chữ bold/underline/highlight/màu. PDF giữ text, vị trí trang, style, highlight annotation và vùng highlight tô bằng vector.
+- OCR chạy trong trình duyệt bằng Tesseract tiếng Việt/Anh cho ảnh, ảnh nhúng trong DOCX và tối đa 10 trang scan mỗi lượt. Trang ít text được cảnh báo; trang vượt giới hạn được đánh dấu chưa xử lý.
+- Document IR có hash nguồn, block, thứ tự đọc, style và source reference. PDF có tọa độ trang; DOCX hiện giữ paragraph/run reference nhưng chưa có tọa độ trang. Trình xem nguồn có thể nhảy/tô block khớp câu.
+- Parser nhận dạng phương án A–D, ①–④, cùng dòng/nhiều dòng; đáp án từ ký hiệu, gạch chân, highlight, bold, màu, đáp án cuối câu và bảng/cuối file gồm các nhãn `[A]`, `(A)`, `✓`, `→`, `★`, `Đáp án C`. Xung đột được để `ambiguous`; thiếu chứng cứ giữ `correctAnswers=[]`.
+- Gemini chỉ là fallback cấu trúc có giới hạn; đầu ra phải khớp nguyên văn nguồn và đúng nhãn phương án. Không nhận đáp án hoặc lời giải từ AI. Câu không có ít nhất hai nhãn phương án nguồn không được gửi fallback chỉ để AI tự tạo lựa chọn.
+- Edge Function xác thực Firebase token và role teacher/admin, giới hạn body 8 MB, source 100.000 ký tự và ảnh, dùng quota theo user, timeout 40 giây mỗi model, tối đa hai model; không nhận API key/model do client chọn và không ghi nội dung đề/token vào log.
+- Luồng tạo đề không còn tự gán A cho câu chưa rõ. Thiếu đáp án/phương án thì không lưu/xuất bản; đề chuyển từ trích xuất sang cấu hình phải được giáo viên xác nhận đã rà nguồn. Thay đổi câu sau khi xác nhận sẽ khóa xuất bản lại.
+- Thêm unit, integration/security và benchmark opt-in đọc tài liệu thực từ thư mục bên ngoài repo. Tài liệu mẫu không được chép vào repo.
 
-## Chưa hoàn thành — không được coi là production-ready
+## Kết quả benchmark tài liệu thực
 
-- Chưa có Document IR giữ vị trí/style/evidence chuẩn.
-- Đã tạo **prototype** FastAPI CPU-native DOCX/PDF tại `services/extraction/`; chưa tích hợp với frontend/backend hiện tại, chưa có OCR/layout đầy đủ hoặc hàng đợi.
-- Chưa có kiểm tra độ phủ trang, phát hiện câu bị bỏ sót hoặc lỗi thứ tự đọc.
-- Chưa có answer-evidence conflict resolver, audit log, human review gate và quota AI.
-- Chưa có benchmark end-to-end trên PDF/DOCX/scan thực tế.
-- Chưa chạy `npm test`, `npm run lint`, `npm run build` trong môi trường CI.
-- Đã bổ sung kiểm tra chuỗi số câu trong luồng parser-first; **vẫn chưa có coverage map theo từng block/trang**, do đó chưa thể bảo đảm không bỏ sót câu.
-- Prototype worker chưa có xác thực, quota, kiểm tra zip bomb đầy đủ và giới hạn thực thi; tuyệt đối không public endpoint trước khi hardening.
+Chạy trên các mẫu trong `E:\Admin\Download`; thời gian là đo local, không phải SLO production.
 
-## Việc cần làm tiếp
+| Tài liệu | Câu nhận diện | Phương án đủ A–D | Đáp án có chứng cứ | Thời gian |
+|---|---:|---:|---:|---:|
+| `10_cau_trac_nghiem_triet_hoc_danh_dau_ngay_dap_an.docx` | 10/10 | 6/10; 2 câu có 2 lựa chọn, 2 câu có 3 | 8/10; 2 câu không có đáp án rõ | 38 ms |
+| `10_cau_trac_nghiem_triet_hoc.docx` | 10/10 | 10/10 | 10/10 từ bảng đáp án đa định dạng | 30 ms |
+| `60_cau_trac_nghiem_triet_hoc_4_kieu_danh_dau.docx` | 60/60 | 60/60 | 59/60; một câu không có chứng cứ | 381 ms |
+| `147_cau_ATTT_dap_an_to_vang.docx` | 147/147 | 101/147; 46 câu nguồn không có phương án | 101/101 | 1,19 s |
+| `147_cau_ATTT_dap_an_to_vang.pdf` | 147/147 | 101/147; 46 câu nguồn không có phương án | 101/101 | 5,15 s |
+| `TNChuong3.pdf` | 55/55 | 55/55 | 0/55; nguồn không có đáp án đánh dấu | 1,05 s |
 
-1. Audit đầy đủ luồng upload và định dạng hiện tại, thêm test tài liệu mẫu.
-2. Thiết kế IR + evidence, giữ nguyên số câu và vị trí nguồn.
-3. Xây worker CPU cho DOCX/PDF, kiểm tra coverage.
-4. Thêm OCR, region fallback, hàng đợi và giới hạn chi phí.
-5. Kiểm thử tích hợp, benchmark và human-review gate trước khi release.
+Đối chiếu cặp DOCX/PDF 147 câu: nội dung câu **147/147**, cả câu và lựa chọn **147/147**, nhãn đáp án đánh dấu trùng nhau **101/101**. Đây là độ đồng thuận giữa hai bản cùng nguồn, không phải độ chính xác trên bộ đáp án vàng độc lập. Với 46 câu không có lựa chọn trong tài liệu, parser không bịa phương án; đề cần giáo viên bổ sung trước khi xuất bản.
 
-Không merge sang `main` nếu chưa được kiểm thử và phê duyệt.
+OCR: ảnh raster trang 2 của `TNChuong3.pdf` trả 1.330 ký tự, confidence 94%, nhận 4/4 câu của trang. Đây là trang PDF có text gốc được render thành ảnh để đo OCR, **không phải kiểm thử end-to-end bằng PDF scan-only**. Cả 6 tài liệu benchmark đều không cần Gemini fallback.
+
+## Kiểm tra chạy được
+
+- `npm test`: 29 test file qua, 136 test qua; 1 file/8 test opt-in bị bỏ qua khi không đặt đường dẫn tài liệu.
+- Benchmark opt-in: 8/8 qua (6 tài liệu, đối chiếu DOCX/PDF, OCR). Lệnh: đặt `QIZZONE_REAL_DOCS_DIR=E:\Admin\Download` và `QIZZONE_REAL_OCR_IMAGE_PATH` trỏ tới ảnh raster trang 2, rồi chạy `npx vitest run --reporter=verbose --disableConsoleIntercept src/utils/__tests__/realDocumentBenchmark.test.ts`.
+- `npm run build`: qua; chunk parser lớn nhất 583 kB (156 kB gzip), PDF parser 429 kB (129 kB gzip).
+- `npm run lint`: qua, không warning.
+- `npm audit` và `npm audit --omit=dev`: 0 lỗ hổng sau khi ghim `minimatch` ở bản đã vá.
+
+## Giới hạn và việc còn lại
+
+- Chưa có tập tài liệu scan-only được gán nhãn độc lập, nên chưa thể công bố question recall/option exact match/answer precision theo KPI trong kế hoạch. Benchmark hiện chứng minh kết quả của những mẫu cụ thể ở trên.
+- OCR và tạo ảnh PDF chạy trên CPU trình duyệt; model tiếng Việt/Anh tải lần đầu khoảng 6,9 MB. Chưa có worker/queue nền. Tối đa 10 trang scan/ảnh nhúng được OCR mỗi lượt.
+- Chưa kiểm thử layout nhiều cột, câu kéo qua trang, hình/bảng phức tạp hoặc tọa độ trang DOCX. DOCX chỉ có vị trí theo paragraph/run.
+- Chưa đo tỉ lệ gọi fallback, latency/chi phí Gemini thực tế hoặc thử Gemini với bộ prompt-injection tài liệu riêng; chưa có regional fallback, cache hay xử lý job nền.
+- `sourceHash`/reference hiện thuộc phiên trích xuất trên client; provenance chưa được lưu cùng đề thi sau khi tạo.
+- Cần deploy Edge Function và chạy smoke test trên staging trước production. Chưa có xác nhận production về secret, quota, CORS, Vercel build hoặc luồng đăng nhập thực.
+
+## Hướng dẫn triển khai sau khi kiểm tra staging
+
+1. Cấu hình secret trên Supabase Functions: `FIREBASE_SERVICE_ACCOUNT`, `GEMINI_API_KEY`, `ALLOWED_ORIGINS`; có thể đặt `GEMINI_MODEL=gemini-3.8-flash` và `GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite`. URL và service-role key lấy từ môi trường Supabase Function.
+2. Deploy `extract-quiz-with-gemini` lên project staging; kiểm tra role teacher/admin, quota `consume_ai_quota`, CORS, timeout, lỗi upstream và giới hạn input.
+3. Deploy branch này lên preview Vercel và thử DOCX/PDF/ảnh, PDF scan-only, câu không có đáp án, câu bị thiếu phương án, đáp án mâu thuẫn và nút xác nhận review.
+4. Chỉ sau khi smoke test pass mới lên production theo quy trình release của repo. Lượt làm việc này chưa deploy hay chạy migration production.
