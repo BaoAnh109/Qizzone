@@ -4,6 +4,7 @@ import {
   getPdfPagePaintMarks,
   getScannedPdfPromptBounds,
   isPdfVisualPositionConsistentWithPromptCue,
+  isPdfPromptVisualCueDistinctive,
   isPdfVisualSourcePageEligible,
   normalizePdfGlyphText,
   parsePdfFile,
@@ -151,9 +152,13 @@ describe("PDF visual region detection", () => {
   });
 
   it("rejects catch-all questions with source matches across many pages", () => {
-    expect(isPdfVisualSourcePageEligible(3, true)).toBe(true);
-    expect(isPdfVisualSourcePageEligible(3, false)).toBe(false);
-    expect(isPdfVisualSourcePageEligible(43, true)).toBe(false);
+    expect(isPdfVisualSourcePageEligible(3, true, 1)).toBe(true);
+    expect(isPdfVisualSourcePageEligible(3, false, 0)).toBe(false);
+    expect(isPdfVisualSourcePageEligible(43, true, 5, true)).toBe(true);
+    expect(isPdfVisualSourcePageEligible(43, true, 5, false)).toBe(false);
+    expect(isPdfVisualSourcePageEligible(43, false, 0)).toBe(false);
+    expect(isPdfPromptVisualCueDistinctive("và có bảng biến thiên như hình vẽ dưới")).toBe(true);
+    expect(isPdfPromptVisualCueDistinctive("có đồ thị như hình vẽ bên. Hàm số")).toBe(false);
   });
 
   it("normalizes Greek letters from embedded PDF Symbol fonts", () => {

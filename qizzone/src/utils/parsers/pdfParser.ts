@@ -189,8 +189,25 @@ function questionReferencesPromptVisual(content: string): boolean {
 }
 
 /** @internal Used by the PDF association regression tests. */
-export function isPdfVisualSourcePageEligible(referencedPageCount: number, hasPageLocalCue: boolean): boolean {
-  return referencedPageCount <= 2 || (hasPageLocalCue && referencedPageCount <= 4);
+export function isPdfPromptVisualCueDistinctive(promptText: string): boolean {
+  const genericCueTerms = new Set([
+    "va", "co", "nhu", "hinh", "ve", "ben", "duoi", "tren", "phia", "sau", "day", "do", "thi",
+    "bieu", "ban", "luoc", "ham", "so", "as", "the", "below", "above", "shown", "following", "graph", "chart", "map", "diagram", "plot",
+  ]);
+  const normalized = promptText.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/giu, "d").toLowerCase();
+  const meaningfulTerms = (normalized.match(/[\p{L}\p{N}]{3,}/gu) || []).filter(term => !genericCueTerms.has(term));
+  return meaningfulTerms.length >= 2;
+}
+
+/** @internal Used by the PDF association regression tests. */
+export function isPdfVisualSourcePageEligible(
+  referencedPageCount: number,
+  hasPageLocalCue: boolean,
+  promptCuePageCount = 0,
+  hasDistinctivePageLocalCue = false,
+): boolean {
+  return referencedPageCount <= 2
+    || (hasPageLocalCue && (promptCuePageCount === 1 || hasDistinctivePageLocalCue));
 }
 
 /** @internal Used by the PDF association regression tests. */
@@ -1046,13 +1063,33 @@ export async function attachPdfVisualMediaToQuestions(
         const block = textBlocksById.get(id);
         return block?.sourceRef.page === undefined ? [] : [block.sourceRef.page];
       }));
+      const promptCuePages = new Set([...promptIds].flatMap(id => {
+        const block = textBlocksById.get(id);
+        const text = block?.text || block?.normalizedText || "";
+        return block?.sourceRef.page !== undefined && questionReferencesPromptVisual(text)
+          ? [block.sourceRef.page]
+          : [];
+      }));
+      const distinctivePromptCuePages = new Set([...promptIds].flatMap(id => {
+        const block = textBlocksById.get(id);
+        const text = block?.text || block?.normalizedText || "";
+        return block?.sourceRef.page !== undefined && questionReferencesPromptVisual(text) && isPdfPromptVisualCueDistinctive(text)
+          ? [block.sourceRef.page]
+          : [];
+      }));
       const localCueBlocks = fallbackPromptBlocks.filter(block => questionReferencesPromptVisual(block.text || block.normalizedText || ""));
       const hasPageLocalVisualCue = localCueBlocks.length > 0;
       const localCueText = localCueBlocks.map(block => block.text || block.normalizedText || "").join(" ");
       const localCueBounds = unionBounds(localCueBlocks);
-      // A prompt mapped across many pages is usually an ambiguous source match;
-      // even a generic figure phrase must not make a catch-all question own a chart.
-      if (!isPdfVisualSourcePageEligible(referencedPages.size, hasPageLocalVisualCue) || !fallbackPromptBlocks.length) return [];
+      // A prompt mapped across many pages is ambiguous unless the matching page
+      // itself contains the question's figure cue.
+      if (!isPdfVisualSourcePageEligible(
+        referencedPages.size,
+        hasPageLocalVisualCue,
+        promptCuePages.size,
+        distinctivePromptCuePages.has(pageNumber),
+      )
+        || !fallbackPromptBlocks.length) return [];
       const promptAnchorBlocks = localCueBlocks.length ? localCueBlocks : fallbackPromptBlocks;
       const promptDistance = Math.min(...promptAnchorBlocks.map(block => boundsDistance(block.bbox as PdfBounds, visualBounds)));
       const optionTargets = question.options.flatMap(option => {
@@ -1109,8 +1146,10 @@ export async function attachPdfVisualMediaToQuestions(
       let cleanPrompt = cleanedPromptByQuestion.get(target.question.id) || target.question.content;
       for (const blockId of target.question.promptSourceRefs || []) {
         const sourceBlock = textBlocksById.get(blockId);
-        if (!sourceBlock?.bbox || sourceBlock.sourceRef.page !== pageNumber || !intersects(sourceBlock.bbox, textVisualBounds)) continue;
-        cleanPrompt = removeLiteralText(cleanPrompt, sourceBlock.text || sourceBlock.normalizedText || "");
+        const sourceText = sourceBlock?.text || sourceBlock?.normalizedText || "";
+        if (!sourceBlock?.bbox || sourceBlock.sourceRef.page !== pageNumber || !intersects(sourceBlock.bbox, textVisualBounds)
+          || !isLikelyChartLabel(sourceText) || questionReferencesPromptVisual(sourceText)) continue;
+        cleanPrompt = removeLiteralText(cleanPrompt, sourceText);
       }
       cleanedPromptByQuestion.set(target.question.id, cleanPrompt);
       const optionCleanup = cleanedOptionsByQuestion.get(target.question.id) || new Map<string, string>();
@@ -1118,8 +1157,10 @@ export async function attachPdfVisualMediaToQuestions(
         let cleanOption = optionCleanup.get(option.id) || option.content;
         for (const blockId of option.sourceRefs || []) {
           const sourceBlock = textBlocksById.get(blockId);
-          if (!sourceBlock?.bbox || sourceBlock.sourceRef.page !== pageNumber || !intersects(sourceBlock.bbox, textVisualBounds)) continue;
-          cleanOption = removeLiteralText(cleanOption, sourceBlock.text || sourceBlock.normalizedText || "");
+          const sourceText = sourceBlock?.text || sourceBlock?.normalizedText || "";
+          if (!sourceBlock?.bbox || sourceBlock.sourceRef.page !== pageNumber || !intersects(sourceBlock.bbox, textVisualBounds)
+            || !isLikelyChartLabel(sourceText) || questionReferencesPromptVisual(sourceText)) continue;
+          cleanOption = removeLiteralText(cleanOption, sourceText);
         }
         if (cleanOption !== option.content) optionCleanup.set(option.id, cleanOption);
       }
