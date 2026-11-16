@@ -8,10 +8,10 @@
 ## Phần đã triển khai
 
 - Nhập DOCX, PDF, PNG, JPG/JPEG và WebP; kiểm tra phần mở rộng/chữ ký tệp, giới hạn kích thước và bảo vệ DOCX trước archive có đường dẫn hoặc kích thước giải nén bất thường.
-- DOCX được đọc trực tiếp từ OpenXML để giữ thứ tự đoạn/bảng, danh sách, công thức OMML và kiểu chữ bold/underline/highlight/màu. PDF giữ text, vị trí trang, style, highlight annotation và vùng highlight tô bằng vector.
+- DOCX được đọc trực tiếp từ OpenXML để giữ thứ tự đoạn/bảng, danh sách, công thức OMML và kiểu chữ bold/underline/highlight/màu. PDF giữ text, vị trí trang, style, highlight annotation, vùng highlight tô bằng vector và chữ đáp án tô đỏ.
 - OCR chạy trong trình duyệt bằng Tesseract tiếng Việt/Anh cho ảnh, ảnh nhúng trong DOCX và tối đa 10 trang scan mỗi lượt. Trang ít text được cảnh báo; trang vượt giới hạn được đánh dấu chưa xử lý.
 - Document IR có hash nguồn, block, thứ tự đọc, style và source reference. PDF có tọa độ trang; DOCX hiện giữ paragraph/run reference nhưng chưa có tọa độ trang. Trình xem nguồn có thể nhảy/tô block khớp câu.
-- Parser nhận dạng phương án A–D, ①–④, cùng dòng/nhiều dòng; đáp án từ ký hiệu, gạch chân, highlight, bold, màu, đáp án cuối câu và bảng/cuối file gồm các nhãn `[A]`, `(A)`, `✓`, `→`, `★`, `Đáp án C`. Xung đột được để `ambiguous`; thiếu chứng cứ giữ `correctAnswers=[]`.
+- Parser nhận dạng phương án A–D, ①–④, cặp Đúng/Sai không có nhãn, cùng dòng/nhiều dòng; đáp án từ ký hiệu, gạch chân, highlight, bold, màu đỏ, đáp án cuối câu và bảng/cuối file gồm các nhãn `[A]`, `(A)`, `✓`, `→`, `★`, `Đáp án C`. Xung đột được để `ambiguous`; thiếu chứng cứ giữ `correctAnswers=[]`.
 - Gemini chỉ là fallback cấu trúc có giới hạn; đầu ra phải khớp nguyên văn nguồn và đúng nhãn phương án. Không nhận đáp án hoặc lời giải từ AI. Câu không có ít nhất hai nhãn phương án nguồn không được gửi fallback chỉ để AI tự tạo lựa chọn.
 - Edge Function xác thực Firebase token và role teacher/admin, giới hạn body 8 MB, source 100.000 ký tự và ảnh, dùng quota theo user, timeout 40 giây mỗi model, tối đa hai model; không nhận API key/model do client chọn và không ghi nội dung đề/token vào log.
 - Luồng tạo đề không còn tự gán A cho câu chưa rõ. Thiếu đáp án/phương án thì không lưu/xuất bản; đề chuyển từ trích xuất sang cấu hình phải được giáo viên xác nhận đã rà nguồn. Thay đổi câu sau khi xác nhận sẽ khóa xuất bản lại.
@@ -21,23 +21,25 @@
 
 Chạy trên các mẫu trong `E:\Admin\Download`; thời gian là đo local, không phải SLO production.
 
-| Tài liệu | Câu nhận diện | Phương án đủ A–D | Đáp án có chứng cứ | Thời gian |
+| Tài liệu | Câu nhận diện | Phương án nhận diện | Đáp án có chứng cứ | Thời gian |
 |---|---:|---:|---:|---:|
-| `10_cau_trac_nghiem_triet_hoc_danh_dau_ngay_dap_an.docx` | 10/10 | 6/10; 2 câu có 2 lựa chọn, 2 câu có 3 | 8/10; 2 câu không có đáp án rõ | 38 ms |
-| `10_cau_trac_nghiem_triet_hoc.docx` | 10/10 | 10/10 | 10/10 từ bảng đáp án đa định dạng | 30 ms |
-| `60_cau_trac_nghiem_triet_hoc_4_kieu_danh_dau.docx` | 60/60 | 60/60 | 59/60; một câu không có chứng cứ | 381 ms |
-| `147_cau_ATTT_dap_an_to_vang.docx` | 147/147 | 101/147; 46 câu nguồn không có phương án | 101/101 | 1,19 s |
-| `147_cau_ATTT_dap_an_to_vang.pdf` | 147/147 | 101/147; 46 câu nguồn không có phương án | 101/101 | 5,15 s |
-| `TNChuong3.pdf` | 55/55 | 55/55 | 0/55; nguồn không có đáp án đánh dấu | 1,05 s |
+| `10_cau_trac_nghiem_triet_hoc_danh_dau_ngay_dap_an.docx` | 10/10 | 6 câu 4 lựa chọn; 2 câu có 2; 2 câu có 3 | 8/10; 2 câu không có đáp án rõ | 37 ms |
+| `10_cau_trac_nghiem_triet_hoc.docx` | 10/10 | 10/10 A–D | 10/10 từ bảng đáp án đa định dạng | 24 ms |
+| `60_cau_trac_nghiem_triet_hoc_4_kieu_danh_dau.docx` | 60/60 | 60/60 A–D | 59/60; một câu không có chứng cứ | 359 ms |
+| `147_cau_ATTT_dap_an_to_vang.docx` | 147/147 | 101 câu A–D; 46 câu Đúng/Sai | 147/147 | 1,36 s |
+| `147_cau_ATTT_dap_an_to_vang.pdf` | 147/147 | 101 câu A–D; 46 câu Đúng/Sai | 147/147 | 3,31 s |
+| `TNChuong3.pdf` | 55/55 | 55/55 A–D | 0/55; nguồn không có đáp án đánh dấu | 0,60 s |
 
-Đối chiếu cặp DOCX/PDF 147 câu: nội dung câu **147/147**, cả câu và lựa chọn **147/147**, nhãn đáp án đánh dấu trùng nhau **101/101**. Đây là độ đồng thuận giữa hai bản cùng nguồn, không phải độ chính xác trên bộ đáp án vàng độc lập. Với 46 câu không có lựa chọn trong tài liệu, parser không bịa phương án; đề cần giáo viên bổ sung trước khi xuất bản.
+Đối chiếu cặp DOCX/PDF 147 câu: nội dung câu **147/147**, cả câu và lựa chọn **147/147**, nhãn đáp án đánh dấu trùng nhau **147/147**. Trong đó có 46 câu Đúng/Sai vốn đã có sẵn trong tài liệu. Đây là độ đồng thuận giữa hai bản cùng nguồn, không phải độ chính xác trên bộ đáp án vàng độc lập.
 
-OCR: ảnh raster trang 2 của `TNChuong3.pdf` trả 1.330 ký tự, confidence 94%, nhận 4/4 câu của trang. Đây là trang PDF có text gốc được render thành ảnh để đo OCR, **không phải kiểm thử end-to-end bằng PDF scan-only**. Cả 6 tài liệu benchmark đều không cần Gemini fallback.
+PDF `CNXHKH 2024 HUIT.docx.pdf`: kiểm tra trang 1 xác nhận màu chữ đỏ được giữ làm chứng cứ; các lựa chọn đỏ gồm `C. Tuyên ngôn của Đảng Cộng sản` ở câu 1 và `A. Là những quy luật...` ở câu 2. Ca này kiểm tra lớp màu trang nguồn, không chạy trích xuất toàn bộ 62 trang.
+
+OCR: ảnh raster trang 2 của `TNChuong3.pdf` trả 1.330 ký tự, confidence 94%, nhận 4/4 câu của trang. Đây là trang PDF có text gốc được render thành ảnh để đo OCR, **không phải kiểm thử end-to-end bằng PDF scan-only**. Các tài liệu benchmark không cần Gemini fallback.
 
 ## Kiểm tra chạy được
 
-- `npm test`: 29 test file qua, 136 test qua; 1 file/8 test opt-in bị bỏ qua khi không đặt đường dẫn tài liệu.
-- Benchmark opt-in: 8/8 qua (6 tài liệu, đối chiếu DOCX/PDF, OCR). Lệnh: đặt `QIZZONE_REAL_DOCS_DIR=E:\Admin\Download` và `QIZZONE_REAL_OCR_IMAGE_PATH` trỏ tới ảnh raster trang 2, rồi chạy `npx vitest run --reporter=verbose --disableConsoleIntercept src/utils/__tests__/realDocumentBenchmark.test.ts`.
+- `npm test`: 29 test file qua, 138 test qua; 2 file/9 test opt-in bị bỏ qua khi không đặt đường dẫn tài liệu.
+- Benchmark opt-in: 9/9 qua (6 tài liệu, đối chiếu DOCX/PDF, OCR và màu chữ đỏ trang 1 PDF thực). Lệnh: đặt `QIZZONE_REAL_DOCS_DIR=E:\Admin\Download` và `QIZZONE_REAL_OCR_IMAGE_PATH` trỏ tới ảnh raster trang 2, rồi chạy `npx vitest run --reporter=verbose src/utils/__tests__/realDocumentBenchmark.test.ts src/utils/__tests__/pdfRedTextAnswer.test.ts`.
 - `npm run build`: qua; chunk parser lớn nhất 583 kB (156 kB gzip), PDF parser 429 kB (129 kB gzip).
 - `npm run lint`: qua, không warning.
 - `npm audit` và `npm audit --omit=dev`: 0 lỗ hổng sau khi ghim `minimatch` ở bản đã vá.

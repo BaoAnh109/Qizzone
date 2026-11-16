@@ -295,6 +295,27 @@ A. 10    B. 20    *C. 30    D. 40
     expect(parsed?.correctAnswers).toEqual(["C"]);
   });
 
+  it("Dùng chữ màu đỏ trong PDF làm bằng chứng đáp án", () => {
+    const result = parseRawExamText(`Câu 1: Tác phẩm nào đánh dấu sự ra đời của chủ nghĩa xã hội khoa học?
+a. Hệ tư tưởng Đức
+b. Tình cảnh giai cấp lao động ở Anh
+<span class="text-color-red">c. Tuyên ngôn của Đảng Cộng sản</span>
+d. Những nguyên lý của chủ nghĩa cộng sản`, { fileType: "pdf" });
+
+    expect(result.questions[0].options.map(option => option.content)).toEqual([
+      "Hệ tư tưởng Đức",
+      "Tình cảnh giai cấp lao động ở Anh",
+      "Tuyên ngôn của Đảng Cộng sản",
+      "Những nguyên lý của chủ nghĩa cộng sản",
+    ]);
+    expect(result.questions[0].correctAnswers).toEqual(["C"]);
+    expect(result.questions[0].answerEvidence).toContainEqual({
+      kind: "highlight_color",
+      optionIds: ["C"],
+      ruleId: "option_highlight_or_color_v1",
+    });
+  });
+
   it("Nhận diện lựa chọn Đúng/Sai không nhãn và nối các dòng xuống hàng của câu PDF", () => {
     const rawBlock = `[CLO2-TF-006] Rootkit là mã độc dùng để che giấu tiến trình, tập tin,
 khóa

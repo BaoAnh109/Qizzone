@@ -32,6 +32,7 @@ interface PdfTextRecord {
   fontName: string;
   highlighted: boolean;
   underlined: boolean;
+  redText: boolean;
 }
 
 interface PdfAnnotationLike {
@@ -80,32 +81,99 @@ function isYellowPdfColor(value: unknown): boolean {
   return normalized === "#ffff00" || normalized === "#ff0" || normalized === "rgb(255,255,0)";
 }
 
-async function getYellowVectorHighlightBounds(page: PdfJsTypes.PDFPageProxy): Promise<number[][]> {
+function isRedPdfColor(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const hex = value.toLowerCase().replace(/\s/g, "");
+  const match = hex.match(/^#([\da-f]{6})$/);
+  if (!match) return hex === "#f00";
+  const red = parseInt(match[1].slice(0, 2), 16);
+  const green = parseInt(match[1].slice(2, 4), 16);
+  const blue = parseInt(match[1].slice(4, 6), 16);
+  return red >= 150 && green <= 110 && blue <= 110 && red > green * 1.4 && red > blue * 1.4;
+}
+
+function normalizePdfText(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/gu, "");
+}
+
+function mapRedTextRunsToItems(textItems: string[], redRuns: string[]): Set<number> {
+  const flatText = textItems.map(normalizePdfText).join("");
+  const itemByCharacter: number[] = [];
+  textItems.forEach((item, itemIndex) => {
+    const length = normalizePdfText(item).length;
+    for (let characterIndex = 0; characterIndex < length; characterIndex += 1) itemByCharacter.push(itemIndex);
+  });
+
+  const redItems = new Set<number>();
+  let searchOffset = 0;
+  for (const rawRun of redRuns) {
+    const run = normalizePdfText(rawRun);
+    if (run.length < 2) continue;
+    const start = flatText.indexOf(run, searchOffset);
+    if (start < 0) continue;
+    for (let index = start; index < start + run.length; index += 1) {
+      const itemIndex = itemByCharacter[index];
+      if (itemIndex !== undefined) redItems.add(itemIndex);
+    }
+    searchOffset = start + run.length;
+  }
+  return redItems;
+}
+
+export interface PdfPagePaintMarks {
+  vectorHighlights: number[][];
+  redTextItems: Set<number>;
+}
+
+export async function getPdfPagePaintMarks(page: PdfJsTypes.PDFPageProxy, textItems: string[]): Promise<PdfPagePaintMarks> {
   const operators = (pdfjsLib as unknown as { OPS?: Record<string, number> }).OPS;
-  if (!operators) return [];
+  if (!operators) return { vectorHighlights: [], redTextItems: new Set() };
   const allowedPaintOps = new Set([operators.fill, operators.eoFill, operators.fillStroke, operators.eoFillStroke]);
   const operatorList = await page.getOperatorList();
-  const bounds: number[][] = [];
+  const vectorHighlights: number[][] = [];
+  const redRuns: string[] = [];
   let isYellowFill = false;
-  const fillStateStack: boolean[] = [];
+  let fillColor: unknown;
+  let redTextRun = "";
+  const fillStateStack: Array<{ isYellowFill: boolean; fillColor: unknown }> = [];
+  const flushRedTextRun = () => {
+    if (redTextRun.trim()) redRuns.push(redTextRun);
+    redTextRun = "";
+  };
 
   for (let index = 0; index < operatorList.fnArray.length; index += 1) {
     const operator = operatorList.fnArray[index];
     const args = operatorList.argsArray[index] as unknown[] | null;
     if (operator === operators.save) {
-      fillStateStack.push(isYellowFill);
+      fillStateStack.push({ isYellowFill, fillColor });
       continue;
     }
     if (operator === operators.restore) {
-      isYellowFill = fillStateStack.pop() || false;
+      const previous = fillStateStack.pop();
+      if (previous && previous.fillColor !== fillColor) flushRedTextRun();
+      isYellowFill = previous?.isYellowFill || false;
+      fillColor = previous?.fillColor;
       continue;
     }
     if (operator === operators.setFillRGBColor) {
+      if (args?.[0] !== fillColor) flushRedTextRun();
+      fillColor = args?.[0];
       isYellowFill = isYellowPdfColor(args?.[0]);
       continue;
     }
     if ([operators.setFillColor, operators.setFillColorN, operators.setFillGray, operators.setFillCMYKColor].includes(operator)) {
+      flushRedTextRun();
+      fillColor = undefined;
       isYellowFill = false;
+      continue;
+    }
+    if (operator === operators.showText || operator === operators.showSpacedText) {
+      const glyphs = args?.[0];
+      const glyphText = Array.isArray(glyphs)
+        ? glyphs.map(glyph => glyph && typeof glyph === "object" && "unicode" in glyph && typeof glyph.unicode === "string" ? glyph.unicode : "").join("")
+        : "";
+      if (isRedPdfColor(fillColor)) redTextRun += glyphText;
+      else flushRedTextRun();
       continue;
     }
     if (operator !== operators.constructPath || !isYellowFill || !args || !allowedPaintOps.has(args[0] as number)) continue;
@@ -133,7 +201,7 @@ async function getYellowVectorHighlightBounds(page: PdfJsTypes.PDFPageProxy): Pr
         }
       }
       if (coordinates.length >= 2) {
-        bounds.push([
+        vectorHighlights.push([
           Math.min(...coordinates.map(([x]) => x)),
           Math.min(...coordinates.map(([, y]) => y)),
           Math.max(...coordinates.map(([x]) => x)),
@@ -142,7 +210,11 @@ async function getYellowVectorHighlightBounds(page: PdfJsTypes.PDFPageProxy): Pr
       }
     }
   }
-  return bounds;
+  flushRedTextRun();
+  return {
+    vectorHighlights,
+    redTextItems: mapRedTextRunsToItems(textItems, redRuns),
+  };
 }
 
 function lineGroups(records: PdfTextRecord[], pageWidth: number): PdfTextRecord[][] {
@@ -193,6 +265,7 @@ function joinRecords(records: PdfTextRecord[], html: boolean): string {
     let value = html ? escapeHtml(record.text) : record.text;
     if (html && record.highlighted) value = "<mark class=\"is-highlighted\">" + value + "</mark>";
     else if (html && record.underlined) value = "<u>" + value + "</u>";
+    if (html && record.redText) value = "<span class=\"text-color-red\">" + value + "</span>";
     else if (html && /bold|demi|semibold/i.test(record.fontName)) value = "<strong class=\"is-bold\">" + value + "</strong>";
     result += separator + value;
     previous = record;
@@ -269,7 +342,8 @@ export async function parsePdfFile(
       return [{ kind: isHighlightAnnotation(annotation) ? "highlight" as const : "underline" as const, bbox }];
     });
     const pageArea = Math.abs(pageWidth * pageHeight);
-    const vectorHighlights = await getYellowVectorHighlightBounds(page);
+    const pagePaintMarks = await getPdfPagePaintMarks(page, content.items.flatMap(item => "str" in item && item.str.trim() ? [item.str] : []));
+    const vectorHighlights = pagePaintMarks.vectorHighlights;
     markAreas.push(...vectorHighlights
       .filter(bbox => Math.abs((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])) > 0 &&
         Math.abs((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])) < pageArea * 0.1)
@@ -278,6 +352,7 @@ export async function parsePdfFile(
     const records: PdfTextRecord[] = [];
     const blocks: DocumentIRBlock[] = [];
     let readingOrder = 0;
+    let textRecordIndex = 0;
     for (const item of content.items) {
       if (!("str" in item) || !item.str.trim()) continue;
       const textItem = item as { str: string; transform: number[]; width: number; height: number; fontName: string };
@@ -292,7 +367,19 @@ export async function parsePdfFile(
       const matchedAreas = markAreas.filter(record => intersects(bbox, record.bbox));
       const highlighted = matchedAreas.some(record => record.kind === "highlight");
       const underlined = matchedAreas.some(record => record.kind === "underline");
-      records.push({ text: textItem.str, x, y, width, height, bbox, fontName: textItem.fontName || "", highlighted, underlined });
+      records.push({
+        text: textItem.str,
+        x,
+        y,
+        width,
+        height,
+        bbox,
+        fontName: textItem.fontName || "",
+        highlighted,
+        underlined,
+        redText: pagePaintMarks.redTextItems.has(textRecordIndex),
+      });
+      textRecordIndex += 1;
       const style: DocumentIRStyle = {};
       if (/bold|demi|semibold/i.test(textItem.fontName || "")) style.bold = true;
       if (highlighted) style.highlight = "pdf_annotation";

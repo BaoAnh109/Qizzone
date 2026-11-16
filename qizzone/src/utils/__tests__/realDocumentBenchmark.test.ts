@@ -12,12 +12,23 @@ import { parsePdfFile } from "@/utils/parsers/pdfParser";
 vi.mock("pdfjs-dist", async () => import("pdfjs-dist/legacy/build/pdf.mjs"));
 
 const benchmarkDirectory = process.env.QIZZONE_REAL_DOCS_DIR;
-const benchmarkCases = [
+interface RealDocumentBenchmarkCase {
+  fileName: string;
+  expectedQuestions: number;
+  expectedFullyOptioned: number;
+  expectedQuestionsWithOptions?: number;
+  expectedWithoutOptions?: number;
+  expectedEvidenceAnswers?: number;
+  expectedHasAnswerKey?: boolean;
+  expectedTwoOptionQuestions?: number;
+}
+
+const benchmarkCases: RealDocumentBenchmarkCase[] = [
   { fileName: "10_cau_trac_nghiem_triet_hoc_danh_dau_ngay_dap_an.docx", expectedQuestions: 10, expectedFullyOptioned: 6, expectedQuestionsWithOptions: 10, expectedEvidenceAnswers: 8 },
   { fileName: "10_cau_trac_nghiem_triet_hoc.docx", expectedQuestions: 10, expectedFullyOptioned: 10, expectedEvidenceAnswers: 10, expectedHasAnswerKey: true },
   { fileName: "60_cau_trac_nghiem_triet_hoc_4_kieu_danh_dau.docx", expectedQuestions: 60, expectedFullyOptioned: 60, expectedEvidenceAnswers: 59 },
-  { fileName: "147_cau_ATTT_dap_an_to_vang.docx", expectedQuestions: 147, expectedFullyOptioned: 101, expectedQuestionsWithOptions: 101, expectedWithoutOptions: 46, expectedEvidenceAnswers: 101 },
-  { fileName: "147_cau_ATTT_dap_an_to_vang.pdf", expectedQuestions: 147, expectedFullyOptioned: 101, expectedQuestionsWithOptions: 101, expectedWithoutOptions: 46, expectedEvidenceAnswers: 101 },
+  { fileName: "147_cau_ATTT_dap_an_to_vang.docx", expectedQuestions: 147, expectedFullyOptioned: 101, expectedTwoOptionQuestions: 46, expectedQuestionsWithOptions: 147, expectedEvidenceAnswers: 147 },
+  { fileName: "147_cau_ATTT_dap_an_to_vang.pdf", expectedQuestions: 147, expectedFullyOptioned: 101, expectedTwoOptionQuestions: 46, expectedQuestionsWithOptions: 147, expectedEvidenceAnswers: 147 },
   { fileName: "TNChuong3.pdf", expectedQuestions: 55, expectedFullyOptioned: 55 },
 ];
 
@@ -36,6 +47,7 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
         : await parseDocxFile(file);
       const questions = parsed.result.questions;
       const questionsWithOptions = questions.filter(question => question.options.length >= 2).length;
+      const twoOptionQuestions = questions.filter(question => question.options.length === 2).length;
       const fullyOptioned = questions.filter(question =>
         question.options.length === 4 && question.options.every((option, index) => option.id === ["A", "B", "C", "D"][index]),
       ).length;
@@ -63,6 +75,7 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
         geminiFallbackNeeded,
         extractionMethod: parsed.result.extractionMethod,
         qualityFlags: parsed.result.qualityFlags || [],
+        twoOptionQuestions,
         durationMs: Math.round(performance.now() - startedAt),
       }));
 
@@ -70,6 +83,12 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
       expect(fullyOptioned, "source questions with ordered A/B/C/D choices").toBe(benchmarkCase.expectedFullyOptioned);
       expect(questionsWithOptions, "source questions with parsed choices").toBe(benchmarkCase.expectedQuestionsWithOptions ?? benchmarkCase.expectedQuestions);
       expect(withoutOptions, "questions without options in the source").toBe(benchmarkCase.expectedWithoutOptions || 0);
+      if ("expectedTwoOptionQuestions" in benchmarkCase) {
+        expect(twoOptionQuestions, "two-choice true/false questions").toBe(benchmarkCase.expectedTwoOptionQuestions);
+        expect(questions.filter(question => question.options.length === 2).every(question =>
+          question.options.map(option => option.content).join("/") === "Đúng/Sai",
+        )).toBe(true);
+      }
       expect(evidenceSupportedAnswers, "answer evidence cannot refer to questions without parsed choices").toBeLessThanOrEqual(questionsWithOptions);
       expect(geminiFallbackNeeded, "complete source structures do not need paid fallback").toBe(false);
       if ("expectedEvidenceAnswers" in benchmarkCase) {
@@ -84,7 +103,7 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
   const markedDocxPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.docx");
   const markedPdfPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.pdf");
   const comparisonIt = benchmarkDirectory && existsSync(markedDocxPath) && existsSync(markedPdfPath) ? it : it.skip;
-  comparisonIt("compares independently marked DOCX and PDF answers", async () => {
+  comparisonIt("compares DOCX and PDF answer evidence", async () => {
     const [docxBytes, pdfBytes] = await Promise.all([readFile(markedDocxPath), readFile(markedPdfPath)]);
     const [docx, pdf] = await Promise.all([
       parseDocxFile(new File([docxBytes], "147_cau_ATTT_dap_an_to_vang.docx")),
@@ -121,7 +140,7 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
       exactQuestionTextMatches,
       exactFullQuestionMatches,
     }));
-    expect(sharedAnswers.length).toBe(101);
+    expect(sharedAnswers.length).toBe(147);
     expect(exactAnswerAgreement).toBe(sharedAnswers.length);
     expect(exactQuestionTextMatches).toBe(147);
     expect(exactFullQuestionMatches).toBe(147);
