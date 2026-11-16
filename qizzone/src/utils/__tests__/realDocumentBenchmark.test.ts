@@ -14,32 +14,53 @@ import { getPdfPagePaintMarks, parsePdfFile } from "@/utils/parsers/pdfParser";
 vi.mock("pdfjs-dist", async () => import("pdfjs-dist/legacy/build/pdf.mjs"));
 
 const benchmarkDirectory = process.env.QIZZONE_REAL_DOCS_DIR;
+const publicBenchmarkDirectory = process.env.QIZZONE_PUBLIC_DOCS_DIR;
 interface RealDocumentBenchmarkCase {
   fileName: string;
   expectedQuestions: number;
-  expectedFullyOptioned: number;
+  directory?: "public";
+  expectedMinimumVisualBlocks?: number;
+  expectedFullyOptioned?: number;
   expectedQuestionsWithOptions?: number;
   expectedWithoutOptions?: number;
   expectedEvidenceAnswers?: number;
   expectedHasAnswerKey?: boolean;
   expectedTwoOptionQuestions?: number;
+  expectedDuplicateSourceNumbers?: number;
+  expectTrueFalseOptions?: boolean;
+  expectOcrUnavailable?: boolean;
+  expectOcrLimitExceeded?: boolean;
+  expectAIFallback?: boolean;
+  requireNoAIFallback?: boolean;
 }
 
 const benchmarkCases: RealDocumentBenchmarkCase[] = [
-  { fileName: "10_cau_trac_nghiem_triet_hoc_danh_dau_ngay_dap_an.docx", expectedQuestions: 10, expectedFullyOptioned: 6, expectedQuestionsWithOptions: 10, expectedEvidenceAnswers: 8 },
-  { fileName: "10_cau_trac_nghiem_triet_hoc.docx", expectedQuestions: 10, expectedFullyOptioned: 10, expectedEvidenceAnswers: 10, expectedHasAnswerKey: true },
-  { fileName: "60_cau_trac_nghiem_triet_hoc_4_kieu_danh_dau.docx", expectedQuestions: 60, expectedFullyOptioned: 60, expectedEvidenceAnswers: 59 },
-  { fileName: "147_cau_ATTT_dap_an_to_vang.docx", expectedQuestions: 147, expectedFullyOptioned: 101, expectedTwoOptionQuestions: 46, expectedQuestionsWithOptions: 147, expectedEvidenceAnswers: 147 },
-  { fileName: "147_cau_ATTT_dap_an_to_vang.pdf", expectedQuestions: 147, expectedFullyOptioned: 101, expectedTwoOptionQuestions: 46, expectedQuestionsWithOptions: 147, expectedEvidenceAnswers: 147 },
-  { fileName: "TNChuong3.pdf", expectedQuestions: 55, expectedFullyOptioned: 55 },
+  { fileName: "10_cau_trac_nghiem_triet_hoc_danh_dau_ngay_dap_an.docx", expectedQuestions: 10, expectedFullyOptioned: 6, expectedQuestionsWithOptions: 10, expectedEvidenceAnswers: 8, requireNoAIFallback: true },
+  { fileName: "10_cau_trac_nghiem_triet_hoc.docx", expectedQuestions: 10, expectedFullyOptioned: 10, expectedQuestionsWithOptions: 10, expectedEvidenceAnswers: 10, expectedHasAnswerKey: true, requireNoAIFallback: true },
+  { fileName: "60_cau_trac_nghiem_triet_hoc_4_kieu_danh_dau.docx", expectedQuestions: 60, expectedFullyOptioned: 60, expectedQuestionsWithOptions: 60, expectedEvidenceAnswers: 59, requireNoAIFallback: true },
+  { fileName: "147_cau_ATTT_dap_an_to_vang.docx", expectedQuestions: 147, expectedFullyOptioned: 101, expectedTwoOptionQuestions: 46, expectTrueFalseOptions: true, expectedQuestionsWithOptions: 147, expectedEvidenceAnswers: 147, requireNoAIFallback: true },
+  { fileName: "147_cau_ATTT_dap_an_to_vang.pdf", expectedQuestions: 147, expectedFullyOptioned: 101, expectedTwoOptionQuestions: 46, expectTrueFalseOptions: true, expectedQuestionsWithOptions: 147, expectedEvidenceAnswers: 147, requireNoAIFallback: true },
+  { fileName: "TNChuong3.pdf", expectedQuestions: 55, expectedFullyOptioned: 55, expectedQuestionsWithOptions: 55, requireNoAIFallback: true },
+  { fileName: "MongoDB_30_cau_Anh_Viet_ABCD_Chu_Hoa.docx", expectedQuestions: 60, expectedDuplicateSourceNumbers: 30 },
+  { fileName: "MongoDB_30_English_Cau_Answer_Key.docx", expectedQuestions: 30 },
+  { fileName: "Ngan_hang_150_cau_Tu_tuong_Ho_Chi_Minh AI soạn dùng để test khi đọc xong giáo trình.docx", expectedQuestions: 250 },
+  { fileName: "Ngan_hang_250_cau_Tu_tuong_Ho_Chi_Minh_trac_nghiem_kem_bang_dap_an.docx", expectedQuestions: 250 },
+  { fileName: "50 đầu.pdf", expectedQuestions: 0, expectOcrUnavailable: true, expectOcrLimitExceeded: true, expectAIFallback: true },
+  { fileName: "51-100.pdf", expectedQuestions: 0, expectOcrUnavailable: true, expectOcrLimitExceeded: true, expectAIFallback: true },
+  { fileName: "101-157.pdf", expectedQuestions: 0, expectOcrUnavailable: true, expectOcrLimitExceeded: true, expectAIFallback: true },
+  { fileName: "2023-physics.pdf", expectedQuestions: 34, directory: "public", expectAIFallback: true },
+  { fileName: "2024-geography.pdf", expectedQuestions: 156, directory: "public", expectedMinimumVisualBlocks: 1, expectAIFallback: true },
+  { fileName: "2025-math-first-100.pdf", expectedQuestions: 242, directory: "public", expectedMinimumVisualBlocks: 1, expectAIFallback: true },
+  { fileName: "2023-physics-page-1-scan.pdf", expectedQuestions: 0, directory: "public", expectOcrUnavailable: true },
 ];
 
-const benchmarkDescribe = benchmarkDirectory ? describe : describe.skip;
+const benchmarkDescribe = benchmarkDirectory || publicBenchmarkDirectory ? describe : describe.skip;
 
 benchmarkDescribe("Opt-in real document extraction benchmark", () => {
   for (const benchmarkCase of benchmarkCases) {
-    const filePath = join(benchmarkDirectory || ".", benchmarkCase.fileName);
-    const benchmarkIt = benchmarkDirectory && existsSync(filePath) ? it : it.skip;
+    const caseDirectory = benchmarkCase.directory === "public" ? publicBenchmarkDirectory : benchmarkDirectory;
+    const filePath = join(caseDirectory || ".", benchmarkCase.fileName);
+    const benchmarkIt = caseDirectory && existsSync(filePath) ? it : it.skip;
     benchmarkIt(`extracts structure from ${benchmarkCase.fileName}`, async () => {
       const bytes = await readFile(filePath);
       const file = new File([bytes], benchmarkCase.fileName);
@@ -48,6 +69,7 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
         ? await parsePdfFile(file)
         : await parseDocxFile(file);
       const questions = parsed.result.questions;
+      const qualityFlags = "qualityFlags" in parsed ? parsed.qualityFlags : parsed.result.qualityFlags || [];
       const questionsWithOptions = questions.filter(question => question.options.length >= 2).length;
       const twoOptionQuestions = questions.filter(question => question.options.length === 2).length;
       const fullyOptioned = questions.filter(question =>
@@ -61,6 +83,10 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
         counts[question.options.length] = (counts[question.options.length] || 0) + 1;
         return counts;
       }, {});
+      const sourceQuestionNumbers = parsed.result.coverage?.sourceQuestionNumbers || [];
+      const duplicateSourceQuestionNumbers = sourceQuestionNumbers.length - new Set(sourceQuestionNumbers).size;
+      const visualBlockCount = parsed.documentIR.pages.flatMap(page => page.blocks)
+        .filter(block => block.type === "image" || block.type === "shape").length;
       console.info("[real-document-benchmark]", JSON.stringify({
         file: benchmarkCase.fileName,
         expectedQuestions: benchmarkCase.expectedQuestions,
@@ -76,23 +102,51 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
         ambiguousAnswers,
         geminiFallbackNeeded,
         extractionMethod: parsed.result.extractionMethod,
-        qualityFlags: parsed.result.qualityFlags || [],
+        qualityFlags,
         twoOptionQuestions,
+        duplicateSourceQuestionNumbers,
+        visualBlockCount,
         durationMs: Math.round(performance.now() - startedAt),
       }));
 
       expect(questions.length, "question count").toBe(benchmarkCase.expectedQuestions);
-      expect(fullyOptioned, "source questions with ordered A/B/C/D choices").toBe(benchmarkCase.expectedFullyOptioned);
-      expect(questionsWithOptions, "source questions with parsed choices").toBe(benchmarkCase.expectedQuestionsWithOptions ?? benchmarkCase.expectedQuestions);
-      expect(withoutOptions, "questions without options in the source").toBe(benchmarkCase.expectedWithoutOptions || 0);
+      if (benchmarkCase.expectedFullyOptioned !== undefined) {
+        expect(fullyOptioned, "source questions with ordered A/B/C/D choices").toBe(benchmarkCase.expectedFullyOptioned);
+      }
+      if (benchmarkCase.expectedQuestionsWithOptions !== undefined) {
+        expect(questionsWithOptions, "source questions with parsed choices").toBe(benchmarkCase.expectedQuestionsWithOptions);
+      }
+      if (benchmarkCase.expectedDuplicateSourceNumbers !== undefined) {
+        expect(duplicateSourceQuestionNumbers, "intentional repeated numbering in bilingual variants").toBe(benchmarkCase.expectedDuplicateSourceNumbers);
+      }
+      if (benchmarkCase.expectedWithoutOptions !== undefined) {
+        expect(withoutOptions, "questions without options in the source").toBe(benchmarkCase.expectedWithoutOptions);
+      }
+      if (benchmarkCase.expectOcrUnavailable) {
+        expect(qualityFlags).toContain("ocr_requires_browser_runtime");
+        expect(qualityFlags).toContain("scan_pages_unprocessed");
+      }
+      if (benchmarkCase.expectOcrLimitExceeded) {
+        expect(qualityFlags).toContain("ocr_page_limit_exceeded");
+      }
+      if (benchmarkCase.expectAIFallback !== undefined) {
+        expect(geminiFallbackNeeded, "fallback status matches the incomplete or ambiguous source").toBe(benchmarkCase.expectAIFallback);
+      }
+      if (benchmarkCase.expectedMinimumVisualBlocks !== undefined) {
+        expect(visualBlockCount, "detected diagram, chart, map, or embedded image regions").toBeGreaterThanOrEqual(benchmarkCase.expectedMinimumVisualBlocks);
+      }
       if ("expectedTwoOptionQuestions" in benchmarkCase) {
         expect(twoOptionQuestions, "two-choice true/false questions").toBe(benchmarkCase.expectedTwoOptionQuestions);
-        expect(questions.filter(question => question.options.length === 2).every(question =>
-          question.options.map(option => option.content).join("/") === "Đúng/Sai",
-        )).toBe(true);
+        if (benchmarkCase.expectTrueFalseOptions) {
+          expect(questions.filter(question => question.options.length === 2).every(question =>
+            question.options.map(option => option.content).join("/") === "Đúng/Sai",
+          )).toBe(true);
+        }
       }
       expect(evidenceSupportedAnswers, "answer evidence cannot refer to questions without parsed choices").toBeLessThanOrEqual(questionsWithOptions);
-      expect(geminiFallbackNeeded, "complete source structures do not need paid fallback").toBe(false);
+      if (benchmarkCase.requireNoAIFallback) {
+        expect(geminiFallbackNeeded, "complete source structures do not need paid fallback").toBe(false);
+      }
       if ("expectedEvidenceAnswers" in benchmarkCase) {
         expect(evidenceSupportedAnswers, "evidence-supported answer count").toBe(benchmarkCase.expectedEvidenceAnswers);
       }
@@ -204,15 +258,39 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
   }, 30_000);
 
   const q10FullExtractionIt = benchmarkDirectory && existsSync(longPdfPath) ? it : it.skip;
-  q10FullExtractionIt("extracts the highlighted D answer for question 10 end to end", async () => {
+  q10FullExtractionIt("extracts question 10 and its highlighted D answer end to end", async () => {
     const bytes = await readFile(longPdfPath);
+    const startedAt = performance.now();
     const parsed = await parsePdfFile(new File([bytes], "CNXHKH 2024 HUIT.docx.pdf"));
+    const invalidQuestionCount = parsed.result.questions.filter(question =>
+      question.options.length < 2 || question.options.length > 4 || question.options.some(option => !option.content.trim()),
+    ).length;
+    const unsupportedAnswerCount = parsed.result.questions.filter(question => question.answerStatus === "unknown").length;
+    console.info("[real-document-long-pdf]", JSON.stringify({
+      totalPages: parsed.totalPages,
+      questionCount: parsed.result.questions.length,
+      invalidQuestionCount,
+      unsupportedAnswerCount,
+      aiFallbackNeeded: shouldUseAIExtractionFallback(parsed.result),
+      durationMs: Math.round(performance.now() - startedAt),
+      qualityFlags: parsed.result.qualityFlags,
+    }));
+    expect(parsed.result.questions).toHaveLength(353);
+    expect(parsed.result.qualityFlags).not.toContain("question_count_mismatch");
+    expect(parsed.result.qualityFlags).not.toContain("question_number_gap_or_duplicate");
     const question = parsed.result.questions.find(item => item.order === 10);
     expect(question?.content).toContain("Nhà tư tưởng xã hội chủ nghĩa nào");
     expect(question?.options.map(option => option.id)).toEqual(["A", "B", "C", "D"]);
     expect(question?.correctAnswers).toEqual(["D"]);
     expect(question?.detectionStrategy).toBe("highlight_color");
   }, 150_000);
+
+  const oversizedMathPath = join(publicBenchmarkDirectory || ".", "2025-math.pdf");
+  const oversizedMathIt = publicBenchmarkDirectory && existsSync(oversizedMathPath) ? it : it.skip;
+  oversizedMathIt("rejects the 188-page math PDF before page-level extraction", async () => {
+    const bytes = await readFile(oversizedMathPath);
+    await expect(parsePdfFile(new File([bytes], "2025-math.pdf"))).rejects.toThrow("PDF vượt quá giới hạn 100 trang.");
+  }, 30_000);
 
   const markedDocxPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.docx");
   const markedPdfPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.pdf");
@@ -246,6 +324,20 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
           docxQuestion.options[index]?.content.normalize("NFKC").replace(/\s+/g, " ").trim());
     }).length;
 
+    const contentMismatchOrders = pdf.result.questions.flatMap(question => {
+      const docxQuestion = docxByOrder.get(question.order);
+      const normalize = (value: string) => value.normalize("NFKC").replace(/\s+/g, " ").trim();
+      const sameContent = docxQuestion && normalize(question.content) === normalize(docxQuestion.content);
+      const sameOptions = docxQuestion && question.options.length === docxQuestion.options.length &&
+        question.options.every((option, index) => option.id === docxQuestion.options[index]?.id &&
+          normalize(option.content) === normalize(docxQuestion.options[index]?.content));
+      if (sameContent && sameOptions) return [];
+      return [{
+        order: question.order,
+        pdf: question.options.map(option => `${option.id}. ${option.content}`),
+        docx: docxQuestion?.options.map(option => `${option.id}. ${option.content}`),
+      }];
+    });
     console.info("[real-document-answer-agreement]", JSON.stringify({
       docxEvidenceAnswers: docx.result.questions.filter(question => question.answerStatus === "evidence_supported").length,
       pdfEvidenceAnswers: pdf.result.questions.filter(question => question.answerStatus === "evidence_supported").length,
@@ -253,6 +345,7 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
       exactAnswerAgreement,
       exactQuestionTextMatches,
       exactFullQuestionMatches,
+      contentMismatchOrders,
     }));
     expect(sharedAnswers.length).toBe(147);
     expect(exactAnswerAgreement).toBe(sharedAnswers.length);
@@ -260,24 +353,48 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
     expect(exactFullQuestionMatches).toBe(147);
   }, 120_000);
 
-  const ocrImagePath = process.env.QIZZONE_REAL_OCR_IMAGE_PATH;
-  const ocrBenchmarkIt = benchmarkDirectory && ocrImagePath && existsSync(ocrImagePath) ? it : it.skip;
-  ocrBenchmarkIt("recognizes questions from a rendered page of the real PDF", async () => {
-    const pdfPath = join(benchmarkDirectory || ".", "TNChuong3.pdf");
-    if (!benchmarkDirectory || !existsSync(pdfPath)) return;
-    const pdfBytes = await readFile(pdfPath);
-    const reference = await parsePdfFile(new File([pdfBytes], "TNChuong3.pdf"));
-    const expectedQuestionCount = parseRawExamText(reference.pagesText[1] || "", { fileType: "pdf" }).questions.length;
-    const [page] = await recognizeOcrPages([{ pageNumber: 2, image: ocrImagePath! }]);
-    const ocrQuestionCount = parseRawExamText(page.text, { fileType: "pdf" }).questions.length;
-    console.info("[real-document-ocr-benchmark]", JSON.stringify({
-      page: page.pageNumber,
+  const ocrImagePaths = [
+    process.env.QIZZONE_REAL_OCR_IMAGE_PATH,
+    process.env.QIZZONE_REAL_OCR_IMAGE_PATH_ROTATED,
+  ].filter((path): path is string => Boolean(path));
+  const syntheticOcrImagePath = process.env.QIZZONE_SYNTHETIC_OCR_IMAGE_PATH;
+  const ocrReferencePdfPath = process.env.QIZZONE_OCR_REFERENCE_PDF_PATH;
+  const ocrPageNumber = Number(process.env.QIZZONE_OCR_PAGE_NUMBER || "2");
+  const ocrBenchmarkIt = ocrImagePaths.length === 2 && syntheticOcrImagePath && ocrReferencePdfPath &&
+    [...ocrImagePaths, syntheticOcrImagePath, ocrReferencePdfPath].every(existsSync) ? it : it.skip;
+  ocrBenchmarkIt("recognizes original, rotated, and synthetic Vietnamese exam images", async () => {
+    const pdfBytes = await readFile(ocrReferencePdfPath!);
+    const reference = await parsePdfFile(new File([pdfBytes], "OCR-reference.pdf"));
+    const expectedQuestionCount = parseRawExamText(reference.pagesText[ocrPageNumber - 1] || "", { fileType: "pdf" }).questions.length;
+    const startedAt = performance.now();
+    const pages = await recognizeOcrPages([
+      ...ocrImagePaths.map(image => ({ pageNumber: ocrPageNumber, image })),
+      { pageNumber: 1, image: syntheticOcrImagePath! },
+    ]);
+    const measurements = pages.slice(0, ocrImagePaths.length).map((page, index) => ({
+      image: ocrImagePaths[index],
       characters: page.text.length,
       confidencePercent: Math.round(page.confidence * 100),
       expectedQuestionCount,
-      ocrQuestionCount,
+      ocrQuestionCount: parseRawExamText(page.text, { fileType: "pdf" }).questions.length,
     }));
-    expect(page.confidence).toBeGreaterThan(0.65);
-    expect(ocrQuestionCount).toBe(expectedQuestionCount);
+    const syntheticResult = parseRawExamText(pages[2].text, { fileType: "image" });
+    const syntheticQuestion = syntheticResult.questions[0];
+    console.info("[real-document-ocr-benchmark]", JSON.stringify({
+      measurements,
+      synthetic: {
+        confidencePercent: Math.round(pages[2].confidence * 100),
+        text: pages[2].text,
+        questionCount: syntheticResult.questions.length,
+        optionIds: syntheticQuestion?.options.map(option => option.id),
+        prompt: syntheticQuestion?.content,
+      },
+      durationMs: Math.round(performance.now() - startedAt),
+    }));
+    expect(pages.every(page => page.confidence > 0.65)).toBe(true);
+    expect(measurements.every(measurement => Math.abs(measurement.ocrQuestionCount - expectedQuestionCount) <= 2)).toBe(true);
+    expect(syntheticResult.questions).toHaveLength(1);
+    expect(syntheticQuestion?.options.map(option => option.id)).toEqual(["A", "B", "C", "D"]);
+    expect(syntheticQuestion?.content.toLocaleLowerCase()).toContain("đạo hàm");
   }, 120_000);
 });

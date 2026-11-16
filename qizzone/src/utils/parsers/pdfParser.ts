@@ -177,15 +177,21 @@ function expandPdfShapeRegionsWithLabels(
   });
 }
 
+const PDF_PROMPT_VISUAL_CUE = /(?:^|[^\p{L}\p{N}])(?:biểu\s*đồ|đồ\s*thị|bản\s*đồ|lược\s*đồ|sơ\s*đồ|bảng\s+biến\s+thiên|atlat|graph|chart|diagram|figure|map|plot)(?=$|[^\p{L}\p{N}])|(?:^|[^\p{L}\p{N}])hình\s+(?:(?:ở|như)\s+)?(?:\d+|bên|vẽ|dưới|trên|sau|kèm\s+theo)(?:\s+(?:đây|này))?(?=$|[^\p{L}\p{N}])/iu;
+
+/** @internal Used by the PDF visual association regression tests. */
+export function isPdfPromptVisualCue(promptText: string): boolean {
+  return PDF_PROMPT_VISUAL_CUE.test(promptText);
+}
+
 function hasNearbyPromptVisualCue(region: PdfPagePaintMarks["visualRegions"][number], records: PdfTextRecord[]): boolean {
-  const cue = /(?:hình(?:\s+(?:bên|vẽ|dưới|sau))?|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|atlat|graph|chart|diagram|map|plot)/iu;
   return records.some(record => record.text.trim().length >= 8
-    && cue.test(record.text)
+    && isPdfPromptVisualCue(record.text)
     && boundsDistance(region.bbox, record.bbox) <= 90);
 }
 
 function questionReferencesPromptVisual(content: string): boolean {
-  return /(?:hình(?:\s+(?:bên|vẽ|dưới|sau))?|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|atlat|graph|chart|diagram|map|plot)/iu.test(content);
+  return isPdfPromptVisualCue(content);
 }
 
 /** @internal Used by the PDF association regression tests. */
@@ -218,8 +224,9 @@ export function isPdfVisualPositionConsistentWithPromptCue(
 ): boolean {
   const visualCenterY = (visualBounds[1] + visualBounds[3]) / 2;
   const promptCenterY = (promptBounds[1] + promptBounds[3]) / 2;
-  const pointsBelow = /(?:hình|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|bảng|graph|chart|map|diagram|plot)[^.!?]{0,55}(?:dưới|below|beneath|under)\b/iu.test(promptText);
-  const pointsAbove = /(?:hình|biểu đồ|đồ thị|bản đồ|lược đồ|sơ đồ|bảng|graph|chart|map|diagram|plot)[^.!?]{0,55}(?:phía trên|ở trên|above)\b/iu.test(promptText);
+  const visualCue = "(?:^|[^\\p{L}\\p{N}])(?:biểu\\s*đồ|đồ\\s*thị|bản\\s*đồ|lược\\s*đồ|sơ\\s*đồ|bảng|graph|chart|map|diagram|figure|plot|hình\\s+(?:\\d+|bên|vẽ|dưới|trên|sau))";
+  const pointsBelow = new RegExp(visualCue + "[^.!?]{0,55}(?:dưới|below|beneath|under)(?=$|[^\\p{L}\\p{N}])", "iu").test(promptText);
+  const pointsAbove = new RegExp(visualCue + "[^.!?]{0,55}(?:phía trên|ở trên|above)(?=$|[^\\p{L}\\p{N}])", "iu").test(promptText);
 
   if (pointsBelow) return visualCenterY < promptCenterY - 6;
   if (pointsAbove) return visualCenterY > promptCenterY + 6;
@@ -417,7 +424,10 @@ export async function getPdfPagePaintMarks(page: PdfJsTypes.PDFPageProxy, textIt
       }
       if (coordinates.length >= 2) {
         const visualBounds = transformedBounds(coordinates, transform);
-        if (visualBounds && args[0] !== undefined) pathBounds.push(visualBounds);
+        // Highlight rectangles are answer marks, not chart/diagram geometry.
+        // Including them in shape clustering can create a large false figure
+        // region that hides nearby question text when labels are filtered.
+        if (visualBounds && args[0] !== undefined && !isYellowFill) pathBounds.push(visualBounds);
         if (!isYellowFill || !allowedPaintOps.has(args[0] as number)) continue;
         if (visualBounds) vectorHighlights.push(visualBounds);
       }
@@ -782,6 +792,7 @@ export async function parsePdfFile(
   let result = parseRawExamText(cleanedStyledText, {
     fileName: file.name,
     fileType: "pdf",
+    allowCompactOptionLabels: ocrPages.length > 0,
   });
   result = attachQuestionSourceReferences(result, {
     schemaVersion: "2.0",

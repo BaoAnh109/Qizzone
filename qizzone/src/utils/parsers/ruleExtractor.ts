@@ -191,16 +191,16 @@ function joinWrappedQuestionText(text: string): string {
 /**
  * Tách nội dung câu hỏi và các lựa chọn A, B, C, D một cách chuẩn xác từ khối văn bản
  */
-export function splitOptionsFromBlock(questionBlockText: string): {
+export function splitOptionsFromBlock(questionBlockText: string, allowCompactOptionLabels = false): {
   questionPrompt: string;
   options: ExtractedOption[];
 } {
   const labeledBinaryBlock = labelStandaloneTrueFalseOptions(questionBlockText);
-  if (labeledBinaryBlock) return splitOptionsFromBlock(labeledBinaryBlock);
+  if (labeledBinaryBlock) return splitOptionsFromBlock(labeledBinaryBlock, allowCompactOptionLabels);
 
   // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
   const headerRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D]|[①②③④])\s*([*✓])?\s*([.:)/-])?(?![\p{L}\p{N}])/giu;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D]|[①②③④])\s*([*✓])?\s*([.:)/-])?/giu;
 
   const matches: Array<{
     index: number;
@@ -211,7 +211,30 @@ export function splitOptionsFromBlock(questionBlockText: string): {
 
   let match: RegExpExecArray | null;
   while ((match = headerRegex.exec(questionBlockText)) !== null) {
-    if (!match[4] && !/[①②③④]/.test(match[2])) continue;
+    const optionLabelEnd = match.index + match[0].lastIndexOf(match[2]) + match[2].length;
+    if (!match[4] && !/[①②③④]/.test(match[2])) {
+      // Do not consume the newline before a rejected A/B/C/D-like word. The
+      // next real option may immediately follow that newline (PDF text often
+      // joins a one-letter option body such as "A" with the next lowercase label).
+      headerRegex.lastIndex = optionLabelEnd;
+      continue;
+    }
+    const immediateBodyCharacter = questionBlockText[headerRegex.lastIndex] || "";
+    const labelHasWhitespaceBeforeBody = /\s$/u.test(match[0]);
+    if (!labelHasWhitespaceBeforeBody && /[\p{L}\p{N}]/u.test(immediateBodyCharacter)) {
+      const optionStart = match.index + match[0].lastIndexOf(match[2]);
+      const previousLineStart = questionBlockText.lastIndexOf("\n", optionStart - 1) + 1;
+      const beforeOptionOnLine = questionBlockText.slice(previousLineStart, optionStart);
+      const candidateLetter = match[2].toUpperCase() as OptionId;
+      const previousLetter: Partial<Record<OptionId, OptionId>> = { B: "A", C: "B", D: "C" };
+      const isSequentialLowercaseLabel = match[2] !== candidateLetter &&
+        matches.at(-1)?.letter === previousLetter[candidateLetter];
+      const followsPromptBoundary = /[?!.]\s+$/u.test(beforeOptionOnLine);
+      if (!isSequentialLowercaseLabel && (!allowCompactOptionLabels || (beforeOptionOnLine.trim() && !followsPromptBoundary))) {
+        headerRegex.lastIndex = optionLabelEnd;
+        continue;
+      }
+    }
     const marker = match[1] || match[3] || undefined;
     const rawLetter = match[2].toUpperCase();
     const letter = (rawLetter === "①" ? "A" : rawLetter === "②" ? "B" : rawLetter === "③" ? "C" : rawLetter === "④" ? "D" : rawLetter) as OptionId;
@@ -338,7 +361,8 @@ export function splitOptionsFromBlock(questionBlockText: string): {
 export function parseSingleQuestionBlock(
   rawBlock: string,
   order: number,
-  tableAnswer?: OptionId
+  tableAnswer?: OptionId,
+  allowCompactOptionLabels = false,
 ): ExtractedQuestion | null {
   const warningFlags: string[] = [];
 
@@ -362,7 +386,7 @@ export function parseSingleQuestionBlock(
   }
 
   // Tách câu hỏi và options
-  const { questionPrompt, options } = splitOptionsFromBlock(questionAndOptionsText);
+  const { questionPrompt, options } = splitOptionsFromBlock(questionAndOptionsText, allowCompactOptionLabels);
 
   // Evidence-first: không tạo phương án giả khi tài liệu chỉ có 2–4 lựa chọn.
   // Nếu chưa nhận diện đủ 2 phương án, giữ nguyên dữ liệu để người dùng sửa hoặc AI fallback.
@@ -515,10 +539,12 @@ export function parseRawExamText(
     fileType?: "docx" | "pdf" | "image" | "text";
     initialAnswerKey?: Record<number, OptionId>;
     extractedImages?: Record<string, string>;
+    allowCompactOptionLabels?: boolean;
   }
 ): ExtractionResult {
   const fileName = options?.fileName || "DeThi_Upload.docx";
   const fileType = options?.fileType || "docx";
+  const allowCompactOptionLabels = options?.allowCompactOptionLabels ?? fileType === "image";
 
   // 1. Quét bảng đáp án cuối đề trước (chỉ khi có tiêu đề rõ ràng)
   const scannedAnswerKeyConflicts: Record<number, OptionId[]> = {};
@@ -599,7 +625,8 @@ export function parseRawExamText(
         const parsed = parseSingleQuestionBlock(
           blockBody,
           normalizedOrder,
-          globalAnswerKey[current.sourceOrder]
+          globalAnswerKey[current.sourceOrder],
+          allowCompactOptionLabels,
         );
         if (parsed) {
           const conflictingAnswers = answerKeyConflicts[current.sourceOrder];
@@ -625,7 +652,8 @@ export function parseRawExamText(
     const fallbackQuestion = parseSingleQuestionBlock(
       contentToScan,
       1,
-      globalAnswerKey[1]
+      globalAnswerKey[1],
+      allowCompactOptionLabels,
     );
     if (fallbackQuestion) {
       extractedQuestions.push(fallbackQuestion);

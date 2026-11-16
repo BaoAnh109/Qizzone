@@ -44,6 +44,45 @@ D. 8
     expect(result.questions[2].detectionStrategy).toBe("highlight_color");
   });
 
+  it("keeps OCR option labels when the scanner removes the space after A./B./C./D.", () => {
+    const result = parseRawExamText([
+      "Câu 1. Đạo hàm của hàm số f(x) = x° là gì?",
+      "A.2x",
+      "B.x",
+      "C. x?",
+      "D.0",
+    ].join("\n"), { fileType: "image" });
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].content).toContain("Đạo hàm");
+    expect(result.questions[0].options.map(option => option.id)).toEqual(["A", "B", "C", "D"]);
+    expect(result.questions[0].correctAnswers).toEqual([]);
+
+    const strictPdfResult = parseRawExamText([
+      "Câu 1. Đạo hàm của hàm số f(x) = x° là gì?",
+      "A.2x",
+      "B.x",
+      "C. x?",
+      "D.0",
+    ].join("\n"), { fileType: "pdf" });
+    expect(strictPdfResult.questions[0].options.map(option => option.id)).not.toEqual(["A", "B", "C", "D"]);
+  });
+
+  it("keeps sequential lowercase option labels when PDF text extraction joins them to their content", () => {
+    const rawText = [
+      "Câu 1. Chọn đáp án đúng?",
+      "A. A",
+      "b.F",
+      "c.H",
+      "d.G",
+    ].join("\n");
+    const result = parseRawExamText(rawText, { fileType: "pdf" });
+
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].options.map(option => option.id)).toEqual(["A", "B", "C", "D"]);
+    expect(result.questions[0].options.map(option => option.content)).toEqual(["A", "F", "H", "G"]);
+  });
+
   it("Bóc tách câu hỏi đánh số tự nhiên không có chữ 'Câu' (1. 2. 3.)", () => {
     const rawExam = `
 1. Thủ đô của Việt Nam là:

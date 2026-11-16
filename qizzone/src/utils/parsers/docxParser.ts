@@ -142,6 +142,7 @@ async function buildAstResult(ast: ParsedDocxAst, file: File, arrayBuffer: Array
     fileType: "docx",
     initialAnswerKey: ast.answerKeyMap,
     extractedImages: ast.extractedImages,
+    allowCompactOptionLabels: imageText.size > 0,
   });
   const documentIR = buildDocxIR(ast, sourceHash, imageText);
   result = attachQuestionSourceReferences(result, documentIR);

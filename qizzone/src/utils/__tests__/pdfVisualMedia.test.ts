@@ -4,6 +4,7 @@ import {
   getPdfPagePaintMarks,
   getScannedPdfPromptBounds,
   isPdfVisualPositionConsistentWithPromptCue,
+  isPdfPromptVisualCue,
   isPdfPromptVisualCueDistinctive,
   isPdfVisualSourcePageEligible,
   normalizePdfGlyphText,
@@ -159,6 +160,13 @@ describe("PDF visual region detection", () => {
     expect(isPdfVisualSourcePageEligible(43, false, 0)).toBe(false);
     expect(isPdfPromptVisualCueDistinctive("và có bảng biến thiên như hình vẽ dưới")).toBe(true);
     expect(isPdfPromptVisualCueDistinctive("có đồ thị như hình vẽ bên. Hàm số")).toBe(false);
+  });
+
+  it("does not treat ordinary uses of “hình” as a figure reference", () => {
+    expect(isPdfPromptVisualCue("Đối tượng nghiên cứu hình thành trong lịch sử là gì?")).toBe(false);
+    expect(isPdfPromptVisualCue("Những nguyên lý của chủ nghĩa cộng sản hình thành khi nào?")).toBe(false);
+    expect(isPdfPromptVisualCue("Quan sát hình 2 và chọn đáp án.")).toBe(true);
+    expect(isPdfPromptVisualCue("Dựa vào biểu đồ, nhận xét số liệu.")).toBe(true);
   });
 
   it("normalizes Greek letters from embedded PDF Symbol fonts", () => {
