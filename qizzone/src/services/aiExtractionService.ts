@@ -95,7 +95,19 @@ export async function extractQuizWithAI(params: AIExtractParams): Promise<Extrac
   // Chỉ chuyển sang AI nếu parser không tìm thấy câu hoặc có câu thiếu phương án.
   if (text?.trim()) {
     const parsed = parseRawExamText(text, { fileName, fileType });
-    const complete = parsed.questions.length > 0 &&
+    // Conservative gate: số câu được phát hiện phải khớp chuỗi đánh số trong
+    // văn bản nguồn. Không xem việc từng câu có >=2 phương án là đủ bằng chứng.
+    const sourceQuestionNumbers = [...text.matchAll(/(?:^|\\n)\\s*(?:Câu|Question|Q)\\s*(\\d+)\\s*[.:)\\-]/gim)]
+      .map(match => Number(match[1]));
+    const hasNumberingEvidence = sourceQuestionNumbers.length > 0;
+    const uniqueNumbers = new Set(sourceQuestionNumbers);
+    const continuous = sourceQuestionNumbers.every((number, index) =>
+      index === 0 || number === sourceQuestionNumbers[index - 1] + 1);
+    const numberingMatches = hasNumberingEvidence &&
+      continuous &&
+      uniqueNumbers.size === sourceQuestionNumbers.length &&
+      parsed.questions.length === sourceQuestionNumbers.length;
+    const complete = numberingMatches &&
       parsed.questions.every(question => question.options.length >= 2 &&
         question.options.length <= 4 &&
         question.options.every(option => option.content.trim().length > 0));
