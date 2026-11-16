@@ -103,6 +103,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
 
   return (
     <div
+      data-extracted-question-id={question.id}
       onClick={() => setSelectedQuestionId(question.id)}
       className={`cursor-pointer rounded-lg border transition-colors ${
         isSelected

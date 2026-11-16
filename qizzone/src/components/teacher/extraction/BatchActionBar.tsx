@@ -12,6 +12,7 @@ import {
   Sparkles,
   Clock,
   Save,
+  CircleHelp,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -38,6 +39,8 @@ export function BatchActionBar() {
     setSearchQuery,
     autoBalancePoints,
     addEmptyQuestion,
+    selectedQuestionId,
+    setSelectedQuestionId,
     solveUnansweredWithAI,
     clearAll,
   } = useExtractionStore();
@@ -58,6 +61,16 @@ export function BatchActionBar() {
   const unansweredCount = questions.filter(
     (q) => !q.correctAnswers || q.correctAnswers.length === 0
   ).length;
+
+  const goToNextUnanswered = () => {
+    const unanswered = questions.filter((question) => !question.correctAnswers?.length);
+    if (!unanswered.length) return;
+    const selectedIndex = unanswered.findIndex((question) => question.id === selectedQuestionId);
+    const nextQuestion = unanswered[(selectedIndex + 1) % unanswered.length];
+    setFilterStrategy("unanswered");
+    setSearchQuery("");
+    setSelectedQuestionId(nextQuestion.id);
+  };
 
   useEffect(() => {
     return () => {
@@ -216,6 +229,9 @@ export function BatchActionBar() {
               <p className="text-xs theme-text-muted">
                 Tổng số: <strong>{questions.length} câu</strong> · Tổng điểm:{" "}
                 <strong className="font-mono text-teal-700">{Math.round(totalPoints * 100) / 100}đ</strong>
+                <span className={`ml-2 font-semibold ${unansweredCount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                  · Chưa chọn đáp án: {unansweredCount}
+                </span>
                 {totalWarnings > 0 && (
                   <span className="text-amber-700 font-semibold ml-2">
                     · ⚠️ {totalWarnings} cảnh báo cần xem
@@ -226,6 +242,18 @@ export function BatchActionBar() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {unansweredCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextUnanswered}
+                leftIcon={<CircleHelp className="h-3.5 w-3.5 text-rose-600" />}
+                className="text-xs font-semibold border-rose-200 text-rose-700 hover:bg-rose-50"
+                title="Chuyển đến câu chưa có đáp án kế tiếp và chỉ hiện câu chưa có đáp án"
+              >
+                Tới câu chưa chọn ({unansweredCount})
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -327,7 +355,7 @@ export function BatchActionBar() {
                 value={filterStrategy}
                 onChange={(e) =>
                   setFilterStrategy(
-                    e.target.value as DetectionStrategy | "all" | "warnings"
+                    e.target.value as DetectionStrategy | "all" | "warnings" | "unanswered"
                   )
                 }
                 className="bg-transparent theme-text-secondary font-bold focus:outline-hidden cursor-pointer"
@@ -342,6 +370,7 @@ export function BatchActionBar() {
                 <option value="ai_inference">AI Gợi ý tự giải</option>
                 <option value="unknown">Chưa có bằng chứng đáp án</option>
                 <option value="warnings">Cảnh báo ({totalWarnings})</option>
+                <option value="unanswered">Chưa chọn đáp án ({unansweredCount})</option>
               </select>
             </div>
 

@@ -15,7 +15,7 @@ interface ExtractionState {
   isProcessing: boolean;
   processProgress: number; // 0 - 100
   splitterRatio: number; // 30 - 70 (%)
-  filterStrategy: DetectionStrategy | "all" | "warnings";
+  filterStrategy: DetectionStrategy | "all" | "warnings" | "unanswered";
   searchQuery: string;
 
   // Actions
@@ -24,7 +24,7 @@ interface ExtractionState {
   setSelectedQuestionId: (id: string | null) => void;
   setIsProcessing: (isProcessing: boolean, progress?: number) => void;
   setSplitterRatio: (ratio: number) => void;
-  setFilterStrategy: (filter: DetectionStrategy | "all" | "warnings") => void;
+  setFilterStrategy: (filter: DetectionStrategy | "all" | "warnings" | "unanswered") => void;
   setSearchQuery: (query: string) => void;
 
   // Question editing actions

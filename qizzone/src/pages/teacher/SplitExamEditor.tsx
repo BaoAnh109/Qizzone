@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { FileDropzone } from "@/components/teacher/extraction/FileDropzone";
 import { DocumentViewer } from "@/components/teacher/extraction/DocumentViewer";
 import { ResizableSplitter } from "@/components/teacher/extraction/ResizableSplitter";
@@ -13,7 +13,11 @@ export function SplitExamEditor() {
     selectedQuestionId,
     filterStrategy,
     searchQuery,
+    setFilterStrategy,
+    setSearchQuery,
   } = useExtractionStore();
+  const previousSelectionRef = useRef(selectedQuestionId);
+  const selectionWasVisibleRef = useRef(false);
 
   // Filter questions based on detection strategy and search query
   const filteredQuestions = useMemo(() => {
@@ -29,6 +33,8 @@ export function SplitExamEditor() {
       let matchesStrategy = true;
       if (filterStrategy === "warnings") {
         matchesStrategy = !!(q.warningFlags && q.warningFlags.length > 0);
+      } else if (filterStrategy === "unanswered") {
+        matchesStrategy = !q.correctAnswers?.length;
       } else if (filterStrategy !== "all") {
         matchesStrategy = q.detectionStrategy === filterStrategy;
       }
@@ -36,6 +42,26 @@ export function SplitExamEditor() {
       return matchesSearch && matchesStrategy;
     });
   }, [extractionResult, filterStrategy, searchQuery]);
+
+  useEffect(() => {
+    if (!selectedQuestionId) return;
+    const selectionChanged = previousSelectionRef.current !== selectedQuestionId;
+    previousSelectionRef.current = selectedQuestionId;
+    const selectedIsVisible = filteredQuestions.some((question) => question.id === selectedQuestionId);
+    const becameVisible = selectedIsVisible && !selectionWasVisibleRef.current;
+    selectionWasVisibleRef.current = selectedIsVisible;
+    if (selectionChanged && !selectedIsVisible && extractionResult?.questions.some((question) => question.id === selectedQuestionId)) {
+      setFilterStrategy("all");
+      setSearchQuery("");
+    }
+    if (!selectionChanged && !becameVisible) return;
+    const frame = window.requestAnimationFrame(() => {
+      Array.from(document.querySelectorAll<HTMLElement>("[data-extracted-question-id]"))
+        .find((node) => node.dataset.extractedQuestionId === selectedQuestionId)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedQuestionId, filteredQuestions, extractionResult, setFilterStrategy, setSearchQuery]);
 
   return (
     <div className="space-y-6 pb-16">
@@ -69,7 +95,7 @@ export function SplitExamEditor() {
                     : "100%",
               }}
             >
-              <DocumentViewer />
+              <DocumentViewer key={extractionResult.fileName + extractionResult.extractedAt} />
             </div>
 
             {/* Middle Draggable Splitter */}
