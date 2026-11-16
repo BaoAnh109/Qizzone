@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import { getPdfPagePaintMarks, getScannedPdfPromptBounds } from "@/utils/parsers/pdfParser";
+import { getPdfPagePaintMarks, getScannedPdfPromptBounds, normalizePdfGlyphText, parsePdfFile } from "@/utils/parsers/pdfParser";
 import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
 import type { DocumentIRBlock } from "@/types/documentIR";
 
@@ -104,5 +104,20 @@ describe("PDF visual region detection", () => {
 
     expect(getScannedPdfPromptBounds(question, 1, new Map(blocks.map(block => [block.id, block])), [question], 612, 792))
       .toEqual([63.28, 536.64, 436.72, 693.36]);
+  });
+
+  it("keeps superscript exponents in the extracted PDF text", async () => {
+    const font = { value: "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>" };
+    const pdfBytes = makePdf(
+      "BT /F1 12 Tf 100 700 Td (x) Tj 7 4 Td /F1 8 Tf (3) Tj ET",
+      "<< /Font << /F1 5 0 R >> >>",
+      [font],
+    );
+    const parsed = await parsePdfFile(new File([pdfBytes.buffer as ArrayBuffer], "math-exponent.pdf"));
+    expect(parsed.pagesText[0]).toContain("x³");
+  });
+
+  it("normalizes Greek letters from embedded PDF Symbol fonts", () => {
+    expect(normalizePdfGlyphText("\uF06D = \uF072")).toBe("μ = ρ");
   });
 });

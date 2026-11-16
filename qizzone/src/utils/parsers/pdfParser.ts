@@ -96,6 +96,23 @@ function normalizePdfText(value: string): string {
   return value.normalize("NFKC").replace(/\s+/gu, "");
 }
 
+const PDF_SYMBOL_PRIVATE_GLYPHS: Record<string, string> = {
+  "\uF061": "α", "\uF062": "β", "\uF063": "χ", "\uF064": "δ", "\uF065": "ε", "\uF066": "φ",
+  "\uF067": "γ", "\uF068": "η", "\uF069": "ι", "\uF06A": "ϕ", "\uF06B": "κ", "\uF06C": "λ",
+  "\uF06D": "μ", "\uF06E": "ν", "\uF06F": "ο", "\uF070": "π", "\uF071": "θ", "\uF072": "ρ",
+  "\uF073": "σ", "\uF074": "τ", "\uF075": "υ", "\uF076": "ς", "\uF077": "ω", "\uF078": "ξ",
+  "\uF079": "ψ", "\uF07A": "ζ",
+  "\uF041": "Α", "\uF042": "Β", "\uF043": "Χ", "\uF044": "Δ", "\uF045": "Ε", "\uF046": "Φ",
+  "\uF047": "Γ", "\uF048": "Η", "\uF049": "Ι", "\uF04A": "ϑ", "\uF04B": "Κ", "\uF04C": "Λ",
+  "\uF04D": "Μ", "\uF04E": "Ν", "\uF04F": "Ο", "\uF050": "Π", "\uF051": "Θ", "\uF052": "Ρ",
+  "\uF053": "Σ", "\uF054": "Τ", "\uF055": "Υ", "\uF056": "ς", "\uF057": "Ω", "\uF058": "Ξ",
+  "\uF059": "Ψ", "\uF05A": "Ζ",
+};
+
+export function normalizePdfGlyphText(value: string): string {
+  return [...value].map(character => PDF_SYMBOL_PRIVATE_GLYPHS[character] || character).join("");
+}
+
 function mapRedTextRunsToItems(textItems: string[], redRuns: string[]): Set<number> {
   const flatText = textItems.map(normalizePdfText).join("");
   const itemByCharacter: number[] = [];
@@ -326,15 +343,73 @@ export async function getPdfPagePaintMarks(page: PdfJsTypes.PDFPageProxy, textIt
   };
 }
 
-function lineGroups(records: PdfTextRecord[], pageWidth: number): PdfTextRecord[][] {
-  const ordered = [...records].sort((a, b) => b.y - a.y || a.x - b.x);
+function inlineMathLineMatch(first: PdfTextRecord, second: PdfTextRecord): boolean {
+  const baselineGap = Math.abs(first.y - second.y);
+  const smallerHeight = Math.min(first.height, second.height);
+  if (baselineGap <= Math.max(3, smallerHeight * 0.55)) return true;
+
+  // PDF.js reports tall glyphs such as √ at a different baseline from the
+  // digits beside them. Keep those glyphs with the adjacent expression.
+  const firstIsRadical = /^[√∛∜]$/u.test(first.text.trim());
+  const secondIsRadical = /^[√∛∜]$/u.test(second.text.trim());
+  if (!firstIsRadical && !secondIsRadical) return false;
+  const left = first.x <= second.x ? first : second;
+  const right = left === first ? second : first;
+  const horizontalGap = right.x - (left.x + left.width);
+  return horizontalGap >= -2 && horizontalGap <= Math.max(3, smallerHeight * 0.35)
+    && baselineGap <= Math.max(first.height, second.height) * 1.1;
+}
+
+function groupTextRows(records: PdfTextRecord[]): PdfTextRecord[][] {
   const rows: PdfTextRecord[][] = [];
-  for (const record of ordered) {
-    const current = rows[rows.length - 1];
-    if (current && Math.abs(current[0].y - record.y) <= Math.max(3, record.height * 0.35)) current.push(record);
+  for (const record of [...records].sort((a, b) => b.y - a.y || a.x - b.x)) {
+    let matchingRow: PdfTextRecord[] | undefined;
+    let bestBaselineGap = Infinity;
+    // Superscript records can be a few points above their base. Check recent
+    // rows so that a radical or exponent does not become a separate paragraph.
+    for (const candidate of rows.slice(-4)) {
+      const matchingRecord = candidate.find(existing => inlineMathLineMatch(existing, record));
+      if (!matchingRecord) continue;
+      const baselineGap = Math.abs(matchingRecord.y - record.y);
+      if (baselineGap < bestBaselineGap) {
+        matchingRow = candidate;
+        bestBaselineGap = baselineGap;
+      }
+    }
+    if (matchingRow) matchingRow.push(record);
     else rows.push([record]);
   }
-  for (const row of rows) row.sort((a, b) => a.x - b.x);
+  rows.forEach(row => row.sort((a, b) => a.x - b.x));
+  return rows;
+}
+
+const SUPER_SCRIPT_CHARACTERS: Record<string, string> = {
+  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵",
+  "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "−": "⁻", "-": "⁻",
+  "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ",
+};
+const SUB_SCRIPT_CHARACTERS: Record<string, string> = {
+  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅",
+  "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "−": "₋", "-": "₋",
+  "=": "₌", "(": "₍", ")": "₎", "a": "ₐ", "e": "ₑ", "i": "ᵢ", "o": "ₒ",
+  "r": "ᵣ", "u": "ᵤ", "v": "ᵥ", "x": "ₓ",
+};
+
+function scriptText(previous: PdfTextRecord | undefined, current: PdfTextRecord): string | undefined {
+  if (!previous) return undefined;
+  const verticalOffset = current.y - previous.y;
+  if (Math.abs(verticalOffset) < 2.2 || current.height > previous.height * 0.84) return undefined;
+  const horizontalGap = current.x - (previous.x + previous.width);
+  if (horizontalGap < -2 || horizontalGap > Math.max(4, previous.height * 0.45)) return undefined;
+  const text = current.text.trim();
+  if (!/^[0-9+\-=()ni aeoruvx]+$/u.test(text) || !/[0-9]/u.test(text)) return undefined;
+  const mapping = verticalOffset > 0 ? SUPER_SCRIPT_CHARACTERS : SUB_SCRIPT_CHARACTERS;
+  const mapped = [...text].map(character => mapping[character]);
+  return mapped.every(Boolean) ? mapped.join("") : undefined;
+}
+
+function lineGroups(records: PdfTextRecord[], pageWidth: number): PdfTextRecord[][] {
+  const rows = groupTextRows(records);
 
   const xPositions = records.map(record => record.x).sort((a, b) => a - b);
   let splitAt: number | undefined;
@@ -351,17 +426,7 @@ function lineGroups(records: PdfTextRecord[], pageWidth: number): PdfTextRecord[
   const left = records.filter(record => record.x < splitAt);
   const right = records.filter(record => record.x >= splitAt);
   if (left.length < 5 || right.length < 5) return rows;
-  const makeColumnRows = (column: PdfTextRecord[]) => {
-    const groups: PdfTextRecord[][] = [];
-    for (const record of [...column].sort((a, b) => b.y - a.y || a.x - b.x)) {
-      const current = groups[groups.length - 1];
-      if (current && Math.abs(current[0].y - record.y) <= Math.max(3, record.height * 0.35)) current.push(record);
-      else groups.push([record]);
-    }
-    groups.forEach(group => group.sort((a, b) => a.x - b.x));
-    return groups;
-  };
-  return [...makeColumnRows(left), ...makeColumnRows(right)];
+  return [...groupTextRows(left), ...groupTextRows(right)];
 }
 
 function joinRecords(records: PdfTextRecord[], html: boolean): string {
@@ -369,9 +434,10 @@ function joinRecords(records: PdfTextRecord[], html: boolean): string {
   let previous: PdfTextRecord | undefined;
   for (const record of records) {
     const gap = previous ? record.x - (previous.x + previous.width) : 0;
-    const separator = previous && gap > Math.max(1.5, previous.height * 0.12) &&
+    const mathScript = scriptText(previous, record);
+    const separator = previous && !mathScript && gap > Math.max(1.5, previous.height * 0.12) &&
       !result.endsWith(" ") && !record.text.startsWith(" ") ? " " : "";
-    let value = html ? escapeHtml(record.text) : record.text;
+    let value = html ? escapeHtml(mathScript || record.text) : (mathScript || record.text);
     if (html && record.highlighted) value = "<mark class=\"is-highlighted\">" + value + "</mark>";
     else if (html && record.underlined) value = "<u>" + value + "</u>";
     if (html && record.redText) value = "<span class=\"text-color-red\">" + value + "</span>";
@@ -388,10 +454,16 @@ function plainTextPageRecords(records: PdfTextRecord[], pageWidth: number): {
   lines: Array<{ text: string; bbox: [number, number, number, number]; bold: boolean; highlighted: boolean; underlined: boolean }>;
 } {
   const rows = lineGroups(records, pageWidth);
+  const meaningfulRows = rows.filter(row => {
+    const text = joinRecords(row, false).trim();
+    if (!text) return false;
+    const nonWhitespace = text.replace(/\s/gu, "");
+    return nonWhitespace.length < 24 || !/^[.·…•]+$/u.test(nonWhitespace);
+  });
   return {
-    plain: rows.map(row => joinRecords(row, false)).filter(Boolean).join("\n"),
-    styled: rows.map(row => joinRecords(row, true)).filter(Boolean).join("\n"),
-    lines: rows.map(row => ({
+    plain: meaningfulRows.map(row => joinRecords(row, false)).filter(Boolean).join("\n"),
+    styled: meaningfulRows.map(row => joinRecords(row, true)).filter(Boolean).join("\n"),
+    lines: meaningfulRows.map(row => ({
       text: joinRecords(row, false),
       bbox: [Math.min(...row.map(record => record.bbox[0])), Math.min(...row.map(record => record.bbox[1])), Math.max(...row.map(record => record.bbox[2])), Math.max(...row.map(record => record.bbox[3]))] as [number, number, number, number],
       bold: row.some(record => /bold|demi|semibold/i.test(record.fontName)),
@@ -465,6 +537,7 @@ export async function parsePdfFile(
     for (const item of content.items) {
       if (!("str" in item) || !item.str.trim()) continue;
       const textItem = item as { str: string; transform: number[]; width: number; height: number; fontName: string };
+      const text = normalizePdfGlyphText(textItem.str);
       const x = textItem.transform[4] || 0;
       const y = textItem.transform[5] || 0;
       const width = Math.max(0, textItem.width || 0);
@@ -477,7 +550,7 @@ export async function parsePdfFile(
       const highlighted = matchedAreas.some(record => record.kind === "highlight");
       const underlined = matchedAreas.some(record => record.kind === "underline");
       records.push({
-        text: textItem.str,
+        text,
         x,
         y,
         width,
@@ -496,8 +569,8 @@ export async function parsePdfFile(
       blocks.push({
         id: "p" + pageNum + "_b" + readingOrder,
         type: "text_span",
-        text: textItem.str,
-        normalizedText: textItem.str.normalize("NFKC"),
+        text,
+        normalizedText: text.normalize("NFKC"),
         bbox,
         readingOrder,
         style,
@@ -736,6 +809,16 @@ function boundsDistance(first: PdfBounds, second: PdfBounds): number {
   return Math.hypot(gapX, gapY);
 }
 
+function boundsOverlapRatio(first: PdfBounds, second: PdfBounds): number {
+  const intersectionWidth = Math.max(0, Math.min(first[2], second[2]) - Math.max(first[0], second[0]));
+  const intersectionHeight = Math.max(0, Math.min(first[3], second[3]) - Math.max(first[1], second[1]));
+  const intersectionArea = intersectionWidth * intersectionHeight;
+  const firstArea = Math.max(0, first[2] - first[0]) * Math.max(0, first[3] - first[1]);
+  const secondArea = Math.max(0, second[2] - second[0]) * Math.max(0, second[3] - second[1]);
+  const smallerArea = Math.min(firstArea, secondArea);
+  return smallerArea > 0 ? intersectionArea / smallerArea : 0;
+}
+
 function removeLiteralText(source: string, text: string): string {
   const value = text.trim();
   if (value.length < 3) return source;
@@ -817,9 +900,23 @@ export async function attachPdfVisualMediaToQuestions(
   const mediaByQuestion = new Map<string, { images: string[]; optionImages: Map<string, string[]> }>();
   const cleanedPromptByQuestion = new Map<string, string>();
   const cleanedOptionsByQuestion = new Map<string, Map<string, string>>();
+  const attachedRegionsByTarget = new Map<string, Array<{ pageNumber: number; bbox: PdfBounds }>>();
   const maxAssets = 80;
+  const maxMediaPerQuestion = 8;
+  const maxMediaPerOption = 2;
   let assetCount = 0;
   let mediaBytes = 0;
+
+  const hasRoomForTarget = (key: string, limit: number, pageNumber: number, bbox: PdfBounds) => {
+    const attached = attachedRegionsByTarget.get(key) || [];
+    if (attached.length >= limit || attached.some(region => region.pageNumber === pageNumber && boundsOverlapRatio(region.bbox, bbox) >= 0.72)) return false;
+    return true;
+  };
+  const rememberTargetRegion = (key: string, pageNumber: number, bbox: PdfBounds) => {
+    const attached = attachedRegionsByTarget.get(key) || [];
+    attached.push({ pageNumber, bbox });
+    attachedRegionsByTarget.set(key, attached);
+  };
 
   for (const { pageNumber, block: visualBlock } of visualBlocks) {
     const visualBounds = visualBlock.bbox as PdfBounds;
@@ -830,14 +927,16 @@ export async function attachPdfVisualMediaToQuestions(
     if (isScannedPageImage) {
       for (const question of result.questions) {
         if (assetCount >= maxAssets || mediaBytes >= 15_000_000) break;
+        const targetKey = question.id + ":prompt";
         const pageWidth = pageIR?.width || 0;
         const pageHeight = pageIR?.height || 0;
         const promptBounds = getScannedPdfPromptBounds(question, pageNumber, textBlocksById, result.questions, pageWidth, pageHeight);
-        if (!promptBounds || boundsDistance(promptBounds, visualBounds) > 40) continue;
+        if (!promptBounds || boundsDistance(promptBounds, visualBounds) > 40 || !hasRoomForTarget(targetKey, maxMediaPerQuestion, pageNumber, promptBounds)) continue;
         const image = await renderPdfRegion(pdf, pageNumber, promptBounds, pageCanvases);
         if (!image) continue;
         assetCount += 1;
         mediaBytes += image.length;
+        rememberTargetRegion(targetKey, pageNumber, promptBounds);
         const existing = mediaByQuestion.get(question.id) || { images: [], optionImages: new Map<string, string[]>() };
         existing.images.push(image);
         mediaByQuestion.set(question.id, existing);
@@ -845,36 +944,62 @@ export async function attachPdfVisualMediaToQuestions(
       continue;
     }
     const questionTargets = result.questions.flatMap(question => {
-      const questionBlockIds = new Set([...(question.promptSourceRefs || []), ...(question.sourceRefs || [])]);
-      const sourceBlocks = [...questionBlockIds].flatMap(id => {
-        const sourceBlock = textBlocksById.get(id);
-        return sourceBlock?.sourceRef.page === pageNumber && sourceBlock.bbox ? [sourceBlock] : [];
+      const promptIds = new Set(question.promptSourceRefs || []);
+      const optionIds = new Set(question.options.flatMap(option => option.sourceRefs || []));
+      const promptBlocks = [...promptIds].flatMap(id => {
+        const block = textBlocksById.get(id);
+        return block?.sourceRef.page === pageNumber && block.bbox ? [block] : [];
       });
-      const questionBounds = unionBounds(sourceBlocks);
-      if (!questionBounds || boundsDistance(questionBounds, visualBounds) > 40) return [];
-      return [{ question, questionBounds, sourceBlocks }];
-    }).sort((first, second) => boundsDistance(first.questionBounds, visualBounds) - boundsDistance(second.questionBounds, visualBounds));
+      const fallbackPromptBlocks = promptBlocks.length ? promptBlocks : [...new Set(question.sourceRefs || [])]
+        .filter(id => !optionIds.has(id))
+        .flatMap(id => {
+          const block = textBlocksById.get(id);
+          return block?.sourceRef.page === pageNumber && block.bbox ? [block] : [];
+        });
+      const referencedPages = new Set((question.promptSourceRefs || []).flatMap(id => {
+        const block = textBlocksById.get(id);
+        return block?.sourceRef.page === undefined ? [] : [block.sourceRef.page];
+      }));
+      // A prompt mapped across many pages is usually an ambiguous source match;
+      // avoid attaching unrelated charts to a catch-all pseudo-question.
+      if (referencedPages.size > 2 || !fallbackPromptBlocks.length) return [];
+      const promptDistance = Math.min(...fallbackPromptBlocks.map(block => boundsDistance(block.bbox as PdfBounds, visualBounds)));
+      const optionTargets = question.options.flatMap(option => {
+        const optionBlocks = (option.sourceRefs || []).flatMap(id => {
+          const sourceBlock = textBlocksById.get(id);
+          return sourceBlock?.sourceRef.page === pageNumber && sourceBlock.bbox ? [sourceBlock] : [];
+        });
+        const optionBounds = unionBounds(optionBlocks);
+        if (!optionBounds) return [];
+        return [{ option, distance: boundsDistance(optionBounds, visualBounds) }];
+      }).sort((first, second) => first.distance - second.distance);
+      const nearestOption = optionTargets[0];
+      const optionThreshold = visualBlock.type === "shape" ? 10 : 16;
+      const promptThreshold = visualBlock.type === "shape" ? 22 : 52;
+      const optionIsCloser = nearestOption && nearestOption.distance <= optionThreshold && nearestOption.distance <= promptDistance;
+      const distance = optionIsCloser ? nearestOption.distance : promptDistance;
+      if (distance > (optionIsCloser ? optionThreshold : promptThreshold)) return [];
+      return [{ question, option: optionIsCloser ? nearestOption.option : undefined, distance }];
+    }).sort((first, second) => first.distance - second.distance);
     const target = questionTargets[0];
     if (!target || assetCount >= maxAssets || mediaBytes >= 15_000_000) continue;
+
+    const targetKey = target.option
+      ? target.question.id + ":option:" + target.option.id
+      : target.question.id + ":prompt";
+    const targetLimit = target.option ? maxMediaPerOption : maxMediaPerQuestion;
+    if (!hasRoomForTarget(targetKey, targetLimit, pageNumber, visualBounds)) continue;
 
     const image = await renderPdfRegion(pdf, pageNumber, visualBounds, pageCanvases, visualBlock.type === "shape" ? 18 : 8);
     if (!image) continue;
     assetCount += 1;
     mediaBytes += image.length;
+    rememberTargetRegion(targetKey, pageNumber, visualBounds);
     const existing = mediaByQuestion.get(target.question.id) || { images: [], optionImages: new Map<string, string[]>() };
-    const optionTargets = target.question.options.flatMap(option => {
-      const optionBlocks = (option.sourceRefs || []).flatMap(id => {
-        const sourceBlock = textBlocksById.get(id);
-        return sourceBlock?.sourceRef.page === pageNumber && sourceBlock.bbox ? [sourceBlock] : [];
-      });
-      const optionBounds = unionBounds(optionBlocks);
-      if (!optionBounds || boundsDistance(optionBounds, visualBounds) > 18) return [];
-      return [{ option, distance: boundsDistance(optionBounds, visualBounds) }];
-    }).sort((first, second) => first.distance - second.distance);
     const textVisualBounds = expandBounds(visualBounds, visualBlock.type === "shape" ? 18 : 8);
 
-    if (optionTargets[0]) {
-      const optionId = optionTargets[0].option.id;
+    if (target.option) {
+      const optionId = target.option.id;
       const current = existing.optionImages.get(optionId) || [];
       current.push(image);
       existing.optionImages.set(optionId, current);
