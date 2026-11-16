@@ -304,17 +304,13 @@ export function parseSingleQuestionBlock(
   // Tách câu hỏi và options
   const { questionPrompt, options } = splitOptionsFromBlock(questionAndOptionsText);
 
-  // Đảm bảo đủ 4 options nếu thiếu
+  // Evidence-first: không tạo phương án giả khi tài liệu chỉ có 2–4 lựa chọn.
+  // Nếu chưa nhận diện đủ 2 phương án, giữ nguyên dữ liệu để người dùng sửa hoặc AI fallback.
   if (options.length < 2) {
-    options.push(
-      { id: "A", content: "Lựa chọn A", rawContent: "A. Lựa chọn A" },
-      { id: "B", content: "Lựa chọn B", rawContent: "B. Lựa chọn B" },
-      { id: "C", content: "Lựa chọn C", rawContent: "C. Lựa chọn C" },
-      { id: "D", content: "Lựa chọn D", rawContent: "D. Lựa chọn D" }
-    );
-    warningFlags.push("Chưa bóc tách được đầy đủ các lựa chọn A, B, C, D");
-  } else if (options.length === 3) {
-    warningFlags.push("Chỉ tìm thấy 3 lựa chọn (Thiếu đáp án D)");
+    warningFlags.push("Không xác định đủ 2 phương án từ tài liệu; cần kiểm tra hoặc AI fallback");
+  }
+  if (options.some(option => !option.content.trim())) {
+    warningFlags.push("Có phương án rỗng; cần kiểm tra nội dung gốc");
   }
 
   // -------------------------------------------------------------
