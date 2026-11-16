@@ -202,6 +202,22 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
           };
         });
         clearLocalDraftIfUnchanged(session, draftSnapshot);
+        // A newer local edit may have occurred while the request was in flight.
+        // Never display "saved" until the newest local draft is acknowledged.
+        const pendingDraft = browserStorage()?.getItem(localDraftKey(session));
+        if (pendingDraft && pendingDraft !== draftSnapshot) {
+          set(state => ({
+            saveStatus: { ...state.saveStatus, [quizId]: 'saving' },
+          }));
+          // The next queued save reads the latest session and its updated revision.
+          const pendingTimer = timers.get(quizId);
+          if (!pendingTimer) {
+            timers.set(quizId, setTimeout(() => {
+              timers.delete(quizId);
+              void saveNow(quizId).catch(() => undefined);
+            }, 0));
+          }
+        }
       } catch (error) {
         if (currentGeneration === generation) {
           set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: 'error' } }));
