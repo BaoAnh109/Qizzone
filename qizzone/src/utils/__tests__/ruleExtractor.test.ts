@@ -295,6 +295,26 @@ A. 10    B. 20    *C. 30    D. 40
     expect(parsed?.correctAnswers).toEqual(["C"]);
   });
 
+  it("Nhận diện lựa chọn Đúng/Sai không nhãn và nối các dòng xuống hàng của câu PDF", () => {
+    const rawBlock = `[CLO2-TF-006] Rootkit là mã độc dùng để che giấu tiến trình, tập tin,
+khóa
+registry nhằm tránh bị phát hiện.
+Đúng
+Sai`;
+
+    const result = parseRawExamText(`Câu 3: ${rawBlock}`, { fileType: "pdf" });
+    const parsed = result.questions[0];
+
+    expect(result.questions).toHaveLength(1);
+    expect(parsed?.content).toBe("[CLO2-TF-006] Rootkit là mã độc dùng để che giấu tiến trình, tập tin, khóa registry nhằm tránh bị phát hiện.");
+    expect(parsed?.options.map(option => ({ id: option.id, content: option.content }))).toEqual([
+      { id: "A", content: "Đúng" },
+      { id: "B", content: "Sai" },
+    ]);
+    expect(parsed?.correctAnswers).toEqual([]);
+    expect(parsed?.warningFlags?.some(flag => flag.includes("Không xác định đủ 2 phương án"))).toBe(false);
+  });
+
   it("Làm sạch HTML và chuyển đổi chuẩn LaTeX \\( ... \\) sang $...$", () => {
     const raw = "<p>Giải phương trình \\(x^2 - 4 = 0\\) có nghiệm \\(x = \\pm 2\\)</p>";
     const cleaned = cleanMathAndHtml(raw);

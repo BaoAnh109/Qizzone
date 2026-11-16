@@ -145,12 +145,58 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
 }
 
 /**
+ * Some true/false PDFs print the two choices as standalone lines without A/B
+ * labels. Add stable internal labels only after confirming that both sides of
+ * the pair are present; the source wording remains unchanged.
+ */
+function labelStandaloneTrueFalseOptions(questionBlockText: string): string | undefined {
+  const candidates: Array<{ index: number; value: "true" | "false" }> = [];
+  const lines = questionBlockText.split(/(?<=\n)/);
+  let offset = 0;
+
+  for (const segment of lines) {
+    const rawLine = segment.replace(/[\r\n]+$/, "");
+    const plainLine = cleanMathAndHtml(rawLine).trim().toLocaleLowerCase("vi");
+    const value = plainLine === "đúng" || plainLine === "true"
+      ? "true"
+      : plainLine === "sai" || plainLine === "false"
+        ? "false"
+        : undefined;
+    if (value) candidates.push({ index: offset, value });
+    offset += segment.length;
+  }
+
+  const trueOptions = candidates.filter(candidate => candidate.value === "true");
+  const falseOptions = candidates.filter(candidate => candidate.value === "false");
+  if (trueOptions.length !== 1 || falseOptions.length !== 1) return undefined;
+
+  const sourceOrdered = [...candidates].sort((a, b) => a.index - b.index);
+  let normalized = questionBlockText;
+  for (const [position, candidate] of [...sourceOrdered.entries()].reverse()) {
+    const label = position === 0 ? "A. " : "B. ";
+    normalized = normalized.slice(0, candidate.index) + label + normalized.slice(candidate.index);
+  }
+  return normalized;
+}
+
+function joinWrappedQuestionText(text: string): string {
+  return text
+    .replace(/[\t ]*\r?\n[\t ]*/g, " ")
+    .replace(/[\t ]{2,}/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+}
+
+/**
  * Tách nội dung câu hỏi và các lựa chọn A, B, C, D một cách chuẩn xác từ khối văn bản
  */
 export function splitOptionsFromBlock(questionBlockText: string): {
   questionPrompt: string;
   options: ExtractedOption[];
 } {
+  const labeledBinaryBlock = labelStandaloneTrueFalseOptions(questionBlockText);
+  if (labeledBinaryBlock) return splitOptionsFromBlock(labeledBinaryBlock);
+
   // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
   const headerRegex =
     /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D]|[①②③④])\s*([*✓])?\s*([.:)/-])?(?![\p{L}\p{N}])/giu;
@@ -213,9 +259,9 @@ export function splitOptionsFromBlock(questionBlockText: string): {
 
   // Prompt là toàn bộ phần trước option đầu tiên
   const firstMatch = orderedMatches[0];
-  const questionPrompt = cleanMathAndHtml(
+  const questionPrompt = joinWrappedQuestionText(cleanMathAndHtml(
     questionBlockText.substring(0, firstMatch.index)
-  );
+  ));
 
   const options: ExtractedOption[] = [];
 
