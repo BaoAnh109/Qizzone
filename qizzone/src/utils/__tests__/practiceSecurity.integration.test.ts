@@ -27,9 +27,14 @@ describe('practice RPC security and isolation', () => {
         file_size_limit bigint,
         allowed_mime_types text[]
       );
+      create table storage.objects (bucket_id text not null, name text not null);
+      alter table storage.objects enable row level security;
+      grant select on storage.objects to anon, authenticated;
+      grant insert on storage.objects to authenticated;
       create function auth.jwt() returns jsonb language sql stable as
         $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
       grant usage on schema auth to anon, authenticated, service_role;
+      grant usage on schema storage to anon, authenticated;
       grant execute on function auth.jwt() to anon, authenticated, service_role;
     `);
     const migrationsDirectory = fileURLToPath(new URL('../../../../supabase/migrations/', import.meta.url));
@@ -63,7 +68,7 @@ describe('practice RPC security and isolation', () => {
     const studentA: Claims = { sub: 'practice-student-a', role: 'authenticated', app_role: 'student' };
     const studentB: Claims = { sub: 'practice-student-b', role: 'authenticated', app_role: 'student' };
     const questionSet = [
-      { id: 'single', content: 'Tính $2 + 2$', type: 'single_choice', points: 1, options: [{ id: 'A', content: '3' }, { id: 'B', content: '$4$' }], correctAnswers: ['B'], explanation: 'Vì $2 + 2 = 4$ nên chọn B.' },
+      { id: 'single', content: 'Tính $2 + 2$', type: 'single_choice', points: 1, images: ['storage://qizzone-question-media/practice-teacher/chart-1.jpg'], options: [{ id: 'A', content: '3', images: ['storage://qizzone-question-media/practice-teacher/answer-1.jpg'] }, { id: 'B', content: '$4$' }], correctAnswers: ['B'], explanation: 'Vì $2 + 2 = 4$ nên chọn B.' },
       { id: 'multi', content: 'Chọn A và C', type: 'multiple_choice', points: 1, options: [{ id: 'A', content: 'A' }, { id: 'B', content: 'B' }, { id: 'C', content: 'C' }], correctAnswers: ['A', 'C'], explanation: 'Cần chọn đủ A và C.' },
       { id: 'boolean', content: 'Mệnh đề đúng/sai', type: 'true_false', points: 1, options: [{ id: 'A', content: 'Đúng' }, { id: 'B', content: 'Sai' }], correctAnswers: ['A'], explanation: 'Mệnh đề đúng.' },
     ];
@@ -80,9 +85,11 @@ describe('practice RPC security and isolation', () => {
     const questionIds = (await db.query<{ id: string }>('select id from public.questions where quiz_id=$1 order by ordinal', [quizId])).rows.map(row => row.id);
 
     const quizRows = await asUser<{ payload: unknown }>(studentA, 'select public.list_quizzes() as payload');
-    const listed = json<Array<{ id: string; questions: Array<{ correctAnswers: string[]; explanation: string | null }> }>>(quizRows[0].payload).find(item => item.id === quizId)!;
+    const listed = json<Array<{ id: string; questions: Array<{ correctAnswers: string[]; explanation: string | null; images: string[]; options: Array<{ images?: string[] }> }> }>>(quizRows[0].payload).find(item => item.id === quizId)!;
     expect(listed.questions.map(question => question.correctAnswers)).toEqual([[], [], []]);
     expect(listed.questions.every(question => question.explanation === null)).toBe(true);
+    expect(listed.questions[0].images).toEqual(['storage://qizzone-question-media/practice-teacher/chart-1.jpg']);
+    expect(listed.questions[0].options[0].images).toEqual(['storage://qizzone-question-media/practice-teacher/answer-1.jpg']);
     expect(await asUser(studentA, 'select * from public.question_answer_keys')).toEqual([]);
 
     const startRows = await asUser<{ payload: unknown }>(studentA, 'select public.start_practice($1, null, true) as payload', [quizId]);
@@ -117,10 +124,12 @@ describe('practice RPC security and isolation', () => {
     expect(json<{ isCorrect: boolean }>(trueFalseRows[0].payload).isCorrect).toBe(true);
 
     const resultRows = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [session.id]);
-    const result = json<{ correctCount: number; totalQuestions: number; details: Array<{ correctAnswers: string[] }> }>(resultRows[0].payload);
+    const result = json<{ correctCount: number; totalQuestions: number; details: Array<{ correctAnswers: string[]; images: string[]; options: Array<{ images?: string[] }> }> }>(resultRows[0].payload);
     expect(result.correctCount).toBe(2);
     expect(result.totalQuestions).toBe(3);
     expect(result.details).toHaveLength(3);
+    expect(result.details[0].images).toEqual(['storage://qizzone-question-media/practice-teacher/chart-1.jpg']);
+    expect(result.details[0].options[0].images).toEqual(['storage://qizzone-question-media/practice-teacher/answer-1.jpg']);
     const repeatedFinish = await asUser<{ payload: unknown }>(studentA, 'select public.finish_practice($1) as payload', [session.id]);
     expect(json(repeatedFinish[0].payload)).toEqual(result);
 

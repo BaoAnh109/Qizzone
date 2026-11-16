@@ -28,6 +28,8 @@ export interface ExtractedOption {
   id: OptionId;
   content: string; // Nội dung đã chuẩn hóa KaTeX
   rawContent: string;
+  images?: string[];
+  sourceRefs?: string[];
   isUnderline?: boolean;
   isBold?: boolean;
   isHighlighted?: boolean;
@@ -51,6 +53,7 @@ export interface ExtractedQuestion {
   answerEvidence?: AnswerEvidence[];
   reviewStatus?: ExtractionReviewStatus;
   sourceRefs?: string[];
+  promptSourceRefs?: string[];
   rawTextSegment: string; // Đoạn text gốc tương ứng trong file
   images?: string[]; // Danh sách URL hoặc Base64 ảnh đính kèm câu hỏi
 }

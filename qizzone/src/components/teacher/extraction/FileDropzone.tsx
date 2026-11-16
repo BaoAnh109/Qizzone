@@ -13,11 +13,13 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
 import { parseDocxFile } from "@/utils/parsers/docxParser";
-import { parsePdfFile } from "@/utils/parsers/pdfParser";
+import { attachPdfVisualMediaToQuestions, parsePdfFile } from "@/utils/parsers/pdfParser";
+import { attachOcrImageMediaToQuestions } from "@/utils/parsers/questionMedia";
 import { extractQuizWithAI, mergeExtractionResults, MAX_AI_FALLBACK_SOURCE_CHARS, shouldUseAIExtractionFallback } from "@/services/aiExtractionService";
 import { recognizeOcrPages } from "@/utils/parsers/ocrService";
 import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
 import { attachQuestionSourceReferences } from "@/utils/parsers/sourceReference";
+import { attachDocxImagesToQuestions } from "@/utils/parsers/questionMedia";
 import type { ExtractionResult } from "@/types/extractor";
 import type { DocumentIR } from "@/types/documentIR";
 import { useExtractionStore } from "@/store/extractionStore";
@@ -101,11 +103,12 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
     try {
       if (isDocx) {
         setIsProcessing(true, 50);
-        const { rawHtml, rawText, result: nativeResult, documentIR } = await parseDocxFile(file);
-        const result = attachQuestionSourceReferences(
+        const { rawHtml, rawText, result: nativeResult, documentIR, extractedImages } = await parseDocxFile(file);
+        const referencedResult = attachQuestionSourceReferences(
           await maybeUseAiFallback(file, rawText, nativeResult),
           documentIR,
         );
+        const result = await attachDocxImagesToQuestions(referencedResult, extractedImages || {});
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -128,10 +131,11 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         const { rawText, totalPages, result: nativeResult, pdfDoc, documentIR, ocrPageCount } = await parsePdfFile(file, (percent) => {
           setIsProcessing(true, 50 + Math.round(percent * 0.35));
         });
-        const result = attachQuestionSourceReferences(
+        const referencedResult = attachQuestionSourceReferences(
           await maybeUseAiFallback(file, rawText, nativeResult),
           documentIR,
         );
+        const result = await attachPdfVisualMediaToQuestions(referencedResult, pdfDoc, documentIR);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -191,7 +195,11 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           }],
           warnings: ocr && ocr.confidence < 0.72 ? ["ocr_low_confidence"] : [],
         };
-        const linkedResult = attachQuestionSourceReferences(result, documentIR);
+        const linkedResult = await attachOcrImageMediaToQuestions(
+          attachQuestionSourceReferences(result, documentIR),
+          imageBase64,
+          documentIR,
+        );
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,

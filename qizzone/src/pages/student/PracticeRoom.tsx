@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock3, Flag, ListChecks, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { QuestionContent } from '@/components/common/QuestionContent';
 import { MathRenderer } from '@/components/common/MathRenderer';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -239,7 +240,7 @@ export function PracticeRoom() {
                 {isFlagged ? 'Bỏ cờ' : 'Đánh dấu'}
               </Button>
             )}
-            prompt={<MathRenderer content={currentQuestion.content} />}
+            prompt={<QuestionContent content={currentQuestion.content} images={currentQuestion.images} />}
             feedback={(
               <>
                 {checked && session.showExplanation && checked.explanation && (
@@ -319,7 +320,7 @@ export function PracticeRoom() {
                   <span className={'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ' + (isSelected || isCorrectOption ? 'border-current' : 'theme-border-strong')}>
                     {String.fromCharCode(65 + index)}
                   </span>
-                  <span className="min-w-0 flex-1 text-sm leading-6"><MathRenderer content={option.content} /></span>
+                  <span className="min-w-0 flex-1 text-sm leading-6"><QuestionContent content={option.content} images={option.images} imageAlt={`Hình minh họa đáp án ${option.id}`} /></span>
                   {checked && isCorrectOption && <Check className="h-4 w-4 shrink-0 text-emerald-700" aria-label="Đáp án đúng" />}
                   {isWrongSelection && <span className="text-xs font-semibold text-rose-700">Bạn chọn</span>}
                 </button>

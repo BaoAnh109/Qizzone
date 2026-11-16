@@ -349,6 +349,9 @@ function parseParagraphElement(
     if (r.style.isRedColor) {
       segmentHtml = `<span class="text-color-red" style="color:#e11d48">${segmentHtml}</span>`;
     }
+    if (r.imageId) {
+      segmentHtml = `<span data-image-id="${escapeHtml(r.imageId)}">${segmentHtml}</span>`;
+    }
 
     html += segmentHtml;
   }

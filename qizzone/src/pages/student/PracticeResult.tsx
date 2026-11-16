@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, CircleAlert, CircleX, Clock3, RotateCcw } from 'lucide-react';
 import { MathRenderer } from '@/components/common/MathRenderer';
+import { QuestionContent } from '@/components/common/QuestionContent';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -31,7 +32,7 @@ function AnswerReview({ detail }: { detail: PracticeResultDetail }) {
   const selectedAnswers = detail.selectedAnswers.map(id => detail.options.find(option => option.id === id)).filter(Boolean);
   return (
     <div className="space-y-3">
-      <div className="text-sm font-medium leading-6 theme-text-primary"><MathRenderer content={detail.content} /></div>
+      <div className="text-sm font-medium leading-6 theme-text-primary"><QuestionContent content={detail.content} images={detail.images} /></div>
       <div className="space-y-2">
         {orderedOptions(detail).map(option => {
           const isCorrect = detail.correctAnswers.includes(option.id);
@@ -39,7 +40,7 @@ function AnswerReview({ detail }: { detail: PracticeResultDetail }) {
           return (
             <div key={option.id} className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${isCorrect ? 'border-emerald-300 bg-emerald-50 text-emerald-950' : isSelectedWrong ? 'border-rose-300 bg-rose-50 text-rose-950' : 'theme-border theme-surface theme-text-secondary'}`}>
               <span className="w-5 shrink-0 font-bold">{isCorrect ? '✓' : isSelectedWrong ? '×' : option.id}</span>
-              <span className="min-w-0 flex-1"><MathRenderer content={option.content} /></span>
+              <span className="min-w-0 flex-1"><QuestionContent content={option.content} images={option.images} imageAlt={`Hình minh họa đáp án ${option.id}`} /></span>
               {isSelectedWrong && <span className="shrink-0 text-[11px] font-semibold">Bạn chọn</span>}
             </div>
           );

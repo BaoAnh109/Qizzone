@@ -500,7 +500,7 @@ export function parseSingleQuestionBlock(
     answerEvidence: allEvidence,
     reviewStatus: "pending",
     warningFlags: warningFlags.length > 0 ? warningFlags : undefined,
-    rawTextSegment: rawBlock.substring(0, 1500),
+    rawTextSegment: rawBlock.substring(0, 10_000),
   };
 }
 

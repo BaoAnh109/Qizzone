@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { QuestionContent } from "@/components/common/QuestionContent";
 import {
   exportQuestionAnalyticsToCsv,
   exportResultsToCsv,
@@ -546,7 +547,7 @@ export function QuizResultsView() {
                   </div>
 
                   <div className="text-sm font-medium theme-text-primary leading-relaxed">
-                    <MathRenderer content={q.content} />
+                    <QuestionContent content={q.content} images={q.images} />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -570,7 +571,7 @@ export function QuizResultsView() {
                         >
                           <span className="font-mono font-bold">{opt.id}.</span>
                           <div className="flex-1">
-                            <MathRenderer content={opt.content} />
+                            <QuestionContent content={opt.content} images={opt.images} imageAlt={`Hình minh họa đáp án ${opt.id}`} />
                           </div>
                           {isSelected && isCorrect && (
                             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />

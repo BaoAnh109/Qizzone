@@ -28,6 +28,7 @@ export interface QuestionGradingDetail {
   questionId: string;
   order: number;
   content: string;
+  images?: string[];
   options: OptionItem[];
   selectedAnswers: OptionId[];
   correctAnswers: OptionId[];

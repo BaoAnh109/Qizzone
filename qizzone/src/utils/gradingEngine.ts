@@ -57,6 +57,7 @@ export function gradeExamSubmission(params: {
       questionId: q.id,
       order: q.order,
       content: q.content,
+      images: q.images,
       options: q.options,
       selectedAnswers: selected,
       correctAnswers: q.correctAnswers,

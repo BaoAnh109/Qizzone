@@ -39,6 +39,7 @@ export interface PracticeResultDetail {
   questionId: string;
   order: number;
   content: string;
+  images?: string[];
   type: QuestionType;
   options: OptionItem[];
   optionOrder: OptionId[];

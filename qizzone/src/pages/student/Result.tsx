@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { QuestionContent } from "@/components/common/QuestionContent";
 import type { OptionItem } from "@/types/quiz";
 
 export function Result() {
@@ -406,7 +407,7 @@ export function Result() {
                       <CardContent className="p-5 sm:p-6 space-y-5">
                         {/* Question prompt with KaTeX */}
                         <div className="text-base sm:text-lg font-medium theme-text-primary leading-relaxed">
-                          <MathRenderer content={item.content} />
+                          <QuestionContent content={item.content} images={item.images} />
                         </div>
 
                         {/* All Options with accurate color coding */}
@@ -465,7 +466,7 @@ export function Result() {
                                   </span>
 
                                   <div className="flex-1 min-w-0 pt-0.5">
-                                    <MathRenderer content={opt.content} />
+                                    <QuestionContent content={opt.content} images={opt.images} imageAlt={`Hình minh họa đáp án ${opt.id}`} />
                                   </div>
 
                                   {indicator}

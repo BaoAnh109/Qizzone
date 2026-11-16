@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { QuestionContent } from "@/components/common/QuestionContent";
 
 export function QuestionReview() {
   const { quizId } = useParams();
@@ -155,7 +156,7 @@ export function QuestionReview() {
 
               {/* Question content with LaTeX */}
               <div className="pt-3 text-sm sm:text-base font-medium theme-text-primary leading-relaxed">
-                <MathRenderer content={q.content} />
+                <QuestionContent content={q.content} images={q.images} />
               </div>
             </CardHeader>
 
@@ -184,7 +185,7 @@ export function QuestionReview() {
                       </span>
 
                       <div className="flex-1 min-w-0 pt-0.5">
-                        <MathRenderer content={opt.content} />
+                        <QuestionContent content={opt.content} images={opt.images} imageAlt={`Hình minh họa đáp án ${opt.id}`} />
                       </div>
 
                       {isCorrect && (

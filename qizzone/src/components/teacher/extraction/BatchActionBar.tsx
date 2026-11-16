@@ -21,6 +21,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
 import { QuickAnswerKeyModal } from "./QuickAnswerKeyModal";
 import { mapExtractedQuestionsToQuizQuestions } from "@/utils/extractedQuestionMapper";
+import { persistQuestionImages } from "@/utils/parsers/questionMedia";
 import type { DetectionStrategy } from "@/types/extractor";
 
 export function BatchActionBar() {
@@ -148,6 +149,7 @@ export function BatchActionBar() {
 
     try {
       const formattedQuestions = mapExtractedQuestionsToQuizQuestions(questions);
+      const questionsWithStoredImages = await persistQuestionImages(formattedQuestions, user?.id);
 
       const newQuiz = await createQuiz({
         title: extractionResult?.title || "Đề thi bóc tách từ tài liệu",
@@ -164,7 +166,7 @@ export function BatchActionBar() {
           maxAttempts: 0,
           passPercentage: 50,
         },
-        questions: formattedQuestions,
+        questions: questionsWithStoredImages,
       });
 
       toast.success(

@@ -34,7 +34,10 @@ import {
 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MathEditorPreview } from "@/components/common/MathEditorPreview";
+import { ImageAttachments } from "@/components/common/ImageAttachments";
+import { QuestionContent } from "@/components/common/QuestionContent";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { persistQuestionImages } from "@/utils/parsers/questionMedia";
 import { useToast } from "@/hooks/useToast";
 import { QuizCreationEntry } from "@/components/teacher/QuizCreationEntry";
 import type { OptionId, Question, QuizSettings } from "@/types/quiz";
@@ -380,13 +383,14 @@ export function CreateQuiz() {
     }
 
     try {
+      const questionsWithStoredImages = await persistQuestionImages(questions, user?.id);
       if (isEditing && quizId) {
         await updateQuiz(quizId, {
         title: title.trim(),
         subject: resolvedSubject,
         description: description.trim(),
         settings,
-        questions,
+        questions: questionsWithStoredImages,
         status,
         });
         toast.success(
@@ -404,7 +408,7 @@ export function CreateQuiz() {
         code: "",
         status,
         settings,
-        questions,
+        questions: questionsWithStoredImages,
         totalQuestions: questions.length,
         totalPoints: Math.round(questions.reduce((sum, q) => sum + (q.points || 1), 0) * 100) / 100,
         });
@@ -642,6 +646,7 @@ export function CreateQuiz() {
                     placeholder="Nhập nội dung câu hỏi hoặc công thức Toán $f(x) = x^2$..."
                     rows={3}
                   />
+                  <ImageAttachments images={question.images} alt={`Hình trong nội dung câu ${question.order}`} />
 
                   {/* 4 Options */}
                   <div className="space-y-3 pt-2">
@@ -692,6 +697,7 @@ export function CreateQuiz() {
                               placeholder={`Nội dung lựa chọn ${opt.id}...`}
                               rows={2}
                             />
+                            <ImageAttachments images={opt.images} alt={`Hình minh họa đáp án ${opt.id}`} />
                           </div>
                         );
                       })}
@@ -783,7 +789,7 @@ export function CreateQuiz() {
                           Câu {idx + 1}:
                         </span>
                         <div className="flex-1">
-                          <MathRenderer content={q.content} />
+                          <QuestionContent content={q.content} images={q.images} />
                         </div>
                       </div>
                     </div>
@@ -810,7 +816,7 @@ export function CreateQuiz() {
                               {opt.id}
                             </span>
                             <div className="flex-1 min-w-0">
-                              <MathRenderer content={opt.content} />
+                              <QuestionContent content={opt.content} images={opt.images} imageAlt={`Hình minh họa đáp án ${opt.id}`} />
                             </div>
                             {isCorrect && (
                               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 ml-auto" />

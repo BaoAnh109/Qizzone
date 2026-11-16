@@ -24,7 +24,7 @@ import { useQuestionKeyboardShortcuts } from "@/hooks/useQuestionKeyboardShortcu
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { MathRenderer } from "@/components/common/MathRenderer";
+import { QuestionContent } from "@/components/common/QuestionContent";
 import { QuestionFrame } from "@/components/student/QuestionFrame";
 import { SubmitConfirmModal } from "@/components/student/SubmitConfirmModal";
 import { useToast } from "@/hooks/useToast";
@@ -344,7 +344,7 @@ export function QuizRoom() {
                     )}
                   </>
                 )}
-                prompt={<MathRenderer content={currentQuestion.content} />}
+                prompt={<QuestionContent content={currentQuestion.content} images={currentQuestion.images} />}
                 footer={(
                   <div className="flex items-center justify-between border-t theme-border pt-6">
                     <Button
@@ -397,7 +397,7 @@ export function QuizRoom() {
                       </span>
 
                       <div className="flex-1 pt-0.5 text-sm font-normal theme-text-primary sm:text-base">
-                        <MathRenderer content={opt.content} />
+                        <QuestionContent content={opt.content} images={opt.images} imageAlt={`Hình minh họa đáp án ${opt.id}`} />
                       </div>
 
                       {isSelected && (

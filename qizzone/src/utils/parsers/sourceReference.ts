@@ -16,9 +16,13 @@ function blockMatches(block: DocumentIRBlock, query: string): boolean {
 export function attachQuestionSourceReferences(result: ExtractionResult, documentIR: DocumentIR): ExtractionResult {
   const blocks = [...documentIR.pages.flatMap(page => page.blocks), ...(documentIR.flowBlocks || [])];
   const questions = result.questions.map(question => {
-    const sourceBlocks = blocks.filter(block =>
-      blockMatches(block, question.content) || question.options.some(option => blockMatches(block, option.content)),
-    );
+    const promptBlocks = blocks.filter(block => blockMatches(block, question.content));
+    const optionBlocks = question.options.map(option => blocks.filter(block => blockMatches(block, option.content)));
+    const options = question.options.map((option, index) => ({
+      ...option,
+      sourceRefs: optionBlocks[index].map(block => block.id),
+    }));
+    const sourceBlocks = [...new Map([...promptBlocks, ...optionBlocks.flat()].map(block => [block.id, block])).values()];
     const sourceRefs = sourceBlocks.map(block => block.id);
     const answerEvidence = (question.answerEvidence || []).map(evidence => {
       const optionTexts = evidence.optionIds
@@ -38,6 +42,9 @@ export function attachQuestionSourceReferences(result: ExtractionResult, documen
     });
     return {
       ...question,
+      content: question.content.replace(/\[Hình ảnh\]/gi, "").trim(),
+      promptSourceRefs: promptBlocks.map(block => block.id),
+      options: options.map(option => ({ ...option, content: option.content.replace(/\[Hình ảnh\]/gi, "").trim() })),
       sourceRefs,
       answerEvidence,
     };

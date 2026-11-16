@@ -5,12 +5,14 @@ export type OptionId = "A" | "B" | "C" | "D";
 export interface OptionItem {
   id: OptionId;
   content: string; // Supports raw text + inline LaTeX $...$ or block $$...$$
+  images?: string[];
 }
 
 export interface Question {
   id: string;
   order: number;
   content: string; // Question prompt (supports KaTeX)
+  images?: string[];
   type: QuestionType;
   options: OptionItem[];
   correctAnswers: OptionId[];

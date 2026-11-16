@@ -11,10 +11,12 @@ export function mapExtractedQuestionsToQuizQuestions(
     id: q.id || `q-ext-${Date.now().toString(36)}-${idx}`,
     order: idx + 1,
     content: q.content,
+    ...(q.images?.length ? { images: q.images } : {}),
     type: "single_choice",
     options: q.options.map((opt) => ({
       id: opt.id,
       content: opt.content,
+      ...(opt.images?.length ? { images: opt.images } : {}),
     })),
     correctAnswers: q.correctAnswers || [],
     explanation: q.explanation || "",

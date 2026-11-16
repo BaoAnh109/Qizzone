@@ -116,7 +116,8 @@ function asOptions(value: unknown): OptionItem[] {
   return value.flatMap(item => {
     if (!isRecord(item) || typeof item.id !== 'string' || !OPTION_IDS.includes(item.id as OptionId)
       || typeof item.content !== 'string') return [];
-    return [{ id: item.id as OptionId, content: item.content }];
+    const images = Array.isArray(item.images) ? item.images.filter((image): image is string => typeof image === 'string') : undefined;
+    return [{ id: item.id as OptionId, content: item.content, ...(images?.length ? { images } : {}) }];
   });
 }
 
@@ -128,6 +129,7 @@ function asResultDetail(value: unknown): PracticeResultDetail {
     questionId: value.questionId,
     order: Number(value.order) || 0,
     content: typeof value.content === 'string' ? value.content : '',
+    images: Array.isArray(value.images) ? value.images.filter((image): image is string => typeof image === 'string') : undefined,
     type: asQuestionType(value.type),
     options: asOptions(value.options),
     optionOrder: asOptionIds(value.optionOrder),

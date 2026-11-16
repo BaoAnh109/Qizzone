@@ -27,9 +27,14 @@ describe('Supabase migration, RLS, and server-side grading', () => {
         file_size_limit bigint,
         allowed_mime_types text[]
       );
+      create table storage.objects (bucket_id text not null, name text not null);
+      alter table storage.objects enable row level security;
+      grant select on storage.objects to anon, authenticated;
+      grant insert on storage.objects to authenticated;
       create function auth.jwt() returns jsonb language sql stable as
         $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
       grant usage on schema auth to anon, authenticated, service_role;
+      grant usage on schema storage to anon, authenticated;
       grant execute on function auth.jwt() to anon, authenticated, service_role;
     `);
     const migrationsDirectory = fileURLToPath(new URL('../../../../supabase/migrations/', import.meta.url));
@@ -72,6 +77,13 @@ describe('Supabase migration, RLS, and server-side grading', () => {
     const studentC: Claims = { sub: 'student-c', role: 'authenticated', app_role: 'student' };
     const admin: Claims = { sub: 'admin-a', role: 'authenticated', app_role: 'admin' };
     const pendingTeacher: Claims = { sub: 'teacher-pending', role: 'authenticated', app_role: 'teacher' };
+    await asAuthenticated(teacherA, "insert into storage.objects(bucket_id,name) values ('qizzone-question-media','teacher-a/chart.jpg')");
+    await expect(asAuthenticated(teacherA, "insert into storage.objects(bucket_id,name) values ('qizzone-question-media','teacher-b/chart.jpg')"))
+      .rejects.toThrow();
+    await expect(asAuthenticated(studentA, "insert into storage.objects(bucket_id,name) values ('qizzone-question-media','student-a/chart.jpg')"))
+      .rejects.toThrow();
+    await asAuthenticated({ sub: 'anonymous', role: 'authenticated', app_role: 'student' },
+      "select * from storage.objects where bucket_id='qizzone-question-media'");
     const quizInput = {
       title: 'Security test', subject: 'Math', description: '', status: 'published',
       settings: {
@@ -81,7 +93,8 @@ describe('Supabase migration, RLS, and server-side grading', () => {
       },
       questions: [{
         id: 'legacy-question-1', content: '2 + 2 = ?', type: 'single_choice', points: 10,
-        options: [{ id: 'A', content: '3' }, { id: 'B', content: '4' }],
+        images: ['storage://qizzone-question-media/teacher-a/chart-1.jpg'],
+        options: [{ id: 'A', content: '3', images: ['storage://qizzone-question-media/teacher-a/answer-1.jpg'] }, { id: 'B', content: '4' }],
         correctAnswers: ['B'], explanation: '2 + 2 = 4',
       }],
     };
@@ -111,10 +124,12 @@ describe('Supabase migration, RLS, and server-side grading', () => {
       id: string;
       code: string;
       settings: { assignedEmails: string[] };
-      questions: Array<{ id: string; correctAnswers: string[]; explanation: string | null }>;
+      questions: Array<{ id: string; correctAnswers: string[]; explanation: string | null; images: string[]; options: Array<{ images?: string[] }> }>;
     }>>(studentQuizRows[0].payload);
     expect(studentQuizzes[0].questions[0].correctAnswers).toEqual([]);
     expect(studentQuizzes[0].questions[0].explanation).toBeNull();
+    expect(studentQuizzes[0].questions[0].images).toEqual(['storage://qizzone-question-media/teacher-a/chart-1.jpg']);
+    expect(studentQuizzes[0].questions[0].options[0].images).toEqual(['storage://qizzone-question-media/teacher-a/answer-1.jpg']);
     expect(studentQuizzes[0].settings.assignedEmails).toEqual(['student-a@example.test']);
     expect(JSON.stringify(studentQuizzes)).not.toContain('student-b@example.test');
     expect(JSON.stringify(studentQuizzes)).not.toContain('outsider@example.test');
@@ -152,9 +167,11 @@ describe('Supabase migration, RLS, and server-side grading', () => {
       .rejects.toThrow(/CONFLICT/);
     await asAuthenticated(studentA, 'select public.save_attempt($1,$2,$3::jsonb,$4::jsonb,$5)', [session.id, firstSave.revision, answers, '[]', 0]);
     const resultRows = await asAuthenticated<{ payload: unknown }>(studentA, 'select public.submit_attempt($1) as payload', [session.id]);
-    const result = json<{ score: number; correctCount: number }>(resultRows[0].payload);
+    const result = json<{ score: number; correctCount: number; details: Array<{ images: string[]; options: Array<{ images?: string[] }> }> }>(resultRows[0].payload);
     expect(result.score).toBe(10);
     expect(result.correctCount).toBe(1);
+    expect(result.details[0].images).toEqual(['storage://qizzone-question-media/teacher-a/chart-1.jpg']);
+    expect(result.details[0].options[0].images).toEqual(['storage://qizzone-question-media/teacher-a/answer-1.jpg']);
 
     expect(await asAuthenticated(studentB, 'select * from public.exam_attempts')).toEqual([]);
     const otherResults = await asAuthenticated<{ payload: unknown }>(studentB, 'select public.list_results() as payload');

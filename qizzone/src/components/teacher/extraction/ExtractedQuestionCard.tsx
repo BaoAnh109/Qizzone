@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { QuestionContent } from "@/components/common/QuestionContent";
 import { MathRenderer } from "@/components/common/MathRenderer";
 import { useExtractionStore } from "@/store/extractionStore";
 import type { ExtractedQuestion, DetectionStrategy } from "@/types/extractor";
@@ -242,7 +243,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
           </div>
         ) : (
           <div className="text-base theme-text-primary leading-relaxed font-medium">
-            <MathRenderer content={question.content} />
+            <QuestionContent content={question.content} images={question.images} />
           </div>
         )}
 
@@ -289,7 +290,7 @@ export function ExtractedQuestionCard({ question, isSelected }: Props) {
                   </span>
 
                   <div className="flex-1 min-w-0 pt-0.5">
-                    <MathRenderer content={opt.content} />
+                    <QuestionContent content={opt.content} images={opt.images} imageAlt={`Hình minh họa đáp án ${opt.id}`} />
                   </div>
 
                   {isCorrect && (
