@@ -1,4 +1,5 @@
 import type { OptionId } from "@/types/quiz";
+import { MAX_EXTRACTED_QUESTIONS } from "@/config/extractionLimits";
 import type {
   DetectionStrategy,
   ExtractedOption,
@@ -98,7 +99,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
         for (let c = 0; c < Math.min(qRow.length, aRow.length); c++) {
           const qNum = parseInt(qRow[c].replace(/\D/g, ""), 10);
           const ans = aRow[c].toUpperCase().trim() as OptionId;
-          if (qNum > 0 && qNum <= 300 && ["A", "B", "C", "D"].includes(ans)) {
+          if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(ans)) {
             recordAnswer(qNum, ans);
           }
         }
@@ -110,7 +111,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
       for (let c = 0; c < row.length - 1; c += 2) {
         const qNum = parseInt(row[c].replace(/\D/g, ""), 10);
         const ans = row[c + 1].toUpperCase().trim() as OptionId;
-        if (qNum > 0 && qNum <= 300 && ["A", "B", "C", "D"].includes(ans)) {
+        if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(ans)) {
           recordAnswer(qNum, ans);
         }
       }
@@ -121,8 +122,8 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
   // Hỗ trợ các dấu bọc/đánh dấu thường gặp: [A], (A), ✓ A, → B, ★ C, “Đáp án C”.
   const answerText = cleanMathAndHtml(textToScan);
   const pairRegexes = [
-    /(?:Câu|Question|Bài|Q)\s*(\d{1,3})\s*[:.)-]\s*(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gim,
-    /\b(\d{1,3})\s*(?:[.:)-]\s*)?(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gi,
+    /(?:Câu|Question|Bài|Q)\s*(\d{1,4})\s*[:.)-]\s*(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gim,
+    /\b(\d{1,4})\s*(?:[.:)-]\s*)?(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gi,
   ];
 
   for (const regex of pairRegexes) {
@@ -130,7 +131,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
     while ((match = regex.exec(answerText)) !== null) {
       const questionNum = parseInt(match[1], 10);
       const answer = match[2].toUpperCase() as OptionId;
-      if (questionNum > 0 && questionNum <= 300 && ["A", "B", "C", "D"].includes(answer)) {
+      if (questionNum > 0 && questionNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(answer)) {
         recordAnswer(questionNum, answer);
       }
     }
@@ -567,7 +568,7 @@ export function parseRawExamText(
       : boundaries.length + 1;
 
     // Bỏ qua nếu là số thứ tự không hợp lý (ví dụ số năm 2024 hoặc quá lớn)
-    if (sourceOrder > 0 && sourceOrder <= 300) {
+    if (sourceOrder > 0 && sourceOrder <= MAX_EXTRACTED_QUESTIONS) {
       boundaries.push({
         startIndex: headerMatch.index,
         headerLength: headerMatch[0].length,

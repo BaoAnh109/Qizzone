@@ -11,7 +11,7 @@
 - DOCX được đọc trực tiếp từ OpenXML để giữ thứ tự đoạn/bảng, danh sách, công thức OMML và kiểu chữ bold/underline/highlight/màu. PDF giữ text, vị trí trang, style, highlight annotation, vùng highlight tô bằng vector và chữ đáp án tô đỏ.
 - OCR chạy trong trình duyệt bằng Tesseract tiếng Việt/Anh cho ảnh, ảnh nhúng trong DOCX và tối đa 10 trang scan mỗi lượt. Trang ít text được cảnh báo; trang vượt giới hạn được đánh dấu chưa xử lý.
 - Document IR có hash nguồn, block, thứ tự đọc, style và source reference. PDF có tọa độ trang; DOCX hiện giữ paragraph/run reference nhưng chưa có tọa độ trang. Trình xem nguồn có thể nhảy/tô block khớp câu.
-- Parser nhận dạng phương án A–D, ①–④, cặp Đúng/Sai không có nhãn, cùng dòng/nhiều dòng; đáp án từ ký hiệu, gạch chân, highlight, bold, màu đỏ, đáp án cuối câu và bảng/cuối file gồm các nhãn `[A]`, `(A)`, `✓`, `→`, `★`, `Đáp án C`. Xung đột được để `ambiguous`; thiếu chứng cứ giữ `correctAnswers=[]`.
+- Parser nhận dạng phương án A–D, ①–④, cặp Đúng/Sai không có nhãn, cùng dòng/nhiều dòng; đáp án từ ký hiệu, gạch chân, highlight, bold, màu đỏ, đáp án cuối câu và bảng/cuối file gồm các nhãn `[A]`, `(A)`, `✓`, `→`, `★`, `Đáp án C`. Xung đột được để `ambiguous`; thiếu chứng cứ giữ `correctAnswers=[]`. Giới hạn nhập là 1.000 câu/tệp để không ghép câu 301+ vào câu 300.
 - Gemini chỉ là fallback cấu trúc có giới hạn; đầu ra phải khớp nguyên văn nguồn và đúng nhãn phương án. Không nhận đáp án hoặc lời giải từ AI. Câu không có ít nhất hai nhãn phương án nguồn không được gửi fallback chỉ để AI tự tạo lựa chọn.
 - Edge Function xác thực Firebase token và role teacher/admin, giới hạn body 8 MB, source 100.000 ký tự và ảnh, dùng quota theo user, timeout 40 giây mỗi model, tối đa hai model; không nhận API key/model do client chọn và không ghi nội dung đề/token vào log.
 - Luồng tạo đề không còn tự gán A cho câu chưa rõ. Thiếu đáp án/phương án thì không lưu/xuất bản; đề chuyển từ trích xuất sang cấu hình phải được giáo viên xác nhận đã rà nguồn. Thay đổi câu sau khi xác nhận sẽ khóa xuất bản lại.
@@ -38,8 +38,8 @@ OCR: ảnh raster trang 2 của `TNChuong3.pdf` trả 1.330 ký tự, confidence
 
 ## Kiểm tra chạy được
 
-- `npm test`: 29 test file qua, 138 test qua; 2 file/9 test opt-in bị bỏ qua khi không đặt đường dẫn tài liệu.
-- Benchmark opt-in: 9/9 qua (6 tài liệu, đối chiếu DOCX/PDF, OCR và màu chữ đỏ trang 1 PDF thực). Lệnh: đặt `QIZZONE_REAL_DOCS_DIR=E:\Admin\Download` và `QIZZONE_REAL_OCR_IMAGE_PATH` trỏ tới ảnh raster trang 2, rồi chạy `npx vitest run --reporter=verbose src/utils/__tests__/realDocumentBenchmark.test.ts src/utils/__tests__/pdfRedTextAnswer.test.ts`.
+- `npm test`: 29 test file qua, 139 test qua; 2 file/10 test opt-in bị bỏ qua khi không đặt đường dẫn tài liệu.
+- Benchmark opt-in: **10/10 qua**; gồm 6 tài liệu, đối chiếu DOCX/PDF, OCR, màu chữ đỏ trang 1 và kiểm tra đủ **353 ranh giới câu**, tách riêng câu 301–302 trong PDF `CNXHKH 2024 HUIT.docx.pdf`. Đặt `QIZZONE_REAL_DOCS_DIR=E:\Admin\Download`, `QIZZONE_REAL_OCR_IMAGE_PATH` trỏ tới ảnh raster trang 2, rồi chạy `npx vitest run --reporter=verbose src/utils/__tests__/realDocumentBenchmark.test.ts src/utils/__tests__/pdfRedTextAnswer.test.ts`.
 - `npm run build`: qua; chunk parser lớn nhất 583 kB (156 kB gzip), PDF parser 429 kB (129 kB gzip).
 - `npm run lint`: qua, không warning.
 - `npm audit` và `npm audit --omit=dev`: 0 lỗ hổng sau khi ghim `minimatch` ở bản đã vá.

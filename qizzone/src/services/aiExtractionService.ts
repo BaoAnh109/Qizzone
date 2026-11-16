@@ -1,5 +1,6 @@
 import type { ExtractionResult, ExtractedQuestion, DetectionStrategy } from '@/types/extractor';
 import type { OptionId } from '@/types/quiz';
+import { MAX_EXTRACTED_QUESTIONS } from '@/config/extractionLimits';
 import { edge, errorMessage } from '@/lib/cloud';
 import { parseRawExamText, splitOptionsFromBlock } from '@/utils/parsers/ruleExtractor';
 import { AI_CONFIG } from '@/config/aiConfig';
@@ -134,7 +135,7 @@ export function parseGroundedAIResult(result: unknown, fileName: string, fileTyp
   const questions: ExtractedQuestion[] = [];
   payload.questions.forEach((question, index) => {
     const order = Number.isInteger(question.order) ? Number(question.order) : index + 1;
-    if (order < 1 || order > 300 || seenOrders.has(order) || !question.content || !isGroundedText(question.content, source)) return;
+    if (order < 1 || order > MAX_EXTRACTED_QUESTIONS || seenOrders.has(order) || !question.content || !isGroundedText(question.content, source)) return;
     const options = (Array.isArray(question.options) ? question.options : [])
       .filter((option): option is { id: string; content: string } =>
         typeof option?.id === 'string' && typeof option?.content === 'string' &&

@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { DOMParser as XmldomParser } from "@xmldom/xmldom";
 import type { OptionId } from "@/types/quiz";
+import { MAX_EXTRACTED_QUESTIONS } from "@/config/extractionLimits";
 
 const MAX_DOCX_ARCHIVE_ENTRIES = 5_000;
 const MAX_DOCX_ENTRY_UNCOMPRESSED_BYTES = 40 * 1024 * 1024;
@@ -562,7 +563,7 @@ function parseTableElement(
         const qNum = parseInt(qRow[c].text.replace(/\D/g, ""), 10);
         const ans = aRow[c].text.toUpperCase().trim() as OptionId;
 
-        if (qNum > 0 && qNum <= 300 && ["A", "B", "C", "D"].includes(ans)) {
+        if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(ans)) {
           answerMap[qNum] = ans;
           validPairsCount++;
         }
@@ -581,7 +582,7 @@ function parseTableElement(
       for (let i = 0; i < row.cells.length - 1; i += 2) {
         const qNum = parseInt(row.cells[i].text.replace(/\D/g, ""), 10);
         const ans = row.cells[i + 1].text.toUpperCase().trim() as OptionId;
-        if (qNum > 0 && qNum <= 300 && ["A", "B", "C", "D"].includes(ans)) {
+        if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(ans)) {
           answerMap[qNum] = ans;
           validPairsCount++;
         }

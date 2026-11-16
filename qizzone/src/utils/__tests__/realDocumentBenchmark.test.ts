@@ -2,7 +2,9 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import * as pdfjs from "pdfjs-dist";
 import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
+import { cleanPdfExtractedText } from "@/utils/parsers/pdfCleaner";
 import { shouldUseAIExtractionFallback } from "@/services/aiExtractionService";
 import { parseDocxFile } from "@/utils/parsers/docxParser";
 import { recognizeOcrPages } from "@/utils/parsers/ocrService";
@@ -99,6 +101,58 @@ benchmarkDescribe("Opt-in real document extraction benchmark", () => {
       }
     }, 120_000);
   }
+
+  const longPdfPath = join(benchmarkDirectory || ".", "CNXHKH 2024 HUIT.docx.pdf");
+  const longPdfIt = benchmarkDirectory && existsSync(longPdfPath) ? it : it.skip;
+  longPdfIt("keeps all 353 questions separate after question 300 in the actual PDF", async () => {
+    const bytes = await readFile(longPdfPath);
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
+    const pagesText: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const records = content.items.flatMap(item => {
+        if (!("str" in item) || !item.str.trim()) return [];
+        return [{
+          text: item.str,
+          x: item.transform[4] || 0,
+          y: item.transform[5] || 0,
+          width: Math.max(0, item.width || 0),
+          height: Math.max(1, item.height || Math.abs(item.transform[3]) || 1),
+        }];
+      });
+      const rows: Array<typeof records> = [];
+      for (const record of [...records].sort((a, b) => b.y - a.y || a.x - b.x)) {
+        const current = rows[rows.length - 1];
+        if (current && Math.abs(current[0].y - record.y) <= Math.max(3, record.height * 0.35)) current.push(record);
+        else rows.push([record]);
+      }
+      pagesText.push(rows.map(row => {
+        row.sort((a, b) => a.x - b.x);
+        let line = "";
+        let previous: typeof row[number] | undefined;
+        for (const record of row) {
+          const gap = previous ? record.x - (previous.x + previous.width) : 0;
+          if (previous && gap > Math.max(1.5, previous.height * 0.12) && !line.endsWith(" ") && !record.text.startsWith(" ")) line += " ";
+          line += record.text;
+          previous = record;
+        }
+        return line.trim();
+      }).filter(Boolean).join("\n"));
+    }
+
+    const rawText = cleanPdfExtractedText(pagesText);
+    const result = parseRawExamText(rawText, { fileName: "CNXHKH 2024 HUIT.docx.pdf", fileType: "pdf" });
+
+    expect(result.questions).toHaveLength(353);
+    expect(result.coverage?.sourceQuestionNumbers.slice(-4)).toEqual([350, 351, 352, 353]);
+    expect(result.questions[299].content).not.toContain("Tăng cường mối quan hệ");
+    expect(result.questions[300].content).toContain("Tăng cường mối quan hệ");
+    expect(result.questions[300].options).toHaveLength(4);
+    expect(result.questions[300].options[3].content).not.toContain("Khái niệm dân tộc hiện nay");
+    expect(result.questions[301].content).toContain("Khái niệm dân tộc hiện nay");
+  }, 120_000);
 
   const markedDocxPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.docx");
   const markedPdfPath = join(benchmarkDirectory || ".", "147_cau_ATTT_dap_an_to_vang.pdf");

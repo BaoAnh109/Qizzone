@@ -336,6 +336,26 @@ Sai`;
     expect(parsed?.warningFlags?.some(flag => flag.includes("Không xác định đủ 2 phương án"))).toBe(false);
   });
 
+  it("Tách riêng câu 301+ và áp dụng bảng đáp án sau mốc 300", () => {
+    const questionBlocks = [299, 300, 301, 302].map(number => `
+${number}. Nội dung kiểm thử câu ${number}?
+A. Lựa chọn A câu ${number}
+B. Lựa chọn B câu ${number}
+C. Lựa chọn C câu ${number}
+D. Lựa chọn D câu ${number}`);
+    const rawExam = `${questionBlocks.join("\n")}\n\nBẢNG ĐÁP ÁN: 299.A 300.B 301.C 302.D`;
+
+    const result = parseRawExamText(rawExam, { fileType: "pdf" });
+
+    expect(result.questions).toHaveLength(4);
+    expect(result.coverage?.sourceQuestionNumbers).toEqual([299, 300, 301, 302]);
+    expect(result.questions[1].content).toBe("Nội dung kiểm thử câu 300?");
+    expect(result.questions[2].content).toBe("Nội dung kiểm thử câu 301?");
+    expect(result.questions[2].content).not.toContain("Nội dung kiểm thử câu 302?");
+    expect(result.questions[2].correctAnswers).toEqual(["C"]);
+    expect(result.questions[3].correctAnswers).toEqual(["D"]);
+  });
+
   it("Làm sạch HTML và chuyển đổi chuẩn LaTeX \\( ... \\) sang $...$", () => {
     const raw = "<p>Giải phương trình \\(x^2 - 4 = 0\\) có nghiệm \\(x = \\pm 2\\)</p>";
     const cleaned = cleanMathAndHtml(raw);
