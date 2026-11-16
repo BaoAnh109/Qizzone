@@ -14,12 +14,13 @@ Nguồn kế hoạch: `Qizzone_Comprehensive_Document_Extraction_Implementation_
 ## Chưa hoàn thành — không được coi là production-ready
 
 - Chưa có Document IR giữ vị trí/style/evidence chuẩn.
-- Chưa triển khai Python FastAPI worker, OOXML/PyMuPDF/OCR/layout.
+- Đã tạo **prototype** FastAPI CPU-native DOCX/PDF tại `services/extraction/`; chưa tích hợp với frontend/backend hiện tại, chưa có OCR/layout đầy đủ hoặc hàng đợi.
 - Chưa có kiểm tra độ phủ trang, phát hiện câu bị bỏ sót hoặc lỗi thứ tự đọc.
 - Chưa có answer-evidence conflict resolver, audit log, human review gate và quota AI.
 - Chưa có benchmark end-to-end trên PDF/DOCX/scan thực tế.
 - Chưa chạy `npm test`, `npm run lint`, `npm run build` trong môi trường CI.
-- Đường parser-first hiện chỉ là tối ưu ban đầu: có thể bỏ sót câu dù các câu đã nhận diện đều hợp lệ; không sử dụng nó làm bằng chứng trích xuất hoàn chỉnh.
+- Đã bổ sung kiểm tra chuỗi số câu trong luồng parser-first; **vẫn chưa có coverage map theo từng block/trang**, do đó chưa thể bảo đảm không bỏ sót câu.
+- Prototype worker chưa có xác thực, quota, kiểm tra zip bomb đầy đủ và giới hạn thực thi; tuyệt đối không public endpoint trước khi hardening.
 
 ## Việc cần làm tiếp
 
