@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
+import { isQizzoneApiConfigured } from "@/lib/cloud";
+import { examSessionService } from "@/services/examSessionService";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -28,7 +30,9 @@ import {
 } from "@/utils/exportHelper";
 import { calculateQuestionAnalytics } from "@/utils/questionAnalytics";
 import { useToast } from "@/hooks/useToast";
-import type { ExamResult } from "@/types/exam";
+import type { ExamResult, QuizResultsReport } from "@/types/exam";
+
+const REPORT_PAGE_SIZE = 25;
 
 export function QuizResultsView() {
   const { quizId } = useParams();
@@ -44,7 +48,7 @@ export function QuizResultsView() {
     return allResults.filter((r) => r.quizId === quizId);
   }, [allResults, quizId]);
 
-  const questionAnalytics = useMemo(
+  const localQuestionAnalytics = useMemo(
     () => (quiz ? calculateQuestionAnalytics(quiz.questions, rawResults) : []),
     [quiz, rawResults],
   );
@@ -52,6 +56,48 @@ export function QuizResultsView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "passed" | "failed">("all");
   const [sortBy, setSortBy] = useState<"score_desc" | "score_asc" | "time_desc">("score_desc");
+  const [reportPage, setReportPage] = useState(1);
+  const [loadedReport, setLoadedReport] = useState<{ key: string; data: QuizResultsReport } | null>(null);
+  const [loadedReportError, setLoadedReportError] = useState<{ key: string; message: string } | null>(null);
+  const reportQueryKey = JSON.stringify([
+    quizId,
+    reportPage,
+    searchTerm,
+    filterStatus,
+    sortBy,
+  ]);
+  const report = loadedReport?.key === reportQueryKey ? loadedReport.data : null;
+  const reportError = loadedReportError?.key === reportQueryKey ? loadedReportError.message : null;
+  const reportLoading = isQizzoneApiConfigured && Boolean(quizId) && !report && !reportError;
+
+  useEffect(() => {
+    if (!quizId || !isQizzoneApiConfigured) return;
+
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void examSessionService.getQuizReport(quizId, {
+        page: reportPage,
+        pageSize: REPORT_PAGE_SIZE,
+        search: searchTerm,
+        status: filterStatus,
+        sortBy: sortBy === "time_desc" ? "submitted_desc" : sortBy,
+      }).then((nextReport) => {
+        if (active) setLoadedReport({ key: reportQueryKey, data: nextReport });
+      }).catch((error: unknown) => {
+        if (active) {
+          setLoadedReportError({
+            key: reportQueryKey,
+            message: error instanceof Error ? error.message : "Không thể tải báo cáo.",
+          });
+        }
+      });
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [quizId, reportPage, reportQueryKey, searchTerm, filterStatus, sortBy]);
 
   // Selected student result for detail modal view
   const [selectedResult, setSelectedResult] = useState<ExamResult | null>(null);
@@ -83,38 +129,62 @@ export function QuizResultsView() {
       });
   }, [rawResults, searchTerm, filterStatus, sortBy]);
 
-  // Analytics Stats
-  const totalSubmissions = rawResults.length;
-  const averageScore =
-    totalSubmissions > 0
-      ? (rawResults.reduce((sum, r) => sum + r.score, 0) / totalSubmissions).toFixed(2)
+  const totalSubmissions = isQizzoneApiConfigured
+    ? report?.summary.totalSubmissions ?? 0
+    : rawResults.length;
+  const averageScore = isQizzoneApiConfigured
+    ? (report?.summary.averageScore ?? 0).toFixed(2)
+    : rawResults.length > 0
+      ? (rawResults.reduce((sum, result) => sum + result.score, 0) / rawResults.length).toFixed(2)
       : "0.00";
-  const maxScore =
-    totalSubmissions > 0
-      ? Math.max(...rawResults.map((r) => r.score)).toFixed(2)
+  const maxScore = isQizzoneApiConfigured
+    ? (report?.summary.maxScore ?? 0).toFixed(2)
+    : rawResults.length > 0
+      ? Math.max(...rawResults.map((result) => result.score)).toFixed(2)
       : "0.00";
-  const minScore =
-    totalSubmissions > 0
-      ? Math.min(...rawResults.map((r) => r.score)).toFixed(2)
+  const minScore = isQizzoneApiConfigured
+    ? (report?.summary.minScore ?? 0).toFixed(2)
+    : rawResults.length > 0
+      ? Math.min(...rawResults.map((result) => result.score)).toFixed(2)
       : "0.00";
-  const passedCount = rawResults.filter((r) => r.isPassed).length;
-  const passRate =
-    totalSubmissions > 0
-      ? Math.round((passedCount / totalSubmissions) * 100)
+  const passedCount = isQizzoneApiConfigured
+    ? report?.summary.passedCount ?? 0
+    : rawResults.filter((result) => result.isPassed).length;
+  const passRate = isQizzoneApiConfigured
+    ? report?.summary.passRate ?? 0
+    : rawResults.length > 0
+      ? Math.round((passedCount / rawResults.length) * 100)
       : 0;
+  const questionAnalytics = isQizzoneApiConfigured && report
+    ? report.questionAnalytics
+    : localQuestionAnalytics;
+  const resultsForTable = isQizzoneApiConfigured
+    ? report?.items ?? []
+    : filteredResults;
 
-  const handleExportCsv = () => {
-    if (!quiz || rawResults.length === 0) {
+  const handleExportCsv = async () => {
+    if (!quiz || totalSubmissions === 0) {
       toast.warning("Chưa có kết quả nộp bài nào để xuất file");
       return;
     }
 
     try {
+      const results = isQizzoneApiConfigured
+        ? await examSessionService.getAllQuizReportResults(quiz.id, {
+            search: searchTerm,
+            status: filterStatus,
+            sortBy: sortBy === "time_desc" ? "submitted_desc" : sortBy,
+          })
+        : filteredResults;
+      if (results.length === 0) {
+        toast.warning("Không có kết quả phù hợp để xuất file");
+        return;
+      }
       exportResultsToCsv({
         quizTitle: quiz.title,
         roomCode: quiz.code,
         subject: quiz.subject,
-        results: filteredResults,
+        results,
       });
       toast.success("Đã xuất file bảng điểm CSV thành công!");
     } catch {
@@ -123,7 +193,7 @@ export function QuizResultsView() {
   };
 
   const handleExportQuestionAnalytics = () => {
-    if (!quiz || rawResults.length === 0) {
+    if (!quiz || totalSubmissions === 0) {
       toast.warning("Chưa có kết quả nộp bài nào để phân tích");
       return;
     }
@@ -193,6 +263,7 @@ export function QuizResultsView() {
             variant="outline"
             size="sm"
             onClick={handleExportCsv}
+            disabled={reportLoading}
             leftIcon={<Download className="h-4 w-4 text-emerald-600" />}
             className="font-semibold"
           >
@@ -223,7 +294,7 @@ export function QuizResultsView() {
               variant="outline"
               size="sm"
               onClick={handleExportQuestionAnalytics}
-              disabled={rawResults.length === 0}
+              disabled={totalSubmissions === 0}
               leftIcon={<Download className="h-4 w-4 text-emerald-600" />}
               className="shrink-0 font-semibold"
             >
@@ -376,7 +447,10 @@ export function QuizResultsView() {
           <Input
             placeholder="Tìm theo tên học sinh, lớp..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setReportPage(1);
+            }}
             leftIcon={<Search className="h-4 w-4" />}
           />
         </div>
@@ -388,7 +462,10 @@ export function QuizResultsView() {
             <select
               value={filterStatus}
               onChange={(e) =>
-                setFilterStatus(e.target.value as "all" | "passed" | "failed")
+                {
+                  setFilterStatus(e.target.value as "all" | "passed" | "failed");
+                  setReportPage(1);
+                }
               }
               className="rounded-lg border theme-border-strong theme-surface px-2.5 py-1 text-xs theme-text-secondary focus:outline-hidden focus:ring-1 focus:ring-teal-500 cursor-pointer"
             >
@@ -403,9 +480,10 @@ export function QuizResultsView() {
             <select
               value={sortBy}
               onChange={(e) =>
-                setSortBy(
-                  e.target.value as "score_desc" | "score_asc" | "time_desc"
-                )
+                {
+                  setSortBy(e.target.value as "score_desc" | "score_asc" | "time_desc");
+                  setReportPage(1);
+                }
               }
               className="rounded-lg border theme-border-strong theme-surface px-2.5 py-1 text-xs theme-text-secondary focus:outline-hidden focus:ring-1 focus:ring-teal-500 cursor-pointer"
             >
@@ -416,6 +494,12 @@ export function QuizResultsView() {
           </div>
         </div>
       </div>
+
+      {reportError && (
+        <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          Không thể tải báo cáo: {reportError}
+        </div>
+      )}
 
       {/* Submissions Table */}
       <Card className="overflow-hidden theme-border shadow-xs">
@@ -438,11 +522,11 @@ export function QuizResultsView() {
             </thead>
 
             <tbody className="divide-y divide-neutral-100 font-medium">
-              {filteredResults.length > 0 ? (
-                filteredResults.map((item, idx) => (
+              {resultsForTable.length > 0 ? (
+                resultsForTable.map((item, idx) => (
                   <tr key={item.id} className="theme-hover-surface transition">
                     <td className="py-3 px-4 text-center font-mono theme-text-muted">
-                      {idx + 1}
+                      {(isQizzoneApiConfigured ? (report?.page ?? reportPage) - 1 : 0) * REPORT_PAGE_SIZE + idx + 1}
                     </td>
                     <td className="py-3 px-4 font-bold theme-text-primary">
                       {item.studentName}
@@ -499,7 +583,9 @@ export function QuizResultsView() {
               ) : (
                 <tr>
                   <td colSpan={11} className="py-12 text-center theme-text-muted">
-                    Chưa có học sinh nào nộp bài thi phù hợp với bộ lọc hiện tại.
+                    {reportLoading
+                      ? "Đang tải kết quả..."
+                      : "Chưa có học sinh nào nộp bài thi phù hợp với bộ lọc hiện tại."}
                   </td>
                 </tr>
               )}
@@ -507,6 +593,34 @@ export function QuizResultsView() {
           </table>
         </div>
       </Card>
+
+      {isQizzoneApiConfigured && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs theme-text-muted" aria-live="polite">
+            {reportLoading
+              ? "Đang cập nhật báo cáo..."
+              : `Trang ${report?.page ?? reportPage} / ${Math.max(report?.totalPages ?? 0, 1)} · ${report?.totalItems ?? 0} kết quả phù hợp`}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reportLoading || reportPage <= 1}
+              onClick={() => setReportPage((page) => Math.max(1, page - 1))}
+            >
+              Trước
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={reportLoading || reportPage >= (report?.totalPages ?? 0)}
+              onClick={() => setReportPage((page) => page + 1)}
+            >
+              Tiếp
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Student Detail Test Paper Modal */}
       {selectedResult && (

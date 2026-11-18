@@ -170,6 +170,14 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
         result.HasOne<ExamAttempt>().WithMany().HasForeignKey(item => item.AttemptId).OnDelete(DeleteBehavior.Restrict);
         result.Property(item => item.PayloadJson).HasColumnName("payload").HasColumnType("jsonb");
         result.Property(item => item.CreatedAt).HasColumnName("created_at");
+        result.Property(item => item.Score).HasColumnName("score")
+            .HasComputedColumnSql("NULLIF(payload ->> 'score', '')::numeric", stored: true);
+        result.Property(item => item.Percentage).HasColumnName("percentage")
+            .HasComputedColumnSql("NULLIF(payload ->> 'percentage', '')::numeric", stored: true);
+        result.Property(item => item.IsPassed).HasColumnName("is_passed")
+            .HasComputedColumnSql("NULLIF(payload ->> 'isPassed', '')::boolean", stored: true);
+        result.HasIndex(item => item.Score).HasDatabaseName("exam_results_score");
+        result.HasIndex(item => item.IsPassed).HasDatabaseName("exam_results_is_passed");
 
         var attemptMutation = modelBuilder.Entity<ExamAttemptMutation>();
         attemptMutation.ToTable("exam_attempt_mutations", table =>

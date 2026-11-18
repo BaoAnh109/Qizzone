@@ -1,5 +1,5 @@
 import { isQizzoneApiConfigured, qizzoneApi, rpc } from "@/lib/cloud";
-import type { ExamResult } from "@/types/exam";
+import type { ExamResult, QuizReportQuery, QuizResultsReport } from "@/types/exam";
 import type { OptionId } from "@/types/quiz";
 
 interface ApiExamAttempt {
@@ -46,6 +46,46 @@ export const examSessionService = {
   listResults: () => isQizzoneApiConfigured
     ? qizzoneApi<ExamResult[]>('/api/v1/exam-attempts/results')
     : rpc<unknown>("list_results"),
+  getQuizReport: (quizId: string, query: QuizReportQuery = {}) => {
+    if (!isQizzoneApiConfigured) {
+      throw new Error("Báo cáo phân trang chỉ khả dụng khi dùng Qizzone API.");
+    }
+    const params = new URLSearchParams();
+    if (query.page !== undefined) params.set("page", String(query.page));
+    if (query.pageSize !== undefined) params.set("pageSize", String(query.pageSize));
+    if (query.search) params.set("search", query.search);
+    if (query.status) params.set("status", query.status);
+    if (query.sortBy) params.set("sortBy", query.sortBy);
+    if (query.includeQuestionAnalytics !== undefined) {
+      params.set("includeQuestionAnalytics", String(query.includeQuestionAnalytics));
+    }
+    const queryString = params.toString();
+    return qizzoneApi<QuizResultsReport>(
+      `/api/v1/quizzes/${encodeURIComponent(quizId)}/reports${queryString ? `?${queryString}` : ""}`,
+    );
+  },
+  getAllQuizReportResults: async (
+    quizId: string,
+    query: Omit<QuizReportQuery, "page" | "pageSize"> = {},
+  ) => {
+    const firstPage = await examSessionService.getQuizReport(quizId, {
+      ...query,
+      page: 1,
+      pageSize: 100,
+      includeQuestionAnalytics: false,
+    });
+    const results = [...firstPage.items];
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await examSessionService.getQuizReport(quizId, {
+        ...query,
+        page,
+        pageSize: 100,
+        includeQuestionAnalytics: false,
+      });
+      results.push(...nextPage.items);
+    }
+    return results;
+  },
   startAttempt: async (quizId: string, studentClass?: string) => {
     if (isQizzoneApiConfigured) {
       return mapApiAttempt(await qizzoneApi<ApiExamAttempt>(`/api/v1/exam-attempts/quizzes/${quizId}`, {

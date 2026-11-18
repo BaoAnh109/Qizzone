@@ -64,3 +64,46 @@ export interface ExamResult {
   flaggedQuestionIds?: string[];
   submittedAt: string;
 }
+
+export interface QuizReportQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: "all" | "passed" | "failed";
+  sortBy?: "submitted_desc" | "score_asc" | "score_desc";
+  includeQuestionAnalytics?: boolean;
+}
+
+export interface QuizReportSummary {
+  totalSubmissions: number;
+  gradedSubmissions: number;
+  ungradedSubmissions: number;
+  averageScore: number;
+  maxScore: number;
+  minScore: number;
+  passedCount: number;
+  passRate: number;
+}
+
+export interface QuizQuestionAnalytics {
+  questionId: string;
+  order: number;
+  content: string;
+  options: OptionItem[];
+  attemptCount: number;
+  answeredCount: number;
+  correctCount: number;
+  skippedCount: number;
+  accuracyPercent: number;
+  optionCounts: Record<OptionId, number>;
+}
+
+export interface QuizResultsReport {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  summary: QuizReportSummary;
+  questionAnalytics: QuizQuestionAnalytics[];
+  items: ExamResult[];
+}

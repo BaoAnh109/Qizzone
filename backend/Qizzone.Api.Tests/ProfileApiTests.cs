@@ -546,6 +546,120 @@ public sealed class ProfileApiTests
         Assert.NotNull(submittedAttempt.SubmittedAt);
     }
 
+    [PostgresFact]
+    public async Task Quiz_reports_are_owner_scoped_paged_filterable_and_aggregated()
+    {
+        using var factory = new QizzoneApiFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QizzoneDbContext>();
+            db.Profiles.AddRange(
+                new Profile
+                {
+                    FirebaseUid = "teacher-1",
+                    Email = "teacher@example.test",
+                    FullName = "Test Teacher",
+                    Role = "teacher",
+                    ActiveRole = "teacher",
+                    ApprovalStatus = "approved",
+                    TeacherRequestStatus = "approved",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                },
+                new Profile
+                {
+                    FirebaseUid = "other-teacher-1",
+                    Email = "other-teacher@example.test",
+                    FullName = "Other Test Teacher",
+                    Role = "teacher",
+                    ActiveRole = "teacher",
+                    ApprovalStatus = "approved",
+                    TeacherRequestStatus = "approved",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow,
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using var teacherClient = factory.CreateClient();
+        teacherClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "teacher-test-token");
+        var createQuizResponse = await teacherClient.PostAsJsonAsync("/api/v1/quizzes", CreateQuizPayload());
+        Assert.Equal(HttpStatusCode.Created, createQuizResponse.StatusCode);
+        using var createdQuiz = JsonDocument.Parse(await createQuizResponse.Content.ReadAsStringAsync());
+        var quizId = createdQuiz.RootElement.GetProperty("id").GetString()!;
+
+        await SubmitQuizResultAsync("student-test-token", "A");
+        await SubmitQuizResultAsync("other-student-test-token", "B");
+
+        var reportResponse = await teacherClient.GetAsync($"/api/v1/quizzes/{quizId}/reports?page=1&pageSize=1&sortBy=score_desc");
+        Assert.Equal(HttpStatusCode.OK, reportResponse.StatusCode);
+        using var report = JsonDocument.Parse(await reportResponse.Content.ReadAsStringAsync());
+        var reportRoot = report.RootElement;
+        Assert.Equal(2, reportRoot.GetProperty("totalItems").GetInt32());
+        Assert.Equal(2, reportRoot.GetProperty("totalPages").GetInt32());
+        Assert.Single(reportRoot.GetProperty("items").EnumerateArray());
+        Assert.Equal(10m, reportRoot.GetProperty("items")[0].GetProperty("score").GetDecimal());
+        var summary = reportRoot.GetProperty("summary");
+        Assert.Equal(2, summary.GetProperty("totalSubmissions").GetInt32());
+        Assert.Equal(2, summary.GetProperty("gradedSubmissions").GetInt32());
+        Assert.Equal(5m, summary.GetProperty("averageScore").GetDecimal());
+        Assert.Equal(10m, summary.GetProperty("maxScore").GetDecimal());
+        Assert.Equal(0m, summary.GetProperty("minScore").GetDecimal());
+        Assert.Equal(1, summary.GetProperty("passedCount").GetInt32());
+        Assert.Equal(50m, summary.GetProperty("passRate").GetDecimal());
+        var question = Assert.Single(reportRoot.GetProperty("questionAnalytics").EnumerateArray());
+        Assert.Equal(2, question.GetProperty("attemptCount").GetInt32());
+        Assert.Equal(2, question.GetProperty("answeredCount").GetInt32());
+        Assert.Equal(1, question.GetProperty("correctCount").GetInt32());
+        Assert.Equal(1, question.GetProperty("optionCounts").GetProperty("A").GetInt32());
+        Assert.Equal(1, question.GetProperty("optionCounts").GetProperty("B").GetInt32());
+
+        var filteredResponse = await teacherClient.GetAsync($"/api/v1/quizzes/{quizId}/reports?search=Other&status=failed&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
+        using var filteredReport = JsonDocument.Parse(await filteredResponse.Content.ReadAsStringAsync());
+        var filteredItem = Assert.Single(filteredReport.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("Other Test Student", filteredItem.GetProperty("studentName").GetString());
+        Assert.Equal(0m, filteredItem.GetProperty("score").GetDecimal());
+
+        using var nonOwnerClient = factory.CreateClient();
+        nonOwnerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "other-teacher-test-token");
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await nonOwnerClient.GetAsync($"/api/v1/quizzes/{quizId}/reports")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await teacherClient.GetAsync($"/api/v1/quizzes/{quizId}/reports?page=0")).StatusCode);
+
+        async Task SubmitQuizResultAsync(string studentToken, string answer)
+        {
+            using var studentClient = factory.CreateClient();
+            studentClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", studentToken);
+            Assert.Equal(HttpStatusCode.OK, (await studentClient.GetAsync("/api/v1/me")).StatusCode);
+            var startResponse = await studentClient.PostAsync($"/api/v1/exam-attempts/quizzes/{quizId}", content: null);
+            Assert.Equal(HttpStatusCode.Created, startResponse.StatusCode);
+            using var attemptBody = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+            var attemptId = attemptBody.RootElement.GetProperty("id").GetString();
+            var questionId = attemptBody.RootElement.GetProperty("questions")[0].GetProperty("id").GetString()!;
+            var mutationId = Guid.NewGuid();
+            using var saveRequest = new HttpRequestMessage(HttpMethod.Put,
+                $"/api/v1/exam-attempts/{attemptId}/autosave")
+            {
+                Content = JsonContent.Create(new
+                {
+                    revision = 0,
+                    answers = new Dictionary<string, string[]> { [questionId] = [answer] },
+                    flaggedQuestionIds = Array.Empty<string>(),
+                    currentQuestionIndex = 0,
+                    mutationId,
+                    clientSequence = 1,
+                    writerSessionId = Guid.NewGuid().ToString(),
+                }),
+            };
+            saveRequest.Headers.Add("Idempotency-Key", mutationId.ToString());
+            Assert.Equal(HttpStatusCode.OK, (await studentClient.SendAsync(saveRequest)).StatusCode);
+            Assert.Equal(HttpStatusCode.OK,
+                (await studentClient.PostAsync($"/api/v1/exam-attempts/{attemptId}/submit", content: null)).StatusCode);
+        }
+    }
+
     [Fact]
     public async Task Practice_session_checks_answers_once_hides_question_keys_and_supports_wrong_answer_retry()
     {

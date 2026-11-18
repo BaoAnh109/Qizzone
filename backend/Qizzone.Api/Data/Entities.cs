@@ -102,6 +102,9 @@ public sealed class ExamResult
     public Guid AttemptId { get; set; }
     public string PayloadJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }
+    public decimal? Score { get; private set; }
+    public decimal? Percentage { get; private set; }
+    public bool? IsPassed { get; private set; }
 }
 
 public sealed class ExamAttemptMutation

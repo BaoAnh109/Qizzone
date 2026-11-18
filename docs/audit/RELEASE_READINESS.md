@@ -13,6 +13,7 @@
 - Added email verification status/resend UX and tests, plus API URL validation for HTTPS or local loopback HTTP.
 - Added a PostgreSQL-backed Gemini worker for extraction and answer solving, bounded retries/lease recovery, teacher ownership, source-image validation, per-user quotas, request idempotency and prompt/image retention cleanup.
 - Added IndexedDB exam snapshots/outbox, coalescing for unsent edits, stable mutation IDs, ordered retry/ack, revision conflict preservation and deadline warning UX; the API deduplicates committed mutations and the worker expires dedupe rows after 30 days.
+- Added an owner-scoped teacher report API with server-side aggregates, search/status filters, pagination and question analytics; the teacher page uses server pagination and fetches all filtered rows for CSV export. The PostgreSQL integration test awaits CI.
 - Added worker/API contract tests and migration/audit documentation. CI applied EF migrations to isolated PostgreSQL 17 schemas; the generated idempotent deployment script has not been run against the intended target database.
 
 ## CI and local validation
@@ -47,7 +48,7 @@ Security metadata review found RLS enabled across the business tables, with no d
 
 | Gate | Status | Missing proof |
 |---|---|---|
-| Feature | **FAIL** | Autosave local outbox and API idempotency are implemented and unit/API-tested; uploads/storage, teacher reports/classes, full API parity and Supabase runtime migration remain |
+| Feature | **FAIL** | Autosave and teacher reports are implemented and locally validated; uploads/storage, classroom and join-by-code lifecycle, broader API parity and Supabase runtime migration remain |
 | Data | **FAIL** | Production inventory/export/import, UID mapping, reconciliation, PostgreSQL rehearsal and restore |
 | Security | **PARTIAL** | API enforces teacher ownership, image signature/size, quota and idempotency; no malware scanning, broader PostgreSQL ownership/concurrency suite, external review or complete secret-rotation evidence |
 | Quality | **FAIL** | Frontend CI passed (165 tests, 24 skipped), npm audit reported 0 vulnerabilities, 18 API tests passed on ephemeral PostgreSQL 17 (including a two-host 100-submit concurrency test), 6 worker tests passed with mocked Gemini, and API/worker images built for both architectures in run #158; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
@@ -55,7 +56,7 @@ Security metadata review found RLS enabled across the business tables, with no d
 
 ## Hosting decision
 
-The signed-in Edge dashboard currently shows a Free team with one empty project, no Qizzone services/database, and no secret group. Northflank documentation says its free tier is for testing/hobby projects and should not be used for production. The dashboard warns that user-defined credentials created before Oct 30 are in scope; the owner directed reuse without rotation, but no backend credentials are available in this project or the inspected local app configuration. No secret was copied or entered, no resource was created, and no DNS/traffic changed.
+The signed-in Edge dashboard currently shows a Free team with one empty project, no Qizzone services/database, and no secret group. Northflank documentation says its free tier is for testing/hobby projects and should not be used for production. The dashboard warns that user-defined credentials created before Oct 30 are in scope. The owner directed reuse without rotation and clarified that the old credentials are in another Northflank team/project; that location is not yet identified. No secret was copied or entered, no resource was created, and no DNS/traffic changed.
 
 ## Required before deployment
 

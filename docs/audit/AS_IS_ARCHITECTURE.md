@@ -19,9 +19,9 @@ Frontend vẫn là React + TypeScript + Vite, Firebase Authentication và Supaba
 | Đăng nhập | Firebase Auth phía client; API mới xác minh Firebase ID token qua Firebase Admin và yêu cầu email đã xác minh cho endpoint nghiệp vụ |
 | Backend mới | ASP.NET Core 10 API, minimal endpoints, policy authorization, ProblemDetails, health live/ready, OpenAPI Development-only |
 | PostgreSQL mới | EF Core/Npgsql entity model và migrations cho profile, quiz, answer keys, exam, practice, audit, AI jobs/outbox; migrations đã chạy trên PostgreSQL 17 ephemeral trong CI, chưa rehearsal với staging/production target |
-| Endpoint API | Profile/role/admin, quiz CRUD/assignment/status, exam start/autosave/submit/student and owned-quiz results, practice start/check/finish/retry/history, durable AI import jobs |
+| Endpoint API | Profile/role/admin, quiz CRUD/assignment/status/reports, exam start/autosave/submit/student and owned-quiz results, practice start/check/finish/retry/history, durable AI import jobs |
 | Frontend migration | `firebaseAuthService`, `adminService`, `quizService`, `examSessionService`, `practiceService` có API branch và Supabase fallback |
-| Dịch vụ chưa chuyển | Upload/avatar/media, teacher reports/analytics, một số account settings và legacy migration vẫn phụ thuộc Supabase Edge/Storage/RPC; Gemini API branch có worker nhưng chưa cutover |
+| Dịch vụ chưa chuyển | Upload/avatar/media, một số account settings và legacy migration vẫn phụ thuộc Supabase Edge/Storage/RPC; reports API is partial and Gemini API branch has not cut over |
 | Container/CI | Có Dockerfiles API và worker; run #158 build thành công cả hai image cho linux/amd64 và linux/arm64; workflow chạy frontend/backend audit, tests và build; chưa publish image hoặc deploy |
 | Data migration | Schema đích và bảng checkpoint có source code, nhưng chưa có exporter/importer/reconciliation chạy thật |
 
@@ -40,7 +40,7 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 
 - PostgreSQL-backed AI worker chưa chạy với database hoặc Gemini live; cần staging rehearsal cho lease/retry/retention/quota. API xóa prompt/ảnh khi job terminal.
 - Media/avatar upload và storage portable; inventory/transfer object chưa làm.
-- Reports/analytics cho giáo viên, lớp/phòng thi, exports và đầy đủ contract parity.
+- Classroom/join-by-code lifecycle and broader API contract parity.
 - Browser E2E cho IndexedDB outbox/ACK/replay, Web Lock thực giữa các tab, conflict nhiều thiết bị, quota failure và mạng chập chờn; local tests đã kiểm tra fail-closed lock path nhưng chưa chạy browser/PostgreSQL thật.
 - Import dữ liệu Supabase/Storage/Firebase mapping, kiểm tra legacy localStorage và đối soát counts/checksums.
 - PostgreSQL migration/API integration: GitHub Actions run [#158](https://github.com/BaoAnh109/Qizzone/actions/runs/44099953969) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; có kiểm thử 100 submit requests qua hai API host độc lập. Vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
@@ -59,4 +59,4 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 
 ## Deploy hiện tại
 
-Phiên Edge của chủ dự án hiển thị team Free và project `Default` không có service, database addon hoặc secret group. Cấu hình `.env` local hiện có chỉ gồm biến `VITE_*` phía trình duyệt; backend connection string, Firebase Admin credential và Gemini key chưa có trong môi trường được kiểm tra. Chủ dự án yêu cầu dùng secrets cũ, không tạo mới; cần chỉ ra nơi lưu credentials backend hiện có trước khi API/worker có thể khởi động. Chưa có deploy production.
+Phiên Edge của chủ dự án hiển thị team Free và project `Default` không có service, database addon hoặc secret group. Cấu hình `.env` local hiện có chỉ gồm biến `VITE_*` phía trình duyệt; backend connection string, Firebase Admin credential và Gemini key chưa có trong môi trường được kiểm tra. Chủ dự án xác nhận các secrets cũ nằm trong một Northflank team/project khác; vị trí chính xác cần được tìm trước khi API/worker có thể khởi động. Chưa có deploy production.

@@ -20,6 +20,7 @@ public static class QuizEndpoints
 
         group.MapGet("/", ListAsync);
         group.MapGet("/{id:guid}", GetAsync);
+        group.MapGet("/{id:guid}/reports", GetResultsReportAsync).RequireAuthorization("Teacher");
         group.MapPost("/", CreateAsync).RequireAuthorization("Teacher");
         group.MapPut("/{id:guid}", UpdateAsync).RequireAuthorization("Teacher");
         group.MapDelete("/{id:guid}", DeleteAsync).RequireAuthorization("Teacher");
@@ -91,6 +92,196 @@ public static class QuizEndpoints
             .SingleOrDefaultAsync(cancellationToken);
 
         return Results.Ok(ToResponse(quiz, teacherName, canSeeAnswerKey));
+    }
+
+    private static async Task<IResult> GetResultsReportAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        QizzoneDbContext db,
+        int? page,
+        int? pageSize,
+        string? search,
+        string? status,
+        string? sortBy,
+        bool? includeQuestionAnalytics,
+        CancellationToken cancellationToken)
+    {
+        var pageNumber = page ?? 1;
+        var pageLimit = pageSize ?? 25;
+        var searchTerm = search?.Trim();
+        var resultStatus = (status ?? "all").Trim().ToLowerInvariant();
+        var sort = (sortBy ?? "submitted_desc").Trim().ToLowerInvariant();
+        var validationErrors = new Dictionary<string, string[]>();
+        if (pageNumber < 1) validationErrors["page"] = ["Page must be at least 1."];
+        if (pageLimit is < 1 or > 100) validationErrors["pageSize"] = ["Page size must be between 1 and 100."];
+        if (pageLimit > 0 && pageNumber > int.MaxValue / pageLimit)
+            validationErrors["page"] = ["Page is too large."];
+        if (searchTerm?.Length > 100) validationErrors["search"] = ["Search cannot exceed 100 characters."];
+        if (resultStatus is not ("all" or "passed" or "failed"))
+            validationErrors["status"] = ["Status must be all, passed, or failed."];
+        if (sort is not ("submitted_desc" or "score_asc" or "score_desc"))
+            validationErrors["sortBy"] = ["Sort must be submitted_desc, score_asc, or score_desc."];
+        if (validationErrors.Count > 0) return Results.ValidationProblem(validationErrors);
+
+        var uid = principal.FindFirst("firebase:uid")!.Value;
+        var isAdmin = HasRole(principal, "admin");
+        var quiz = await db.Quizzes.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (quiz is null || (!isAdmin && quiz.TeacherUid != uid)) return Results.NotFound();
+
+        var reportQuery =
+            from result in db.ExamResults.AsNoTracking()
+            join attempt in db.ExamAttempts.AsNoTracking() on result.AttemptId equals attempt.Id
+            where attempt.QuizId == id
+            select new { Result = result, Attempt = attempt };
+
+        var reportSummary = await reportQuery
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                TotalSubmissions = group.Count(),
+                GradedSubmissions = group.Count(item => item.Result.Score != null && item.Result.IsPassed != null),
+                AverageScore = group.Average(item => item.Result.Score),
+                MaximumScore = group.Max(item => item.Result.Score),
+                MinimumScore = group.Min(item => item.Result.Score),
+                PassedCount = group.Count(item => item.Result.IsPassed == true),
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        var filteredQuery = reportQuery;
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.ToLowerInvariant();
+            filteredQuery = filteredQuery.Where(item =>
+                item.Attempt.StudentName.ToLower().Contains(normalizedSearch) ||
+                (item.Attempt.StudentClass != null && item.Attempt.StudentClass.ToLower().Contains(normalizedSearch)));
+        }
+
+        if (resultStatus == "passed") filteredQuery = filteredQuery.Where(item => item.Result.IsPassed == true);
+        if (resultStatus == "failed") filteredQuery = filteredQuery.Where(item => item.Result.IsPassed == false);
+
+        var totalItems = await filteredQuery.CountAsync(cancellationToken);
+        var sortedQuery = sort switch
+        {
+            "score_asc" => filteredQuery.OrderBy(item => item.Result.Score == null)
+                .ThenBy(item => item.Result.Score)
+                .ThenByDescending(item => item.Result.CreatedAt),
+            "score_desc" => filteredQuery.OrderBy(item => item.Result.Score == null)
+                .ThenByDescending(item => item.Result.Score)
+                .ThenByDescending(item => item.Result.CreatedAt),
+            _ => filteredQuery.OrderByDescending(item => item.Result.CreatedAt),
+        };
+        var payloads = await sortedQuery
+            .Skip((pageNumber - 1) * pageLimit)
+            .Take(pageLimit)
+            .Select(item => item.Result.PayloadJson)
+            .ToListAsync(cancellationToken);
+        var items = payloads
+            .Select(payload => JsonNode.Parse(payload)?.AsObject() ?? new JsonObject())
+            .ToList();
+        List<QuestionAnalyticsResponse> questionAnalytics = includeQuestionAnalytics == false
+            ? []
+            : await BuildQuestionAnalyticsAsync(id, db, cancellationToken);
+        var totalSubmissions = reportSummary?.TotalSubmissions ?? 0;
+        var gradedSubmissions = reportSummary?.GradedSubmissions ?? 0;
+        var passedCount = reportSummary?.PassedCount ?? 0;
+
+        return Results.Ok(new
+        {
+            page = pageNumber,
+            pageSize = pageLimit,
+            totalItems,
+            totalPages = (int)Math.Ceiling(totalItems / (double)pageLimit),
+            summary = new
+            {
+                totalSubmissions,
+                gradedSubmissions,
+                ungradedSubmissions = totalSubmissions - gradedSubmissions,
+                averageScore = reportSummary?.AverageScore ?? 0,
+                maxScore = reportSummary?.MaximumScore ?? 0,
+                minScore = reportSummary?.MinimumScore ?? 0,
+                passedCount,
+                passRate = gradedSubmissions == 0 ? 0 : Math.Round(passedCount * 100m / gradedSubmissions, 2),
+            },
+            questionAnalytics,
+            items,
+        });
+    }
+
+    private static async Task<List<QuestionAnalyticsResponse>> BuildQuestionAnalyticsAsync(
+        Guid quizId,
+        QizzoneDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var questions = await db.Questions.AsNoTracking()
+            .Where(item => item.QuizId == quizId)
+            .OrderBy(item => item.Ordinal)
+            .Select(item => new
+            {
+                item.Id,
+                item.Ordinal,
+                item.Content,
+                item.OptionsJson,
+            })
+            .ToListAsync(cancellationToken);
+        var analytics = questions.ToDictionary(
+            item => item.Id.ToString(),
+            item => new QuestionAnalyticsAccumulator(
+                item.Id.ToString(),
+                item.Ordinal,
+                item.Content,
+                DeserializeOptions(item.OptionsJson)));
+
+        var resultPayloads =
+            from result in db.ExamResults.AsNoTracking()
+            join attempt in db.ExamAttempts.AsNoTracking() on result.AttemptId equals attempt.Id
+            where attempt.QuizId == quizId
+            select result.PayloadJson;
+        await foreach (var payload in resultPayloads.AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            using var document = JsonDocument.Parse(payload);
+            if (!document.RootElement.TryGetProperty("details", out var details) || details.ValueKind != JsonValueKind.Array)
+                continue;
+
+            foreach (var detail in details.EnumerateArray())
+            {
+                if (!detail.TryGetProperty("questionId", out var questionIdValue) ||
+                    questionIdValue.ValueKind != JsonValueKind.String ||
+                    !analytics.TryGetValue(questionIdValue.GetString()!, out var item))
+                {
+                    continue;
+                }
+
+                item.AttemptCount++;
+                var selectedAnswers = detail.TryGetProperty("selectedAnswers", out var selectedValue) &&
+                    selectedValue.ValueKind == JsonValueKind.Array
+                    ? selectedValue.EnumerateArray()
+                        .Where(value => value.ValueKind == JsonValueKind.String)
+                        .Select(value => value.GetString()!)
+                        .ToArray()
+                    : [];
+                if (selectedAnswers.Length == 0) item.SkippedCount++;
+                else item.AnsweredCount++;
+                if (detail.TryGetProperty("isCorrect", out var correctValue) && correctValue.ValueKind == JsonValueKind.True)
+                    item.CorrectCount++;
+                foreach (var answer in selectedAnswers)
+                {
+                    if (item.OptionCounts.TryGetValue(answer, out var count)) item.OptionCounts[answer] = count + 1;
+                }
+            }
+        }
+
+        return analytics.Values.Select(item => new QuestionAnalyticsResponse(
+            item.QuestionId,
+            item.Order,
+            item.Content,
+            item.Options,
+            item.AttemptCount,
+            item.AnsweredCount,
+            item.CorrectCount,
+            item.SkippedCount,
+            item.AttemptCount == 0 ? 0 : (int)Math.Round(item.CorrectCount * 100d / item.AttemptCount),
+            item.OptionCounts)).ToList();
     }
 
     private static async Task<IResult> CreateAsync(
@@ -558,6 +749,41 @@ public static class QuizEndpoints
         DetailsJson = JsonSerializer.Serialize(details, JsonOptions),
         CreatedAt = DateTimeOffset.UtcNow,
     };
+
+    private sealed class QuestionAnalyticsAccumulator(
+        string questionId,
+        int order,
+        string content,
+        List<OptionResponse> options)
+    {
+        public string QuestionId { get; } = questionId;
+        public int Order { get; } = order;
+        public string Content { get; } = content;
+        public List<OptionResponse> Options { get; } = options;
+        public int AttemptCount { get; set; }
+        public int AnsweredCount { get; set; }
+        public int CorrectCount { get; set; }
+        public int SkippedCount { get; set; }
+        public Dictionary<string, int> OptionCounts { get; } = new(StringComparer.Ordinal)
+        {
+            ["A"] = 0,
+            ["B"] = 0,
+            ["C"] = 0,
+            ["D"] = 0,
+        };
+    }
+
+    public sealed record QuestionAnalyticsResponse(
+        string QuestionId,
+        int Order,
+        string Content,
+        List<OptionResponse> Options,
+        int AttemptCount,
+        int AnsweredCount,
+        int CorrectCount,
+        int SkippedCount,
+        int AccuracyPercent,
+        Dictionary<string, int> OptionCounts);
 
     private static bool HasRole(ClaimsPrincipal principal, string role) =>
         principal.FindAll("qizzone:role").Any(claim => claim.Value == role);

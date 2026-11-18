@@ -9,7 +9,7 @@
 
 The signed-in Northflank account has a Free team and a project named `Default`. The project has no services, PostgreSQL addon, or secret groups. The dashboard is in the US Central region. The project therefore has no existing backend secret group to reuse.
 
-The dashboard warns that user-defined credentials created before October 30 are in scope of the Northflank incident. The owner instructed that existing secrets be reused and not recreated. The only local `.env` found is in the untracked nested app copy and contains client-side `VITE_*` Firebase/Supabase configuration; it does not contain the API database connection, Firebase Admin service account, or Gemini worker key. No secret values were copied, rotated, or entered.
+The dashboard warns that user-defined credentials created before October 30 are in scope of the Northflank incident. The owner instructed that existing secrets be reused and not recreated, and clarified that they are in another Northflank team/project. That source has not yet been located. The only local `.env` found is in the untracked nested app copy and contains client-side `VITE_*` Firebase/Supabase configuration; it does not contain the API database connection, Firebase Admin service account, or Gemini worker key. No secret values were copied, rotated, or entered.
 
 ## Build configuration
 
@@ -43,7 +43,7 @@ The live Supabase migration history differs from the checkout for avatar storage
 
 ## Remaining gates
 
-- Locate the existing backend credentials and database connection the owner requested be reused. The current Northflank project has no secret group or database addon.
+- Locate the other Northflank team/project that holds the existing backend credentials and database connection. The currently inspected `Default` project has no secret group or database addon.
 - Obtain a deployable staging PostgreSQL connection and run target migration/rollback rehearsal.
 - Deploy API and worker, then verify health endpoints, Firebase identity, private database networking, and a controlled Gemini job.
 - Finish remaining feature parity, data reconciliation, browser E2E, load/failure tests, backup/restore, observability, and rollback evidence before production cutover.

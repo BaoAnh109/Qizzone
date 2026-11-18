@@ -441,15 +441,39 @@ namespace Qizzone.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool?>("IsPassed")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_passed")
+                        .HasComputedColumnSql("NULLIF(payload ->> 'isPassed', '')::boolean", true);
+
                     b.Property<string>("PayloadJson")
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("payload");
 
+                    b.Property<decimal?>("Percentage")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("numeric")
+                        .HasColumnName("percentage")
+                        .HasComputedColumnSql("NULLIF(payload ->> 'percentage', '')::numeric", true);
+
+                    b.Property<decimal?>("Score")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("numeric")
+                        .HasColumnName("score")
+                        .HasComputedColumnSql("NULLIF(payload ->> 'score', '')::numeric", true);
+
                     b.HasKey("Id");
 
                     b.HasIndex("AttemptId")
                         .IsUnique();
+
+                    b.HasIndex("IsPassed")
+                        .HasDatabaseName("exam_results_is_passed");
+
+                    b.HasIndex("Score")
+                        .HasDatabaseName("exam_results_score");
 
                     b.ToTable("exam_results", null, t =>
                         {

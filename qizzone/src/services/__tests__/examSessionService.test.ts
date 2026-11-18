@@ -133,4 +133,52 @@ describe("examSessionService", () => {
     expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(6, "/api/v1/exam-attempts/finalize-expired", { method: "POST" });
     expect(rpc).not.toHaveBeenCalled();
   });
+
+  it("loads a filtered, paged quiz report from the API", async () => {
+    mocks.apiConfigured = true;
+    const report = {
+      page: 2,
+      pageSize: 25,
+      totalItems: 26,
+      totalPages: 2,
+      summary: { totalSubmissions: 26 },
+      questionAnalytics: [],
+      items: [{ id: "result-26" }],
+    };
+    mocks.qizzoneApi.mockResolvedValueOnce(report);
+
+    await expect(examSessionService.getQuizReport("quiz 1", {
+      page: 2,
+      pageSize: 25,
+      search: "An Student",
+      status: "failed",
+      sortBy: "score_desc",
+    })).resolves.toBe(report);
+
+    expect(mocks.qizzoneApi).toHaveBeenCalledWith(
+      "/api/v1/quizzes/quiz%201/reports?page=2&pageSize=25&search=An+Student&status=failed&sortBy=score_desc",
+    );
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("fetches every page when the teacher exports quiz results", async () => {
+    mocks.apiConfigured = true;
+    mocks.qizzoneApi
+      .mockResolvedValueOnce({ totalPages: 2, items: [{ id: "result-1" }] })
+      .mockResolvedValueOnce({ totalPages: 2, items: [{ id: "result-2" }] });
+
+    await expect(examSessionService.getAllQuizReportResults("quiz-1", {
+      status: "passed",
+      sortBy: "score_asc",
+    })).resolves.toEqual([{ id: "result-1" }, { id: "result-2" }]);
+
+    expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(
+      1,
+      "/api/v1/quizzes/quiz-1/reports?page=1&pageSize=100&status=passed&sortBy=score_asc&includeQuestionAnalytics=false",
+    );
+    expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/quizzes/quiz-1/reports?page=2&pageSize=100&status=passed&sortBy=score_asc&includeQuestionAnalytics=false",
+    );
+  });
 });
