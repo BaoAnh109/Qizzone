@@ -2,14 +2,16 @@
 
 **Product:** Qizzone
 **Working branch:** `feat/qizzone-v2-backend-aiv3` (local worktree)
-**Reviewed revision:** `3c5199581f72046e2595d865be18cc9567785657`
-**Status:** Local worktree changes are uncommitted and are not covered by the reviewed revision or CI run #161. Not deployed; Free Sandbox can only be considered for isolated testing. Owner's out-of-pocket limit is $0, and Northflank says its Sandbox should not be used for production.
+**Reviewed revision:** `c036103f4ebcbb1c9e80beeb4190d74518345990`
+**Status:** Northflank staging resources exist in `Default`. PostgreSQL is running; API and worker are paused with CI/CD off. Both images built successfully for this revision, but neither image has been deployed. The migration job has not run. The $0 out-of-pocket limit remains in force; Northflank says Sandbox is for testing, not production. Vercel production has not been changed.
 
 ## Current platform state
 
-The last signed-in Northflank check showed one visible team, `Cryzy's Team` (Free), and one project named `Default`. The personal account had no organizations or other visible team. The project region is US Central (Council Bluffs). The owner clarified that no old Northflank project exists and asked to build the environment from scratch. The owner selected a $0 out-of-pocket limit: use only the Free Sandbox's included allowance, and do not proceed with any configuration whose usage or add-on charges could exceed it. Northflank's billing overview showed $0 usage against a $50 billing threshold; that threshold is not authorization to spend or a hard spending cap. The project creation form previously reported the free PaaS project limit reached, so `Default` is the only known project to reuse. Current public quota descriptions conflict: the [pricing page](https://northflank.com/pricing) lists two free projects, while [create-project docs](https://northflank.com/docs/v1/application/getting-started/create-a-project) say one project. Edge was unavailable for a fresh account check during this review; do not rely on another project slot until the dashboard confirms it.
+The signed-in Northflank account shows one visible team, `Cryzy's Team` (Free), and one project named `Default`, in US Central (Council Bluffs). No old project exists in this account. The owner selected a $0 out-of-pocket limit: use only the Free Sandbox allowance and do not knowingly choose a configuration that may exceed it. The $50 billing threshold is not a hard spending cap. Public quota descriptions conflict: the [pricing page](https://northflank.com/pricing) lists two free projects, while [create-project docs](https://northflank.com/docs/v1/application/getting-started/create-a-project) say one project; keep using the confirmed `Default` project.
 
-Northflank marked the [security incident](https://status.northflank.com/cmvv0rn5a092f14rutwccodpp) resolved on November 17, 2026 at 17:24 UTC; the independent forensic review continues. Northflank asks users to rotate all project and integration secrets and review provider logs. No old Northflank project exists in the signed-in account, so backend credentials must be newly provisioned. The only local `.env` found is in the untracked nested app copy and contains client-side `VITE_*` Firebase/Supabase configuration; it does not contain the API database connection, Firebase Admin service account, or Gemini worker key. Four Northflank secret/config groups now contain names only; every value remains blank. No new secret values have been generated, copied, or entered.
+Northflank marked the [security incident](https://status.northflank.com/cmvv0rn5a092f14rutwccodpp) resolved on November 17, 2026 at 17:24 UTC; its independent forensic review continues. A staging exception exposed a PostgreSQL connection URI in Northflank logs. The credential is intentionally omitted from this file and chat; the owner must rotate the database credential in Northflank before either service is resumed. Do not inspect or copy the old value. The local nested app `.env` contains client-side `VITE_*` settings only; it does not contain Firebase Admin credentials or the Gemini worker key.
+
+Current staging state: addon `qizzone-postgres-staging` is PostgreSQL 17, private-only with TLS, one `nf-compute-20` instance, and a 6 GiB disk. API and worker are at 0 instances with CI and CD disabled. Their previous deployed build was `b382ae7`; that build is stopped. Northflank successfully built the API (`dependent-grain-8592`) and worker (`miniature-eagle-3361`) from `c036103`; these are build artifacts only. Production Vercel was not modified.
 
 ## Build configuration
 
@@ -17,7 +19,7 @@ CI run [#161](https://github.com/BaoAnh109/Qizzone/actions/runs/44113974572) pas
 
 The latest PostgreSQL-backed local backend Release suite passed all 37 API and 7 worker tests with zero skips against temporary native PostgreSQL 17.12, including schedule transitions, JSONB assignment filtering, two-host submit contention, five-option constraints, owner-only avatar assignment, quiz/practice row-lock regressions, API cancellation, and worker abort of a mocked in-flight Gemini request. The regenerated 14-migration idempotent script applied twice on a disposable database; the schedule rollback removed its columns/history row and reapplying restored them. The migration CLI's synthetic fixture rehearsal (`backend/Qizzone.MigrationTool/Run-SyntheticRehearsal.ps1`) also passed, preserving a resumable open attempt with a null deadline, answer, and revision. This is local evidence only; no Northflank service/database or hosted-target migration/rollback rehearsal exists.
 
-After a new isolated PostgreSQL database and fresh runtime credentials are provisioned, configure repository-backed services as follows:
+The isolated PostgreSQL database and repository-backed services have been provisioned. Configure or verify them as follows:
 
 | Service | Build context | Dockerfile | Ingress / health |
 |---|---|---|---|
@@ -28,7 +30,7 @@ Both services must use the same private PostgreSQL connection. Do not expose Pos
 
 ## Required runtime configuration
 
-The following Northflank groups are prepared in `Default`; all values are blank. Keep the Firebase Admin credential API-only and the Gemini key worker-only. Do not put secrets in Git, images, or logs. The owner confirmed there is no previous project or secret store, so backend credentials must be freshly created in their provider consoles.
+The following Northflank groups exist in `Default`. Keep the Firebase Admin credential API-only and the Gemini key worker-only. Store secret values only in Northflank; never put them in Git, images, chat, or logs. Backend credentials must be obtained from their provider consoles because there is no old project or secret store.
 
 | Group | Type | Scope | Attach to | Names already present |
 |---|---|---|---|---|
@@ -39,14 +41,14 @@ The following Northflank groups are prepared in `Default`; all values are blank.
 
 Do not create an empty `ConnectionStrings__Qizzone` value. Once the private PostgreSQL addon exists, link its connection details to the API and worker groups so the platform supplies the connection string. `Media__RootPath` must match the API's persistent volume mount; choose and fill it only after the volume exists.
 
-All four groups are still project-unrestricted and are not attached to any workload. When API and worker services exist, restrict and attach the two API groups only to `qizzone-api` and the two worker groups only to `qizzone-worker` before entering credentials.
+The four application groups are restricted to one service each: the two API groups to `qizzone-api`, and the two worker groups to `qizzone-worker`. `qizzone-postgres-runtime` is restricted to those two services and linked to the addon; it is not yet available to `qizzone-migrate-staging`. The migration job's access must be approved at action time before that restriction is expanded.
 
 | Workload | Required names |
 |---|---|
 | API | Linked private `ConnectionStrings__Qizzone`; `Firebase__ProjectId`; `FIREBASE_SERVICE_ACCOUNT_JSON` (or ADC); `Cors__AllowedOrigins__0`; `AllowedHosts`; `Admin__BootstrapUids__0`; `ASPNETCORE_ENVIRONMENT=Staging`; `Media__RootPath` plus a persistent volume mounted at the same path |
 | Worker | Linked private `ConnectionStrings__Qizzone`; `Gemini__ApiKey`; `Gemini__Model`; `DOTNET_ENVIRONMENT=Staging` |
 
-The API fails its production startup checks when database, Firebase Admin, allowed-origin/host, persistent media path, or bootstrap-admin configuration is missing. The worker validates its Gemini key and model at startup. `deploy/.env.pilot.example` contains placeholders only.
+The API fails its production startup checks when database, Firebase Admin, allowed-origin/host, media path, or bootstrap-admin configuration is missing. The worker validates its Gemini key and model at startup. `Media__RootPath` is currently `/data/media`, but the Free project rejected the persistent-volume request (minimum 6 GiB at the displayed rate and no volume slot available). Treat uploaded files there as ephemeral; do not use this setup for durable user uploads. `deploy/.env.pilot.example` contains placeholders only.
 
 ## Free Sandbox sizing candidate
 
@@ -54,7 +56,7 @@ The PostgreSQL 17 creation form in the existing `Default` project defaulted to o
 
 ## Database migration gate
 
-The API does not apply EF migrations automatically at startup. CI and the latest local test suite have applied EF migrations to isolated PostgreSQL 17 schemas, but no target database exists in the current Northflank project. The local `deploy/migrations/qizzone-idempotent.sql` companion currently contains all 14 migration IDs in this worktree; it is uncommitted and unapplied. Re-review it against the exact clean release revision and apply it only to a disposable staging database. Do not run it against the live Supabase source.
+The API does not apply EF migrations automatically at startup. CI and the local suite have applied EF migrations to isolated PostgreSQL 17 schemas. The Northflank target database now exists, but `deploy/migrations/qizzone-idempotent.sql` has not been run against it. The manual job `qizzone-migrate-staging` has no runs and currently lacks access to `qizzone-postgres-runtime`. Before running it, the owner must rotate the exposed database credential and explicitly approve granting this job access to that group. Apply only to this disposable staging database; never run it against the live Supabase source. The owner requested no database backup schedules.
 
 The live Supabase migration history differs from the checkout for avatar storage, and the local question-media migration is not present in live history. Resolve that drift and complete export/reconciliation/backup/restore rehearsal before any data cutover.
 
@@ -67,4 +69,4 @@ The live Supabase migration history differs from the checkout for avatar storage
 - Deploy API and worker, then verify health endpoints, Firebase identity, private database networking, and a controlled Gemini job.
 - Finish remaining feature parity, data reconciliation, browser E2E, load/failure tests, backup/restore, observability, and rollback evidence before production cutover.
 
-The Northflank [Free Sandbox is intended for testing and should not be used for production](https://northflank.com/docs/v1/application/billing/pricing-on-northflank). The pricing page advertises up to $20/month of free resources and says no card is needed, while the detailed billing guide says every user must add a payment method before creating resources. The [billing-threshold guide](https://northflank.com/docs/v1/application/billing/billing-thresholds) lists $50 as the default threshold, applies credits to invoices, and charges any remainder to the payment method; this is not a hard spending cap. Northflank also says the threshold cannot be set below credits previously purchased. Since the owner set a $0 out-of-pocket cap and the resource estimate leaves little room for metered build/log/egress/storage costs, the sandbox cannot currently be provisioned with a verified zero-charge boundary. No metered workload resources are being created. The Free Sandbox does not meet the production release gates in `docs/audit/RELEASE_READINESS.md`. No production URL, DNS change, data cutover, or Northflank workload deployment is recorded by this runbook.
+The Northflank [Free Sandbox is intended for testing and should not be used for production](https://northflank.com/docs/v1/application/billing/pricing-on-northflank). The pricing page advertises up to $20/month of free resources, while billing documentation says overages can be charged to a payment method; the $50 threshold is not a hard cap. The database remains active and the two short image builds completed, so check the account's billing/usage page; the $0 out-of-pocket goal cannot be guaranteed by the threshold setting. The persistent media volume is unavailable in this project. The release gates in `docs/audit/RELEASE_READINESS.md` remain open. No production URL, DNS change, data cutover, or Vercel production deployment was performed; the Northflank API and worker are paused, and the `c036103` images are not deployed.
