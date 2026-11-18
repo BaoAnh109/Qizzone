@@ -19,20 +19,21 @@
 
 | Check | Result | Scope/limit |
 |---|---|---|
-| Frontend Vitest | 165 passed, 24 skipped; 33 files passed, 2 skipped | GitHub Actions run #153, source app only; nested user copy excluded |
-| TypeScript `tsc -b` | Passed | GitHub Actions run #153; no browser E2E |
-| ESLint `eslint src` | Passed | GitHub Actions run #153 |
-| Vite production build | Passed | GitHub Actions run #153; static bundle, no production env values |
-| NPM dependency audit | Passed; 0 vulnerabilities | GitHub Actions run #153, `npm audit --audit-level=high` |
-| .NET API integration tests | 17 passed against PostgreSQL 17 | GitHub Actions run #153; ephemeral service and isolated per-test schemas, not the intended staging/production database |
-| .NET worker tests | 6 passed | GitHub Actions run #153; Gemini HTTP is mocked |
-| .NET solution Release build | Passed | GitHub Actions run #153; API and worker compile; no Docker image build |
-| PostgreSQL CI path | Passed remotely | Run #153 starts PostgreSQL 17 and applies EF migrations in isolated schemas; no target-environment migration or rollback rehearsal |
+| Frontend Vitest | 165 passed, 24 skipped; 33 files passed, 2 skipped | GitHub Actions run #155, source app only; nested user copy excluded |
+| TypeScript `tsc -b` | Passed | GitHub Actions run #155; no browser E2E |
+| ESLint `eslint src` | Passed | GitHub Actions run #155 |
+| Vite production build | Passed | GitHub Actions run #155; static bundle, no production env values |
+| NPM dependency audit | Passed; 0 vulnerabilities | GitHub Actions run #155, `npm audit --audit-level=high` |
+| .NET API integration tests | 17 passed against PostgreSQL 17 | GitHub Actions run #155; ephemeral service and isolated per-test schemas, not the intended staging/production database |
+| .NET worker tests | 6 passed | GitHub Actions run #155; Gemini HTTP is mocked |
+| .NET solution Release build | Passed | GitHub Actions run #155; API and worker compile |
+| API and worker containers | Both images built for `linux/amd64` and `linux/arm64` | GitHub Actions run #155; build-only, not pushed to a registry or deployed |
+| PostgreSQL CI path | Passed remotely | Run #155 starts PostgreSQL 17 and applies EF migrations in isolated schemas; no target-environment migration or rollback rehearsal |
 | EF migration review | Idempotent SQL script generated (26,371 bytes); no pending model changes | CI migration execution passed on ephemeral PostgreSQL; deployment script has not run against a target database and no rollback rehearsal exists |
 | NuGet vulnerable package audit | No vulnerable packages reported | Current configured NuGet advisory sources |
-| npm dependency audit | Passed; 0 vulnerabilities reported | Confirmed by GitHub Actions run #153 against the checked-in lockfile |
+| npm dependency audit | Passed; 0 vulnerabilities reported | Confirmed by GitHub Actions run #155 against the checked-in lockfile |
 
-GitHub Actions run [#153](https://github.com/BaoAnh109/Qizzone/actions/runs/44089607708) passed on implementation revision `f2628a391e4e72aa68a410e069535c89484eeede`. No deployed URL or runtime smoke test exists.
+GitHub Actions run [#155](https://github.com/BaoAnh109/Qizzone/actions/runs/44095085400) passed on implementation revision `ef40422d62cc0e0ba6d80b2b8cc3fc10a1c7e445`. No deployed URL or runtime smoke test exists.
 
 ## Live source data evidence
 
@@ -49,18 +50,18 @@ Security metadata review found RLS enabled across the business tables, with no d
 | Feature | **FAIL** | Autosave local outbox and API idempotency are implemented and unit/API-tested; uploads/storage, teacher reports/classes, full API parity and Supabase runtime migration remain |
 | Data | **FAIL** | Production inventory/export/import, UID mapping, reconciliation, PostgreSQL rehearsal and restore |
 | Security | **PARTIAL** | API enforces teacher ownership, image signature/size, quota and idempotency; no malware scanning, PostgreSQL IDOR/concurrency suite, external review or complete secret-rotation evidence |
-| Quality | **FAIL** | Frontend CI passed (165 tests, 24 skipped), npm audit reported 0 vulnerabilities, and 17 API tests passed on ephemeral PostgreSQL 17 plus 6 worker tests with mocked Gemini in run #153; the 100-request submit race still ran against EF InMemory with an in-process gate; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
-| Operations | **FAIL** | No staging, cost/SLO/RPO/RTO evidence, backup restore, alerts/runbooks, rollback, release workflow or production-capable hosting. The owner has authorized self-review/deployment, but no production resources or secrets exist to execute a release. |
+| Quality | **FAIL** | Frontend CI passed (165 tests, 24 skipped), npm audit reported 0 vulnerabilities, 17 API tests passed on ephemeral PostgreSQL 17, 6 worker tests passed with mocked Gemini, and API/worker images built for both architectures in run #155; the 100-request submit race still ran against EF InMemory with an in-process gate; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
+| Operations | **FAIL** | No staging, cost/SLO/RPO/RTO evidence, backup restore, alerts/runbooks, rollback or deploy workflow. The Northflank project has no service, database addon or secret group; backend credentials were not found in the inspected local app configuration. Northflank displays an incident notice for credentials created before Oct 30; the owner directed reuse without rotation, so exposure remains unverified. |
 
 ## Hosting decision
 
-The signed-in Edge dashboard currently shows a Free team with one empty project and no Qizzone services or database. Northflank documentation says its free tier is for testing/hobby projects and should not be used for production. The dashboard also displays its security incident notice; Northflank's latest incident update in the reviewed status page says its forensic review remains ongoing and asks users to rotate stored secrets. No secret was copied or entered, no resource was created, and no DNS/traffic changed.
+The signed-in Edge dashboard currently shows a Free team with one empty project, no Qizzone services/database, and no secret group. Northflank documentation says its free tier is for testing/hobby projects and should not be used for production. The dashboard warns that user-defined credentials created before Oct 30 are in scope; the owner directed reuse without rotation, but no backend credentials are available in this project or the inspected local app configuration. No secret was copied or entered, no resource was created, and no DNS/traffic changed.
 
 ## Required before deployment
 
 1. Complete feature parity, portable uploads/storage and teacher reports/classes; run browser coverage for the implemented autosave protocol.
 2. Run PostgreSQL migrations against the intended version; execute SQL, constraints, indexes and rollback on a disposable staging database.
-3. Create separate staging with rotated secrets, test Firebase identity, private DB networking and no production data; exercise the Gemini worker with a controlled non-sensitive fixture.
+3. Create separate staging using the existing credentials the owner identifies, test Firebase identity, private DB networking and no production data; exercise the Gemini worker with a controlled non-sensitive fixture.
 4. Complete source-data/object inventory, anonymized import rehearsal, row/hash reconciliation and a real backup/restore drill.
 5. Pass E2E, security/ownership, autosave multi-tab/device race/offline/quota, load and failure-recovery checks; record real metrics and accepted RPO/RTO/cost.
 6. Configure production-capable hosting, observability, backups, alerts and rollback. Keep other Git branches unchanged.

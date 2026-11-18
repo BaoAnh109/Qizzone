@@ -22,7 +22,7 @@ Frontend vẫn là React + TypeScript + Vite, Firebase Authentication và Supaba
 | Endpoint API | Profile/role/admin, quiz CRUD/assignment/status, exam start/autosave/submit/student and owned-quiz results, practice start/check/finish/retry/history, durable AI import jobs |
 | Frontend migration | `firebaseAuthService`, `adminService`, `quizService`, `examSessionService`, `practiceService` có API branch và Supabase fallback |
 | Dịch vụ chưa chuyển | Upload/avatar/media, teacher reports/analytics, một số account settings và legacy migration vẫn phụ thuộc Supabase Edge/Storage/RPC; Gemini API branch có worker nhưng chưa cutover |
-| Container/CI | Có Dockerfiles API và worker; workflow kiểm tra frontend, backend/worker restore, vulnerability audit, tests và build; chưa có deploy job |
+| Container/CI | Có Dockerfiles API và worker; run #155 build thành công cả hai image cho linux/amd64 và linux/arm64; workflow chạy frontend/backend audit, tests và build; chưa publish image hoặc deploy |
 | Data migration | Schema đích và bảng checkpoint có source code, nhưng chưa có exporter/importer/reconciliation chạy thật |
 
 ## Luồng chạy hiện tại
@@ -43,14 +43,15 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 - Reports/analytics cho giáo viên, lớp/phòng thi, exports và đầy đủ contract parity.
 - Browser E2E cho IndexedDB outbox/ACK/replay, Web Lock thực giữa các tab, conflict nhiều thiết bị, quota failure và mạng chập chờn; local tests đã kiểm tra fail-closed lock path nhưng chưa chạy browser/PostgreSQL thật.
 - Import dữ liệu Supabase/Storage/Firebase mapping, kiểm tra legacy localStorage và đối soát counts/checksums.
-- PostgreSQL migration/API integration: GitHub Actions run [#153](https://github.com/BaoAnh109/Qizzone/actions/runs/44089607708) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
-- Docker/Compose execution, ARM64 build evidence, Northflank staging, Vercel Preview tích hợp API.
+- PostgreSQL migration/API integration: GitHub Actions run [#155](https://github.com/BaoAnh109/Qizzone/actions/runs/44095085400) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
+- Docker Compose runtime, image publish, Northflank staging, Vercel Preview tích hợp API.
 - E2E, concurrency/load/chaos/security tests và SLO/cost evidence.
 
 ## Kiểm thử và kiểm tra
 
-- Frontend GitHub Actions run #153: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint, npm audit and Vite build passed.
-- Backend GitHub Actions run #153: **17 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; local 100-submit test uses EF InMemory. This does not validate migration against the intended environment or a multi-instance race.
+- Frontend GitHub Actions run #155: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint, npm audit and Vite build passed.
+- Backend GitHub Actions run #155: **17 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; local 100-submit test uses EF InMemory. This does not validate migration against the intended environment or a multi-instance race.
+- GitHub Actions run #155 successfully built API and worker images for `linux/amd64` and `linux/arm64`; images were not pushed to a registry.
 - API/worker Release build đạt; idempotent migration SQL 26,371 bytes đã sinh tại `%TEMP%`; EF migrations ran in ephemeral PostgreSQL in CI, but the generated deployment script has not been applied to a target database.
 - `tsc -b`, ESLint `src`, Vite production build: đạt.
 - NuGet vulnerability audit in CI: không phát hiện vulnerable packages theo nguồn advisory hiện tại. npm audit in CI reported 0 vulnerabilities.
@@ -58,4 +59,4 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 
 ## Deploy hiện tại
 
-Không tìm thấy cấu hình/secret của Vercel hoặc Northflank trong checkout. Phiên Edge được chủ dự án dùng sẵn cho Northflank đang hiển thị team Free và project `Default` chưa có service/database. Dashboard cũng hiển thị cảnh báo sự cố bảo mật/khuyến nghị xoay vòng credential lưu trước 30-10-2026. Northflank Free Sandbox được tài liệu chính thức ghi rõ không dành cho production. Không có production deploy nào được thực hiện.
+Phiên Edge của chủ dự án hiển thị team Free và project `Default` không có service, database addon hoặc secret group. Cấu hình `.env` local hiện có chỉ gồm biến `VITE_*` phía trình duyệt; backend connection string, Firebase Admin credential và Gemini key chưa có trong môi trường được kiểm tra. Chủ dự án yêu cầu dùng secrets cũ, không tạo mới; cần chỉ ra nơi lưu credentials backend hiện có trước khi API/worker có thể khởi động. Chưa có deploy production.
