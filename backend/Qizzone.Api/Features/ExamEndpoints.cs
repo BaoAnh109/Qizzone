@@ -90,6 +90,7 @@ public static class ExamEndpoints
         Guid quizId,
         StartAttemptRequest? request,
         ClaimsPrincipal principal,
+        HttpContext httpContext,
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
@@ -101,6 +102,7 @@ public static class ExamEndpoints
             return Results.Forbid();
         }
 
+        await using var quizTransaction = await QuizConfigurationLock.AcquireSharedAsync(db, quizId, cancellationToken);
         var quiz = await db.Quizzes.AsNoTracking()
             .Include(item => item.Questions)
             .ThenInclude(item => item.AnswerKey)
@@ -110,17 +112,17 @@ public static class ExamEndpoints
             return Results.NotFound();
         }
 
-        if (quiz.Status != "published")
-        {
-            return Results.Conflict(new { error = "This quiz is not open for exams." });
-        }
-
         var activeAttempt = await db.ExamAttempts.AsNoTracking()
             .Include(item => item.Answers)
             .SingleOrDefaultAsync(item => item.QuizId == quizId && item.StudentUid == uid && item.SubmittedAt == null, cancellationToken);
         if (activeAttempt is not null)
         {
             return Results.Ok(ToAttemptResponse(activeAttempt, quiz));
+        }
+
+        if (!QuizRoomSchedule.IsOpenForAttempts(quiz, DateTimeOffset.UtcNow))
+        {
+            return Results.Conflict(new { error = "This quiz is not open for exams." });
         }
 
         if (quiz.Questions.Count == 0)
@@ -145,6 +147,18 @@ public static class ExamEndpoints
         }
 
         var now = DateTimeOffset.UtcNow;
+        await ExamAttemptCapacityGate.AcquireStartLockAsync(db, cancellationToken);
+        var activeAttemptCount = await db.ExamAttempts.CountAsync(item =>
+            item.SubmittedAt == null && (item.EndsAt == null || item.EndsAt > now), cancellationToken);
+        if (activeAttemptCount >= ExamAttemptCapacityGate.MaximumConcurrentAttempts)
+        {
+            httpContext.Response.Headers.RetryAfter = "60";
+            return Results.Problem(
+                statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Beta exam capacity reached",
+                detail: "Hệ thống beta đang phục vụ tối đa 20 lượt thi đồng thời. Vui lòng thử lại sau ít phút. Các bài đang làm vẫn có thể tiếp tục.");
+        }
+
         var orderedQuestions = settings.ShuffleQuestions
             ? quiz.Questions.OrderBy(_ => Random.Shared.Next()).ToArray()
             : quiz.Questions.OrderBy(item => item.Ordinal).ToArray();
@@ -164,6 +178,7 @@ public static class ExamEndpoints
             PassPercentage = settings.PassPercentage,
             AllowReview = settings.AllowReview,
             QuestionOrder = orderedQuestions.Select(item => item.Id).ToArray(),
+            SnapshotJson = JsonSerializer.Serialize(CreateAttemptSnapshot(quiz, orderedQuestions), JsonOptions),
             OptionOrderJson = JsonSerializer.Serialize(optionOrders, JsonOptions),
             FlaggedIdsJson = "[]",
             CurrentIndex = 0,
@@ -176,9 +191,19 @@ public static class ExamEndpoints
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            if (quizTransaction is not null)
+            {
+                await quizTransaction.CommitAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException)
         {
+            if (quizTransaction is not null)
+            {
+                await quizTransaction.RollbackAsync(cancellationToken);
+                await quizTransaction.DisposeAsync();
+            }
+
             // A partial unique index allows only one active attempt per student and quiz.
             db.ChangeTracker.Clear();
             var concurrentAttempt = await db.ExamAttempts.AsNoTracking()
@@ -324,9 +349,26 @@ public static class ExamEndpoints
         }
 
         var questionIds = attempt.QuestionOrder.ToHashSet();
-        var questions = await db.Questions.AsNoTracking()
-            .Where(item => item.QuizId == attempt.QuizId && questionIds.Contains(item.Id))
-            .ToDictionaryAsync(item => item.Id, cancellationToken);
+        var attemptSnapshot = ReadAttemptSnapshot(attempt.SnapshotJson);
+        Dictionary<Guid, AttemptQuestionSnapshot> questions;
+        if (attemptSnapshot is not null)
+        {
+            questions = attemptSnapshot.Questions.ToDictionary(item => item.Id);
+        }
+        else
+        {
+            var legacyQuestions = await db.Questions.AsNoTracking()
+                .Include(item => item.AnswerKey)
+                .Where(item => item.QuizId == attempt.QuizId && questionIds.Contains(item.Id))
+                .ToListAsync(cancellationToken);
+            questions = legacyQuestions.ToDictionary(item => item.Id, CreateAttemptQuestionSnapshot);
+        }
+
+        if (!HasCompleteQuestionSet(attempt, questions.Values))
+        {
+            return Results.Conflict(new { error = "This attempt's saved question set is incomplete. Contact your teacher before continuing." });
+        }
+
         var errors = new Dictionary<string, string[]>();
         var normalizedAnswers = new Dictionary<Guid, List<string>>();
         foreach (var (rawQuestionId, rawAnswers) in request.Answers)
@@ -340,7 +382,7 @@ public static class ExamEndpoints
                 continue;
             }
 
-            var options = DeserializeOptions(question.OptionsJson);
+            var options = question.Options;
             var optionIds = options.Select(option => option.Id).ToHashSet(StringComparer.Ordinal);
             if (rawAnswers.Any(answer => !optionIds.Contains(answer!)) ||
                 (question.Type != "multiple_choice" && rawAnswers.Count > 1))
@@ -483,16 +525,26 @@ public static class ExamEndpoints
             return Results.NotFound();
         }
 
+        var attemptSnapshot = ReadAttemptSnapshot(attempt.SnapshotJson);
+        var questions = attemptSnapshot?.Questions ?? quiz.Questions.Select(CreateAttemptQuestionSnapshot).ToList();
+        if (!HasCompleteQuestionSet(attempt, questions))
+        {
+            return Results.Conflict(new { error = "This attempt's saved question set is incomplete and cannot be graded automatically. Contact your teacher." });
+        }
+
+        var quizTitle = attemptSnapshot?.Title ?? quiz.Title;
+        var subject = attemptSnapshot?.Subject ?? quiz.Subject;
+        var roomCode = attemptSnapshot?.RoomCode ?? quiz.Code;
         var answers = attempt.Answers.ToDictionary(item => item.QuestionId, item => DeserializeStringList(item.SelectedAnswersJson));
         var details = new List<QuestionResult>();
         var answeredCount = 0;
         var correctCount = 0;
         decimal earnedPoints = 0;
-        var maximumPoints = quiz.Questions.Sum(item => item.Points);
-        foreach (var question in quiz.Questions.OrderBy(item => item.Ordinal))
+        var maximumPoints = questions.Sum(item => item.Points);
+        foreach (var question in questions.OrderBy(item => item.Ordinal))
         {
             var selected = answers.GetValueOrDefault(question.Id, []);
-            var correct = DeserializeStringList(question.AnswerKey?.CorrectAnswersJson ?? "[]");
+            var correct = question.CorrectAnswers;
             var isAnswered = selected.Count > 0;
             var isCorrect = isAnswered && selected.Count == correct.Count &&
                 selected.ToHashSet(StringComparer.Ordinal).SetEquals(correct);
@@ -507,13 +559,13 @@ public static class ExamEndpoints
                 question.Id.ToString(),
                 question.Ordinal,
                 question.Content,
-                DeserializeOptions(question.OptionsJson),
+                question.Options,
                 selected,
                 correct,
                 isCorrect,
                 isCorrect ? question.Points : 0,
                 question.Points,
-                question.AnswerKey?.Explanation ?? ""));
+                question.Explanation));
         }
 
         var percentage = maximumPoints == 0 ? 0 : Math.Round(earnedPoints / maximumPoints * 100, 2);
@@ -522,18 +574,18 @@ public static class ExamEndpoints
         var resultId = Guid.NewGuid();
         var payload = new ExamResultPayload(
             resultId.ToString(),
-            quiz.Id.ToString(),
-            quiz.Title,
-            quiz.Subject,
-            quiz.Code,
+            attempt.QuizId.ToString(),
+            quizTitle,
+            subject,
+            roomCode,
             attempt.StudentUid,
             attempt.StudentName,
             attempt.StudentClass,
-            quiz.Questions.Count,
+            questions.Count,
             answeredCount,
             correctCount,
             answeredCount - correctCount,
-            quiz.Questions.Count - answeredCount,
+            questions.Count - answeredCount,
             maximumPoints == 0 ? 0 : Math.Round(earnedPoints / maximumPoints * 10, 2),
             earnedPoints,
             maximumPoints,
@@ -620,17 +672,30 @@ public static class ExamEndpoints
             .Where(item => item.StudentUid == uid && item.SubmittedAt == null && item.EndsAt != null && item.EndsAt <= now)
             .Select(item => item.Id)
             .ToListAsync(cancellationToken);
+        var finalized = 0;
+        var failed = 0;
         foreach (var attemptId in expiredIds)
         {
-            await SubmitAsync(attemptId, principal, db, gateStore, cancellationToken);
+            var result = await SubmitAsync(attemptId, principal, db, gateStore, cancellationToken);
+            if (result is IStatusCodeHttpResult statusResult &&
+                statusResult.StatusCode is { } statusCode && statusCode >= StatusCodes.Status400BadRequest)
+            {
+                failed++;
+            }
+            else
+            {
+                finalized++;
+            }
         }
 
-        return Results.Ok(new { finalized = expiredIds.Count });
+        return Results.Ok(new { finalized, failed });
     }
 
     private static ExamAttemptResponse ToAttemptResponse(ExamAttempt attempt, Quiz quiz)
     {
-        var questionById = quiz.Questions.ToDictionary(item => item.Id);
+        var snapshot = ReadAttemptSnapshot(attempt.SnapshotJson);
+        var questionSnapshots = snapshot?.Questions ?? quiz.Questions.Select(CreateAttemptQuestionSnapshot).ToList();
+        var questionById = questionSnapshots.ToDictionary(item => item.Id);
         var optionOrder = DeserializeOptionOrder(attempt.OptionOrderJson);
         var answers = attempt.Answers.ToDictionary(
             item => item.QuestionId.ToString(),
@@ -641,7 +706,7 @@ public static class ExamEndpoints
             .Select(pair =>
             {
                 var question = questionById[pair.id];
-                var options = DeserializeOptions(question.OptionsJson);
+                var options = question.Options;
                 if (optionOrder.TryGetValue(question.Id.ToString(), out var order))
                 {
                     var byId = options.ToDictionary(item => item.Id, StringComparer.Ordinal);
@@ -650,16 +715,61 @@ public static class ExamEndpoints
 
                 return new ExamQuestionResponse(
                     question.Id.ToString(), pair.index, question.Content,
-                    DeserializeStringList(question.ImagesJson), question.Type, options, question.Points);
+                    question.Images, question.Type, options, question.Points);
             })
             .ToList();
 
         return new ExamAttemptResponse(
-            attempt.Id.ToString(), attempt.QuizId.ToString(), quiz.Title, quiz.Subject,
+            attempt.Id.ToString(), attempt.QuizId.ToString(), snapshot?.Title ?? quiz.Title, snapshot?.Subject ?? quiz.Subject,
+            snapshot?.RoomCode ?? quiz.Code,
             attempt.StudentUid, attempt.StudentName, attempt.StudentClass,
             attempt.StartedAt, attempt.EndsAt, attempt.DurationMinutes,
             answers, DeserializeStringList(attempt.FlaggedIdsJson), attempt.CurrentIndex,
             attempt.Revision, attempt.SubmittedAt is not null, attempt.UpdatedAt, questions);
+    }
+
+    private static ExamAttemptSnapshot CreateAttemptSnapshot(Quiz quiz, IEnumerable<Question> questions) => new(
+        quiz.Title,
+        quiz.Subject,
+        quiz.Code,
+        questions.Select(CreateAttemptQuestionSnapshot).ToList());
+
+    private static AttemptQuestionSnapshot CreateAttemptQuestionSnapshot(Question question) => new(
+        question.Id,
+        question.Ordinal,
+        question.Content,
+        DeserializeStringList(question.ImagesJson),
+        question.Type,
+        DeserializeOptions(question.OptionsJson),
+        DeserializeStringList(question.AnswerKey?.CorrectAnswersJson ?? "[]"),
+        question.AnswerKey?.Explanation ?? "",
+        question.Points);
+
+    private static bool HasCompleteQuestionSet(ExamAttempt attempt, IEnumerable<AttemptQuestionSnapshot> questions)
+    {
+        var questionIds = questions.Select(item => item.Id).ToArray();
+        return questionIds.Length == attempt.QuestionOrder.Length &&
+            questionIds.Distinct().Count() == questionIds.Length &&
+            attempt.QuestionOrder.Distinct().Count() == attempt.QuestionOrder.Length &&
+            attempt.QuestionOrder.ToHashSet().SetEquals(questionIds);
+    }
+
+    private static ExamAttemptSnapshot? ReadAttemptSnapshot(string json)
+    {
+        try
+        {
+            var snapshot = JsonSerializer.Deserialize<ExamAttemptSnapshot>(json, JsonOptions);
+            return snapshot is { Questions.Count: > 0 } &&
+                !string.IsNullOrWhiteSpace(snapshot.Title) &&
+                !string.IsNullOrWhiteSpace(snapshot.Subject) &&
+                !string.IsNullOrWhiteSpace(snapshot.RoomCode)
+                ? snapshot
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static JsonObject FilterResult(string json, bool allowReview)
@@ -761,6 +871,23 @@ public static class ExamEndpoints
         bool ShuffleQuestions,
         bool ShuffleOptions);
 
+    private sealed record ExamAttemptSnapshot(
+        string Title,
+        string Subject,
+        string RoomCode,
+        List<AttemptQuestionSnapshot> Questions);
+
+    private sealed record AttemptQuestionSnapshot(
+        Guid Id,
+        int Ordinal,
+        string Content,
+        List<string> Images,
+        string Type,
+        List<QuizEndpoints.OptionResponse> Options,
+        List<string> CorrectAnswers,
+        string Explanation,
+        decimal Points);
+
     private sealed record ExamQuestionResponse(
         string Id,
         int Order,
@@ -775,6 +902,7 @@ public static class ExamEndpoints
         string QuizId,
         string QuizTitle,
         string Subject,
+        string RoomCode,
         string StudentId,
         string StudentName,
         string? StudentClass,

@@ -4,6 +4,7 @@ import { AlertCircle, Lock, ArrowLeft, Loader2, LogIn, UserPlus, RefreshCw, Play
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore, isSessionInProgress } from "@/store/examSessionStore";
 import { useAuthStore } from "@/store/authStore";
+import type { Quiz } from "@/types/quiz";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -15,33 +16,37 @@ export function JoinByLink() {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isInitialized = useAuthStore((state) => state.isInitialized);
-  const { getQuizByCode, load, isLoading, togglePublishStatus } = useQuizStore();
+  const { getQuizByCode, resolveQuizByCode, load, isLoading, togglePublishStatus, error } = useQuizStore();
   const activeSessions = useExamSessionStore((state) => state.activeSessions);
   const toast = useToast();
 
   const [checking, setChecking] = useState(true);
   const [manualCode, setManualCode] = useState("");
   const [isPublishing, setIsPublishing] = useState(false);
+  const [resolvedQuiz, setResolvedQuiz] = useState<{ code: string; quiz: Quiz | null } | null>(null);
 
   const cleanCode = (code || "").trim().toUpperCase();
 
   const fetchLatestQuizzes = useCallback(async () => {
     setChecking(true);
+    setResolvedQuiz(null);
     try {
       if (isAuthenticated) {
-        await load();
+        if (cleanCode) setResolvedQuiz({ code: cleanCode, quiz: (await resolveQuizByCode(cleanCode)) ?? null });
+        else await load();
       }
     } catch {
-      // Handled by store
+      if (cleanCode) setResolvedQuiz({ code: cleanCode, quiz: null });
     } finally {
       setChecking(false);
     }
-  }, [load, isAuthenticated]);
+  }, [cleanCode, load, isAuthenticated, resolveQuizByCode]);
 
   useEffect(() => {
     let isMounted = true;
 
     async function initialCheck() {
+      setChecking(true);
       // If auth is not ready yet, keep waiting
       if (!isInitialized) return;
 
@@ -51,12 +56,14 @@ export function JoinByLink() {
         return;
       }
 
-      // If user is logged in and code is provided, load if not in store
-      if (cleanCode && !getQuizByCode(cleanCode)) {
+      // Resolve a room code directly so the join page does not download every quiz.
+      if (cleanCode) {
+        setResolvedQuiz(null);
         try {
-          await load();
+          const quiz = await resolveQuizByCode(cleanCode);
+          if (isMounted) setResolvedQuiz({ code: cleanCode, quiz: quiz ?? null });
         } catch {
-          // Handled by store
+          if (isMounted) setResolvedQuiz({ code: cleanCode, quiz: null });
         }
       }
 
@@ -69,9 +76,11 @@ export function JoinByLink() {
     return () => {
       isMounted = false;
     };
-  }, [cleanCode, getQuizByCode, load, isInitialized, isAuthenticated, user]);
+  }, [cleanCode, resolveQuizByCode, isInitialized, isAuthenticated, user]);
 
-  const quiz = cleanCode ? getQuizByCode(cleanCode) : undefined;
+  const quiz = cleanCode
+    ? resolvedQuiz?.code === cleanCode ? resolvedQuiz.quiz ?? undefined : getQuizByCode(cleanCode)
+    : undefined;
 
   // Auto-redirect if quiz is published and user is authenticated
   useEffect(() => {
@@ -231,7 +240,13 @@ export function JoinByLink() {
                 Không tìm thấy phòng thi
               </h2>
               <p className="text-sm theme-text-secondary mt-1.5">
-                Mã phòng thi <span className="font-mono font-bold text-rose-700">{cleanCode}</span> không tồn tại hoặc đã bị xóa. Vui lòng kiểm tra lại liên kết.
+                {error
+                  ? `Không thể tải dữ liệu phòng thi: ${error}`
+                  : (
+                    <>
+                      Mã phòng thi <span className="font-mono font-bold text-rose-700">{cleanCode}</span> không tồn tại hoặc đã bị xóa. Vui lòng kiểm tra lại liên kết.
+                    </>
+                  )}
               </p>
             </div>
             <div className="flex flex-col gap-2 pt-2">
@@ -258,7 +273,7 @@ export function JoinByLink() {
     );
   }
 
-  // State 5: Quiz is draft or closed
+  // State 5: Quiz is draft, scheduled, or closed
   if (quiz.status !== "published") {
     const isOwner = user.role === "admin" || (user.role === "teacher" && (quiz.teacherId === user.id || !quiz.teacherId));
 
@@ -271,15 +286,28 @@ export function JoinByLink() {
             </div>
             <div>
               <h2 className="text-xl font-bold theme-text-primary">
-                {quiz.status === "draft" ? "Phòng thi đang là Bản nháp" : "Phòng thi đã kết thúc"}
+                {quiz.status === "draft"
+                  ? "Phòng thi đang là Bản nháp"
+                  : quiz.status === "scheduled"
+                    ? "Phòng thi chưa mở"
+                    : "Phòng thi đã kết thúc"}
               </h2>
               <p className="text-sm theme-text-secondary mt-1.5">
                 Đề thi <strong>"{quiz.title}"</strong> ({quiz.code}) hiện đang ở trạng thái{" "}
                 <span className="font-bold text-amber-800">
-                  {quiz.status === "draft" ? "bản nháp" : "đã đóng"}
+                  {quiz.status === "draft"
+                    ? "bản nháp"
+                    : quiz.status === "scheduled"
+                      ? "đã lên lịch"
+                      : "đã đóng"}
                 </span>.
+                {quiz.status === "scheduled" && quiz.opensAt
+                  ? ` Phòng sẽ tự mở lúc ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(quiz.opensAt))}.`
+                  : ""}
                 {isOwner
-                  ? " Vì bạn là giáo viên của đề thi này, bạn có thể xuất bản ngay để học sinh làm bài hoặc chỉnh sửa đề thi."
+                  ? quiz.status === "scheduled"
+                    ? " Bạn có thể chỉnh sửa lịch trong phần quản lý đề thi."
+                    : " Vì bạn là giáo viên của đề thi này, bạn có thể xuất bản ngay để học sinh làm bài hoặc chỉnh sửa đề thi."
                   : " Vui lòng liên hệ giáo viên phụ trách để biết thêm chi tiết."}
               </p>
             </div>
@@ -304,6 +332,16 @@ export function JoinByLink() {
                     Chỉnh sửa đề thi
                   </Button>
                 </>
+              )}
+              {isOwner && quiz.status === "scheduled" && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/teacher/edit-quiz/${quiz.id}`)}
+                  leftIcon={<Edit className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Chỉnh sửa lịch phòng thi
+                </Button>
               )}
               <Button
                 variant="ghost"

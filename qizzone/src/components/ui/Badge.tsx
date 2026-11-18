@@ -10,6 +10,7 @@ export type BadgeVariant =
   | "destructive"
   | "outline"
   | "draft"
+  | "scheduled"
   | "published"
   | "closed"
   | "active";
@@ -32,6 +33,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   outline: "bg-transparent theme-text-secondary theme-border",
   // Quiz Status Variants
   draft: "theme-surface-muted theme-text-secondary theme-border",
+  scheduled: "theme-status-warning",
   published: "theme-status-success",
   closed: "theme-status-danger",
   active: "theme-status-info",
@@ -46,6 +48,7 @@ const dotColors: Record<BadgeVariant, string> = {
   destructive: "theme-dot-danger",
   outline: "theme-dot-muted",
   draft: "theme-dot-muted",
+  scheduled: "theme-dot-warning",
   published: "theme-dot-success",
   closed: "theme-dot-danger",
   active: "theme-dot-info",

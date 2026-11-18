@@ -37,7 +37,9 @@ public sealed class GeminiClientTests
         Assert.Equal("image/png", parts[1].GetProperty("inlineData").GetProperty("mimeType").GetString());
         Assert.Equal(Convert.ToBase64String([1, 2, 3]), parts[1].GetProperty("inlineData").GetProperty("data").GetString());
         Assert.Contains("untrusted data", request.RootElement.GetProperty("systemInstruction").GetProperty("parts")[0].GetProperty("text").GetString());
-        Assert.Equal("application/json", request.RootElement.GetProperty("generationConfig").GetProperty("responseMimeType").GetString());
+        var generationConfig = request.RootElement.GetProperty("generationConfig");
+        Assert.Equal("application/json", generationConfig.GetProperty("responseMimeType").GetString());
+        Assert.False(generationConfig.TryGetProperty("temperature", out _));
 
         using var response = JsonDocument.Parse(result);
         var question = response.RootElement.GetProperty("questions")[0];

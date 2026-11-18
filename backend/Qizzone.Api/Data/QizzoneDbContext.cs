@@ -5,6 +5,7 @@ namespace Qizzone.Api.Data;
 public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options) : DbContext(options)
 {
     public DbSet<Profile> Profiles => Set<Profile>();
+    public DbSet<MediaObject> MediaObjects => Set<MediaObject>();
     public DbSet<Quiz> Quizzes => Set<Quiz>();
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<QuestionAnswerKey> QuestionAnswerKeys => Set<QuestionAnswerKey>();
@@ -49,6 +50,7 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
         profile.Property(item => item.TeacherReviewedBy).HasColumnName("teacher_reviewed_by");
         profile.HasOne<Profile>().WithMany().HasForeignKey(item => item.TeacherReviewedBy).OnDelete(DeleteBehavior.Restrict);
         profile.Property(item => item.AvatarUrl).HasColumnName("avatar_url");
+        profile.Property(item => item.StudentClass).HasColumnName("student_class").HasMaxLength(100);
         profile.Property(item => item.CreatedAt).HasColumnName("created_at");
         profile.Property(item => item.UpdatedAt).HasColumnName("updated_at");
         profile.HasIndex(item => new { item.TeacherRequestStatus, item.TeacherRequestedAt })
@@ -58,11 +60,30 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
             .HasDatabaseName("profiles_pending_teacher")
             .HasFilter("role = 'teacher'");
 
+        var media = modelBuilder.Entity<MediaObject>();
+        media.ToTable("media_objects", table =>
+        {
+            table.HasCheckConstraint("media_objects_content_type_check", "content_type IN ('image/jpeg','image/png','image/webp')");
+            table.HasCheckConstraint("media_objects_extension_check", "extension IN ('.jpg','.png','.webp')");
+            table.HasCheckConstraint("media_objects_length_check", "length_bytes > 0 AND length_bytes <= 2097152");
+        });
+        media.HasKey(item => item.Id);
+        media.Property(item => item.Id).HasColumnName("id");
+        media.Property(item => item.OwnerUid).HasColumnName("owner_uid").HasMaxLength(128).IsRequired();
+        media.HasOne<Profile>().WithMany().HasForeignKey(item => item.OwnerUid).OnDelete(DeleteBehavior.Restrict);
+        media.Property(item => item.ContentType).HasColumnName("content_type").HasMaxLength(20).IsRequired();
+        media.Property(item => item.Extension).HasColumnName("extension").HasMaxLength(8).IsRequired();
+        media.Property(item => item.LengthBytes).HasColumnName("length_bytes");
+        media.Property(item => item.Sha256).HasColumnName("sha256").HasMaxLength(64).IsRequired();
+        media.Property(item => item.CreatedAt).HasColumnName("created_at");
+        media.HasIndex(item => new { item.OwnerUid, item.CreatedAt }).HasDatabaseName("media_objects_owner_created");
+
         var quiz = modelBuilder.Entity<Quiz>();
         quiz.ToTable("quizzes", table =>
         {
-            table.HasCheckConstraint("quizzes_status_check", "status IN ('draft','published','closed')");
+            table.HasCheckConstraint("quizzes_status_check", "status IN ('draft','scheduled','published','closed')");
             table.HasCheckConstraint("quizzes_settings_object_check", "jsonb_typeof(settings) = 'object'");
+            table.HasCheckConstraint("quizzes_schedule_check", "(status <> 'scheduled' OR opens_at IS NOT NULL) AND (closes_at IS NULL OR opens_at IS NULL OR closes_at > opens_at)");
         });
         quiz.HasKey(item => item.Id);
         quiz.Property(item => item.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
@@ -74,12 +95,16 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
         quiz.Property(item => item.Code).HasColumnName("code").HasMaxLength(6).HasDefaultValueSql("upper(substr(replace(gen_random_uuid()::text,'-',''),1,6))");
         quiz.HasIndex(item => item.Code).IsUnique();
         quiz.Property(item => item.Status).HasColumnName("status").HasMaxLength(20);
+        quiz.Property(item => item.OpensAt).HasColumnName("opens_at");
+        quiz.Property(item => item.ClosesAt).HasColumnName("closes_at");
         quiz.Property(item => item.SettingsJson).HasColumnName("settings").HasColumnType("jsonb");
         quiz.Property(item => item.CreatedAt).HasColumnName("created_at");
         quiz.Property(item => item.UpdatedAt).HasColumnName("updated_at");
         quiz.Property(item => item.LegacyId).HasColumnName("legacy_id");
         quiz.HasIndex(item => new { item.TeacherUid, item.LegacyId }).IsUnique();
         quiz.HasIndex(item => item.TeacherUid).HasDatabaseName("quizzes_teacher");
+        quiz.HasIndex(item => new { item.Status, item.OpensAt }).HasDatabaseName("quizzes_schedule_open");
+        quiz.HasIndex(item => new { item.Status, item.ClosesAt }).HasDatabaseName("quizzes_schedule_close");
 
         var question = modelBuilder.Entity<Question>();
         question.ToTable("questions", table =>
@@ -108,7 +133,7 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
 
         var answerKey = modelBuilder.Entity<QuestionAnswerKey>();
         answerKey.ToTable("question_answer_keys", table =>
-            table.HasCheckConstraint("question_answer_keys_answers_array_check", "jsonb_typeof(correct_answers) = 'array' AND jsonb_array_length(correct_answers) BETWEEN 1 AND 4"));
+            table.HasCheckConstraint("question_answer_keys_answers_array_check", "jsonb_typeof(correct_answers) = 'array' AND jsonb_array_length(correct_answers) BETWEEN 1 AND 5"));
         answerKey.HasKey(item => item.QuestionId);
         answerKey.Property(item => item.QuestionId).HasColumnName("question_id");
         answerKey.HasOne(item => item.Question).WithOne(item => item.AnswerKey).HasForeignKey<QuestionAnswerKey>(item => item.QuestionId).OnDelete(DeleteBehavior.Cascade);
@@ -124,6 +149,7 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
             table.HasCheckConstraint("exam_attempts_pass_percentage_check", "pass_percentage BETWEEN 0 AND 100");
             table.HasCheckConstraint("exam_attempts_current_index_check", "current_index >= 0");
             table.HasCheckConstraint("exam_attempts_revision_check", "revision >= 0");
+            table.HasCheckConstraint("exam_attempts_snapshot_object_check", "jsonb_typeof(snapshot) = 'object'");
         });
         attempt.HasKey(item => item.Id);
         attempt.Property(item => item.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
@@ -140,6 +166,7 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
         attempt.Property(item => item.PassPercentage).HasColumnName("pass_percentage").HasPrecision(5, 2);
         attempt.Property(item => item.AllowReview).HasColumnName("allow_review");
         attempt.Property(item => item.QuestionOrder).HasColumnName("question_order");
+        attempt.Property(item => item.SnapshotJson).HasColumnName("snapshot").HasColumnType("jsonb").HasDefaultValueSql("'{}'::jsonb");
         attempt.Property(item => item.OptionOrderJson).HasColumnName("option_order").HasColumnType("jsonb");
         attempt.Property(item => item.FlaggedIdsJson).HasColumnName("flagged_ids").HasColumnType("jsonb");
         attempt.Property(item => item.CurrentIndex).HasColumnName("current_index");
@@ -228,7 +255,7 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
         var practiceAnswer = modelBuilder.Entity<PracticeAnswer>();
         practiceAnswer.ToTable("practice_answers", table =>
         {
-            table.HasCheckConstraint("practice_answers_selected_array_check", "jsonb_typeof(selected_answers) = 'array' AND jsonb_array_length(selected_answers) BETWEEN 1 AND 4");
+            table.HasCheckConstraint("practice_answers_selected_array_check", "jsonb_typeof(selected_answers) = 'array' AND jsonb_array_length(selected_answers) BETWEEN 1 AND 5");
             table.HasCheckConstraint("practice_answers_correct_array_check", "jsonb_typeof(correct_answers) = 'array'");
         });
         practiceAnswer.HasKey(item => new { item.SessionId, item.QuestionId });
@@ -262,7 +289,7 @@ public sealed class QizzoneDbContext(DbContextOptions<QizzoneDbContext> options)
         var aiJob = modelBuilder.Entity<AiImportJob>();
         aiJob.ToTable("ai_import_jobs", table =>
         {
-            table.HasCheckConstraint("ai_import_jobs_status_check", "status IN ('queued','processing','succeeded','failed')");
+            table.HasCheckConstraint("ai_import_jobs_status_check", "status IN ('queued','processing','succeeded','failed','cancelled')");
             table.HasCheckConstraint("ai_import_jobs_attempt_count_check", "attempt_count >= 0");
             table.HasCheckConstraint("ai_import_jobs_request_object_check", "jsonb_typeof(request) = 'object'");
             table.HasCheckConstraint("ai_import_jobs_result_object_check", "result IS NULL OR jsonb_typeof(result) = 'object'");

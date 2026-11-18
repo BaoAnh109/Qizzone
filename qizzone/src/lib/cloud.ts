@@ -25,6 +25,10 @@ export const isAllowedQizzoneApiBaseUrl = (value?: string) => {
   }
 };
 export const isQizzoneApiConfigured = isAllowedQizzoneApiBaseUrl(apiBaseUrl);
+export function qizzoneApiAssetUrl(path: string): string | undefined {
+  if (!apiBaseUrl || !isQizzoneApiConfigured) return undefined;
+  return `${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+}
 export const missingConfiguration = Object.entries({
   VITE_FIREBASE_API_KEY: config.apiKey, VITE_FIREBASE_AUTH_DOMAIN: config.authDomain,
   VITE_FIREBASE_PROJECT_ID: config.projectId, VITE_FIREBASE_APP_ID: config.appId,
@@ -33,6 +37,16 @@ export const missingConfiguration = Object.entries({
     VITE_SUPABASE_PUBLISHABLE_KEY: supabaseConfig.key,
   } : {}),
 }).filter(([, value]) => !value || /YOUR_|your_|placeholder/.test(value)).map(([key]) => key);
+
+export class QizzoneApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'QizzoneApiError';
+    this.status = status;
+  }
+}
 
 export function firebaseAuth() {
   if (missingConfiguration.length) {
@@ -60,7 +74,8 @@ export async function qizzoneApi<T>(path: string, init: RequestInit = {}): Promi
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${token}`);
   headers.set('Accept', 'application/json');
-  if (init.body !== undefined && !headers.has('Content-Type')) {
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  if (init.body !== undefined && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -87,7 +102,10 @@ export async function qizzoneApi<T>(path: string, init: RequestInit = {}): Promi
     const validationMessage = result.errors
       ? Object.values(result.errors).flat().join(' ')
       : undefined;
-    throw new Error(result.error || validationMessage || result.detail || result.title || `Qizzone API trả về lỗi ${response.status}.`);
+    throw new QizzoneApiError(
+      result.error || validationMessage || result.detail || result.title || `Qizzone API trả về lỗi ${response.status}.`,
+      response.status,
+    );
   }
   return result as T;
 }

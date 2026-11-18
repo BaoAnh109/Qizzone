@@ -33,7 +33,7 @@ export interface QuizSettings {
   assignedEmails?: string[]; // Target student emails (e.g. ["student1@gmail.com"])
 }
 
-export type QuizStatus = "draft" | "published" | "closed";
+export type QuizStatus = "draft" | "scheduled" | "published" | "closed";
 
 export interface Quiz {
   id: string;
@@ -44,12 +44,16 @@ export interface Quiz {
   teacherName?: string;
   code: string; // 6-character room code (e.g. QZ9821)
   status: QuizStatus;
+  opensAt?: string | null;
+  closesAt?: string | null;
   settings: QuizSettings;
   questions: Question[];
   totalQuestions: number;
   totalPoints: number;
   createdAt: string;
   updatedAt: string;
+  /** Server-computed email assignment match; recipient emails stay private. */
+  isAssignedToCurrentUser?: boolean;
 }
 
 export interface CreateQuizDTO {

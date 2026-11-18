@@ -24,9 +24,29 @@ public static class AdminEndpoints
 
     private static async Task<IResult> ListTeacherRequestsAsync(
         string? status,
+        int? page,
+        int? pageSize,
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
+        var pageNumber = page ?? 1;
+        var pageLimit = pageSize ?? 25;
+        if (pageLimit is < 1 or > 100)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["pageSize"] = ["Page size must be between 1 and 100."],
+            });
+        }
+
+        if (pageNumber < 1 || pageNumber > int.MaxValue / pageLimit)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["page"] = ["Page must be a positive value within the supported range."],
+            });
+        }
+
         var filter = string.IsNullOrWhiteSpace(status) ? "pending" : status.Trim().ToLowerInvariant();
         if (filter is not ("pending" or "approved" or "rejected" or "blocked"))
         {
@@ -49,9 +69,13 @@ public static class AdminEndpoints
             _ => requestQuery.Where(_ => false),
         };
 
+        var totalItems = await requestQuery.CountAsync(cancellationToken);
+        var totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageLimit);
         var profiles = await requestQuery
             .OrderBy(profile => profile.TeacherRequestedAt ?? profile.ApprovalRequestedAt ?? profile.CreatedAt)
-            .Take(500)
+            .ThenBy(profile => profile.FirebaseUid)
+            .Skip((pageNumber - 1) * pageLimit)
+            .Take(pageLimit)
             .Select(profile => new TeacherRequestResponse(
                 profile.FirebaseUid,
                 profile.Email,
@@ -64,7 +88,7 @@ public static class AdminEndpoints
                 profile.CreatedAt))
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new { requests = profiles });
+        return Results.Ok(new { requests = profiles, page = pageNumber, pageSize = pageLimit, totalItems, totalPages });
     }
 
     private static async Task<IResult> ReviewTeacherRequestAsync(
@@ -134,6 +158,10 @@ public static class AdminEndpoints
 
     private static async Task<IResult> ListAccountsAsync(
         string? role,
+        string? status,
+        string? search,
+        int? page,
+        int? pageSize,
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
@@ -146,6 +174,42 @@ public static class AdminEndpoints
             });
         }
 
+        var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "all" : status.Trim().ToLowerInvariant();
+        if (normalizedStatus is not ("all" or "active" or "blocked"))
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["status"] = ["Status must be all, active, or blocked."],
+            });
+        }
+
+        var pageNumber = page ?? 1;
+        var pageLimit = pageSize ?? 25;
+        var searchTerm = search?.Trim();
+        if (pageLimit is < 1 or > 100)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["pageSize"] = ["Page size must be between 1 and 100."],
+            });
+        }
+
+        if (pageNumber < 1 || pageNumber > int.MaxValue / pageLimit)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["page"] = ["Page must be a positive value within the supported range."],
+            });
+        }
+
+        if (searchTerm?.Length > 100)
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["search"] = ["Search cannot exceed 100 characters."],
+            });
+        }
+
         var query = db.Profiles.AsNoTracking()
             .Where(profile => profile.Role == "student" || profile.Role == "teacher");
         if (normalizedRole is not null)
@@ -153,8 +217,30 @@ public static class AdminEndpoints
             query = query.Where(profile => profile.Role == normalizedRole);
         }
 
+        if (normalizedStatus == "blocked")
+        {
+            query = query.Where(profile => profile.ApprovalStatus == "rejected" || profile.ApprovalStatus == "blocked");
+        }
+        else if (normalizedStatus == "active")
+        {
+            query = query.Where(profile => profile.ApprovalStatus != "rejected" && profile.ApprovalStatus != "blocked");
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearch = searchTerm.ToLowerInvariant();
+            query = query.Where(profile =>
+                profile.FullName.ToLower().Contains(normalizedSearch) ||
+                profile.Email.ToLower().Contains(normalizedSearch));
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var teacherCount = await db.Profiles.CountAsync(profile => profile.Role == "teacher", cancellationToken);
+        var studentCount = await db.Profiles.CountAsync(profile => profile.Role == "student", cancellationToken);
         var accounts = await query.OrderByDescending(profile => profile.CreatedAt)
-            .Take(1000)
+            .ThenBy(profile => profile.FirebaseUid)
+            .Skip((pageNumber - 1) * pageLimit)
+            .Take(pageLimit)
             .Select(profile => new AccountResponse(
                 profile.FirebaseUid,
                 profile.Email,
@@ -168,7 +254,16 @@ public static class AdminEndpoints
                 db.ExamAttempts.Count(attempt => attempt.StudentUid == profile.FirebaseUid && attempt.SubmittedAt != null)))
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new { accounts });
+        return Results.Ok(new
+        {
+            accounts,
+            page = pageNumber,
+            pageSize = pageLimit,
+            totalItems,
+            totalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)pageLimit),
+            teacherCount,
+            studentCount,
+        });
     }
 
     private static async Task<IResult> SetAccountAccessAsync(

@@ -1,38 +1,56 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, Clock3, RefreshCw, ShieldCheck, UserRoundCheck, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock3, RefreshCw, ShieldCheck, UserRoundCheck, X } from "lucide-react";
 import { adminService, type TeacherApprovalRequest } from "@/services/adminService";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useToast } from "@/hooks/useToast";
 
+const PAGE_SIZE = 25;
+
 export function TeacherApprovals() {
   const [requests, setRequests] = useState<TeacherApprovalRequest[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingUid, setProcessingUid] = useState<string | null>(null);
   const toast = useToast();
 
-  const load = useCallback(async () => {
+  const applyPage = useCallback((result: Awaited<ReturnType<typeof adminService.listTeacherApprovals>>, requestedPage: number) => {
+    if (requestedPage > 1 && requestedPage > result.totalPages) {
+      setRequests([]);
+      setPage(Math.max(1, result.totalPages));
+      return;
+    }
+    setRequests(result.requests);
+    setPage(result.page);
+    setTotalItems(result.totalItems);
+    setTotalPages(result.totalPages);
+  }, []);
+
+  const load = useCallback(async (requestedPage = page) => {
     setIsLoading(true);
     setError(null);
     try {
-      setRequests(await adminService.listTeacherApprovals());
+      const result = await adminService.listTeacherApprovals(requestedPage, PAGE_SIZE);
+      applyPage(result, requestedPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không thể tải danh sách chờ duyệt.");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [applyPage, page]);
 
   useEffect(() => {
     let active = true;
-    adminService.listTeacherApprovals()
-      .then(data => { if (active) setRequests(data); })
+    adminService.listTeacherApprovals(page, PAGE_SIZE)
+      .then(result => { if (active) applyPage(result, page); })
       .catch(err => { if (active) setError(err instanceof Error ? err.message : "Không thể tải danh sách chờ duyệt."); })
       .finally(() => { if (active) setIsLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [applyPage, page]);
 
   const review = async (request: TeacherApprovalRequest, action: "approve" | "reject") => {
     if (action === "reject" && !window.confirm(`Từ chối yêu cầu giáo viên của ${request.fullName}?`)) return;
@@ -41,6 +59,14 @@ export function TeacherApprovals() {
       if (action === "approve") await adminService.approveTeacher(request.firebaseUid);
       else await adminService.rejectTeacher(request.firebaseUid);
       setRequests(current => current.filter(item => item.firebaseUid !== request.firebaseUid));
+      const nextTotalItems = Math.max(0, totalItems - 1);
+      setTotalItems(nextTotalItems);
+      setTotalPages(Math.ceil(nextTotalItems / PAGE_SIZE));
+      if (requests.length === 1 && page > 1) {
+        setIsLoading(true);
+        setError(null);
+        setPage(current => Math.max(1, current - 1));
+      }
       toast.success(
         action === "approve" ? "Đã duyệt quyền giáo viên. Người dùng có thể chuyển sang màn hình giáo viên." : "Yêu cầu giáo viên đã bị từ chối.",
         action === "approve" ? "Đã xét duyệt" : "Đã từ chối",
@@ -71,6 +97,12 @@ export function TeacherApprovals() {
     } finally {
       setProcessingUid(null);
     }
+  };
+
+  const navigateToPage = (nextPage: number) => {
+    setIsLoading(true);
+    setError(null);
+    setPage(nextPage);
   };
 
   return (
@@ -131,7 +163,7 @@ export function TeacherApprovals() {
                     role="switch"
                     aria-checked={request.blocked}
                     aria-label={request.blocked ? "Cho phép tài khoản gửi yêu cầu giáo viên" : "Không cho tài khoản gửi yêu cầu giáo viên"}
-                    disabled={processingUid !== null}
+                    disabled={processingUid !== null || isLoading || error !== null}
                     onClick={() => void toggleBlocked(request)}
                     className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "theme-border theme-surface theme-text-secondary theme-hover-surface"}`}
                   >
@@ -143,10 +175,10 @@ export function TeacherApprovals() {
                 )}
                 {request.status === "pending" && (
                   <>
-                    <Button size="sm" variant="destructive" disabled={processingUid !== null} onClick={() => void review(request, "reject")} leftIcon={<X className="h-4 w-4" />}>
+                    <Button size="sm" variant="destructive" disabled={processingUid !== null || isLoading || error !== null} onClick={() => void review(request, "reject")} leftIcon={<X className="h-4 w-4" />}>
                       Từ chối
                     </Button>
-                    <Button size="sm" disabled={processingUid !== null} isLoading={processingUid === request.firebaseUid} onClick={() => void review(request, "approve")} leftIcon={<Check className="h-4 w-4" />}>
+                    <Button size="sm" disabled={processingUid !== null || isLoading || error !== null} isLoading={processingUid === request.firebaseUid} onClick={() => void review(request, "approve")} leftIcon={<Check className="h-4 w-4" />}>
                       Phê duyệt
                     </Button>
                   </>
@@ -156,6 +188,37 @@ export function TeacherApprovals() {
           </Card>
         ))}
       </div>
+
+      {totalItems > PAGE_SIZE && (
+        <nav aria-label="Phân trang yêu cầu giáo viên" className="flex flex-col items-center justify-between gap-3 border-t theme-border pt-4 sm:flex-row">
+          <p className="text-sm theme-text-muted">
+            Hiển thị {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalItems)} / {totalItems}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoading || page <= 1}
+              onClick={() => navigateToPage(Math.max(1, page - 1))}
+              leftIcon={<ChevronLeft className="h-4 w-4" />}
+            >
+              Trang trước
+            </Button>
+            <span aria-live="polite" className="min-w-20 text-center text-sm theme-text-secondary">
+              {page} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoading || page >= totalPages}
+              onClick={() => navigateToPage(Math.min(totalPages, page + 1))}
+              rightIcon={<ChevronRight className="h-4 w-4" />}
+            >
+              Trang sau
+            </Button>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

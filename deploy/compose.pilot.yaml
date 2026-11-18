@@ -1,0 +1,134 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17.12-alpine3.24}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-qizzone}
+      POSTGRES_USER: ${POSTGRES_ADMIN_USER:-qizzone_admin}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_admin_password
+    secrets:
+      - source: postgres_admin_password
+        target: postgres_admin_password
+      - source: qizzone_app_db_password
+        target: qizzone_app_db_password
+      - source: qizzone_migrator_db_password
+        target: qizzone_migrator_db_password
+    volumes:
+      - qizzone_pilot_postgres_data:/var/lib/postgresql/data
+      - ./postgres-init/10-create-app-roles.sh:/docker-entrypoint-initdb.d/10-create-app-roles.sh:ro
+    networks:
+      - data
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-4g}
+    cpus: ${POSTGRES_CPU_LIMIT:-0.5}
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U ${POSTGRES_ADMIN_USER:-qizzone_admin} -d ${POSTGRES_DB:-qizzone}']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  migrate:
+    profiles: [migration]
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.migrate
+    environment:
+      ConnectionStrings__QizzoneFile: /run/secrets/qizzone_migration_connection_string
+    secrets:
+      - qizzone_migration_connection_string
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - database
+      - update
+      - --project
+      - Qizzone.Api/Qizzone.Api.csproj
+      - --startup-project
+      - Qizzone.Api/Qizzone.Api.csproj
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__QizzoneFile: /run/secrets/qizzone_app_connection_string
+      Media__RootPath: /data/media
+      Firebase__ProjectId: ${FIREBASE_PROJECT_ID:?Set FIREBASE_PROJECT_ID in deploy/.env.pilot}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase_service_account
+      Admin__BootstrapUids__0: ${BOOTSTRAP_ADMIN_UID:?Set BOOTSTRAP_ADMIN_UID in deploy/.env.pilot}
+      Cors__AllowedOrigins__0: ${FRONTEND_ORIGIN:?Set FRONTEND_ORIGIN in deploy/.env.pilot}
+      AllowedHosts: ${API_HOST:?Set API_HOST in deploy/.env.pilot}
+    secrets:
+      - qizzone_app_connection_string
+      - firebase_service_account
+    volumes:
+      - qizzone_pilot_media_data:/data/media
+    expose:
+      - "8080"
+    networks:
+      - edge
+      - data
+    mem_limit: ${API_MEMORY_LIMIT:-1g}
+    cpus: ${API_CPU_LIMIT:-1}
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --show-error, http://127.0.0.1:8080/health/ready]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.11.9-alpine
+    environment:
+      API_HOST: ${API_HOST:?Set API_HOST in deploy/.env.pilot}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in deploy/.env.pilot}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - qizzone_pilot_caddy_data:/data
+      - qizzone_pilot_caddy_config:/config
+    networks:
+      - edge
+    mem_limit: ${CADDY_MEMORY_LIMIT:-256m}
+    cpus: ${CADDY_CPU_LIMIT:-0.25}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  edge:
+  data:
+    internal: true
+
+volumes:
+  qizzone_pilot_postgres_data:
+  qizzone_pilot_media_data:
+  qizzone_pilot_caddy_data:
+  qizzone_pilot_caddy_config:
+
+secrets:
+  postgres_admin_password:
+    file: ${POSTGRES_ADMIN_PASSWORD_FILE:?Set POSTGRES_ADMIN_PASSWORD_FILE in deploy/.env.pilot}
+  qizzone_app_db_password:
+    file: ${QIZZONE_APP_DB_PASSWORD_FILE:?Set QIZZONE_APP_DB_PASSWORD_FILE in deploy/.env.pilot}
+  qizzone_migrator_db_password:
+    file: ${QIZZONE_MIGRATOR_DB_PASSWORD_FILE:?Set QIZZONE_MIGRATOR_DB_PASSWORD_FILE in deploy/.env.pilot}
+  qizzone_app_connection_string:
+    file: ${QIZZONE_APP_CONNECTION_STRING_FILE:?Set QIZZONE_APP_CONNECTION_STRING_FILE in deploy/.env.pilot}
+  qizzone_migration_connection_string:
+    file: ${QIZZONE_MIGRATION_CONNECTION_STRING_FILE:?Set QIZZONE_MIGRATION_CONNECTION_STRING_FILE in deploy/.env.pilot}
+  firebase_service_account:
+    file: ${FIREBASE_SERVICE_ACCOUNT_FILE:?Set FIREBASE_SERVICE_ACCOUNT_FILE in deploy/.env.pilot}

@@ -1,10 +1,13 @@
 import { isQizzoneApiConfigured, qizzoneApi, rpc } from "@/lib/cloud";
 import type { ExamResult, QuizReportQuery, QuizResultsReport } from "@/types/exam";
-import type { OptionId } from "@/types/quiz";
+import type { OptionId, OptionItem, QuestionType } from "@/types/quiz";
 
 interface ApiExamAttempt {
   id: string;
   quizId: string;
+  quizTitle: string;
+  subject: string;
+  roomCode: string;
   studentId: string;
   studentName: string;
   studentClass?: string | null;
@@ -18,17 +21,31 @@ interface ApiExamAttempt {
   isSubmitted: boolean;
   lastSavedAt: string;
   mutationId?: string | null;
-  questions: Array<{ id: string; options: Array<{ id: OptionId }> }>;
+  questions: Array<{
+    id: string;
+    order: number;
+    content: string;
+    images: string[];
+    type: QuestionType;
+    options: OptionItem[];
+    points: number;
+  }>;
 }
 
 function mapApiAttempt(attempt: ApiExamAttempt) {
+  const questions = attempt.questions.map(question => ({
+    ...question,
+    correctAnswers: [] as OptionId[],
+    explanation: "",
+  }));
   return {
     ...attempt,
+    questions,
     startTime: Date.parse(attempt.startedAt),
     endTime: attempt.endsAt ? Date.parse(attempt.endsAt) : 0,
     lastSavedAt: attempt.lastSavedAt,
-    questionOrder: attempt.questions.map(question => question.id),
-    optionOrder: Object.fromEntries(attempt.questions.map(question => [
+    questionOrder: questions.map(question => question.id),
+    optionOrder: Object.fromEntries(questions.map(question => [
       question.id,
       question.options.map(option => option.id),
     ])),

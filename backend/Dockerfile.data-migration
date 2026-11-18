@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0.404 AS build
+WORKDIR /src
+COPY Qizzone.MigrationTool/Qizzone.MigrationTool.csproj Qizzone.MigrationTool/
+COPY Qizzone.MigrationTool/packages.lock.json Qizzone.MigrationTool/
+RUN dotnet restore Qizzone.MigrationTool/Qizzone.MigrationTool.csproj --locked-mode
+COPY Qizzone.MigrationTool/ Qizzone.MigrationTool/
+RUN dotnet publish Qizzone.MigrationTool/Qizzone.MigrationTool.csproj \
+    --configuration Release \
+    --output /app/publish \
+    --no-restore
+
+FROM mcr.microsoft.com/dotnet/runtime:10.0.15
+WORKDIR /app
+COPY --from=build /app/publish .
+USER $APP_UID
+ENTRYPOINT ["dotnet", "Qizzone.MigrationTool.dll"]

@@ -38,7 +38,7 @@ interface ExtractionState {
   autoBalancePoints: (totalPoints?: number) => void;
   applyBatchAnswerKey: (answerKeyString: string) => { updatedCount: number };
   solveUnansweredWithAI: (
-    onStepProgress?: (current: number, total: number, message?: string) => void
+    onStepProgress?: (current: number, total: number, message?: string) => void,
   ) => Promise<{ solvedCount: number; durationSeconds: number; failureMessage?: string }>;
   clearAll: () => void;
 }
@@ -269,7 +269,7 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
           if (onStepProgress) {
             onStepProgress(current, total, message);
           }
-        }
+        },
       );
 
       set({

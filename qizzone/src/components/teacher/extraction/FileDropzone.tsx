@@ -8,6 +8,7 @@ import {
   Sparkles,
   ClipboardPaste,
   ArrowRight,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -28,6 +29,7 @@ import {
   validateImportFileSignature,
   validatePastedTextSize,
 } from "@/utils/fileImportValidation";
+import { isQizzoneApiConfigured } from "@/lib/cloud";
 
 interface FileDropzoneProps {
   onSuccess?: () => void;
@@ -36,6 +38,7 @@ interface FileDropzoneProps {
 export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const toast = useToast();
   const {
     setDocument,
@@ -48,8 +51,8 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   const [activeTab, setActiveTab] = useState<"file" | "paste">("file");
   const [pastedText, setPastedText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-
-  const maybeUseAiFallback = async (file: File, sourceText: string, nativeResult: ExtractionResult, imageBase64?: string) => {
+  const [isCancelling, setIsCancelling] = useState(false);
+  const maybeUseAiFallback = async (file: File, sourceText: string, nativeResult: ExtractionResult, imageBase64?: string, signal?: AbortSignal) => {
     if (!shouldUseAIExtractionFallback(nativeResult) || !sourceText.trim()) return nativeResult;
     if (sourceText.length > MAX_AI_FALLBACK_SOURCE_CHARS) {
       return {
@@ -59,9 +62,16 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
       };
     }
     try {
-      const fallback = await extractQuizWithAI({ file, text: sourceText, imageBase64 });
+      const fallback = await extractQuizWithAI({
+        file,
+        text: sourceText,
+        imageBase64,
+        signal,
+        onCancelError: (message) => toast.error(message),
+      });
       return mergeExtractionResults(nativeResult, fallback);
-    } catch {
+    } catch (error) {
+      if (signal?.aborted) throw error;
       return nativeResult;
     }
   };
@@ -81,34 +91,51 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
     }
   };
 
+  const throwIfExtractionCancelled = (signal: AbortSignal) => {
+    if (signal.aborted) throw new DOMException("Đã hủy bóc tách.", "AbortError");
+  };
+
+  const cancelExtraction = () => {
+    const controller = abortControllerRef.current;
+    if (!controller || controller.signal.aborted) return;
+    setIsCancelling(true);
+    controller.abort();
+  };
+
   const processFile = async (file: File) => {
-    const validationError = validateImportFile(file);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-    const signatureError = await validateImportFileSignature(file);
-    if (signatureError) {
-      toast.error(signatureError);
-      return;
-    }
+    if (isProcessing) return;
 
-    const normalizedName = file.name.toLowerCase();
-    const isDocx = normalizedName.endsWith(".docx");
-    const isPdf = normalizedName.endsWith(".pdf");
-    const isImage = /\.(png|jpe?g|webp)$/.test(normalizedName);
-
-    setIsProcessing(true, 20);
-
+    const controller = new AbortController();
+    let started = false;
     try {
+      const validationError = validateImportFile(file);
+      if (validationError) {
+        toast.error(validationError);
+        return;
+      }
+      const signatureError = await validateImportFileSignature(file);
+      if (signatureError) {
+        toast.error(signatureError);
+        return;
+      }
+      const normalizedName = file.name.toLowerCase();
+      const isDocx = normalizedName.endsWith(".docx");
+      const isPdf = normalizedName.endsWith(".pdf");
+      const isImage = /\.(png|jpe?g|webp)$/.test(normalizedName);
+
+      abortControllerRef.current = controller;
+      started = true;
+      setIsProcessing(true, 20);
       if (isDocx) {
         setIsProcessing(true, 50);
         const { rawHtml, rawText, result: nativeResult, documentIR, extractedImages } = await parseDocxFile(file);
+        throwIfExtractionCancelled(controller.signal);
         const referencedResult = attachQuestionSourceReferences(
-          await maybeUseAiFallback(file, rawText, nativeResult),
+          await maybeUseAiFallback(file, rawText, nativeResult, undefined, controller.signal),
           documentIR,
         );
         const result = await attachDocxImagesToQuestions(referencedResult, extractedImages || {});
+        throwIfExtractionCancelled(controller.signal);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -131,11 +158,13 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         const { rawText, totalPages, result: nativeResult, pdfDoc, documentIR, ocrPageCount } = await parsePdfFile(file, (percent) => {
           setIsProcessing(true, 50 + Math.round(percent * 0.35));
         });
+        throwIfExtractionCancelled(controller.signal);
         const referencedResult = attachQuestionSourceReferences(
-          await maybeUseAiFallback(file, rawText, nativeResult),
+          await maybeUseAiFallback(file, rawText, nativeResult, undefined, controller.signal),
           documentIR,
         );
         const result = await attachPdfVisualMediaToQuestions(referencedResult, pdfDoc, documentIR);
+        throwIfExtractionCancelled(controller.signal);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -157,14 +186,17 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
       } else if (isImage) {
         setIsProcessing(true, 40);
         const imageBase64 = await readDataUrl(file);
+        throwIfExtractionCancelled(controller.signal);
         const [ocr] = await recognizeOcrPages([{ pageNumber: 1, image: file }], (percent) => {
           setIsProcessing(true, 40 + Math.round(percent * 0.4));
         });
+        throwIfExtractionCancelled(controller.signal);
         const nativeResult = parseRawExamText(ocr?.text || "", { fileName: file.name, fileType: "image" });
         nativeResult.fileSize = file.size;
         nativeResult.extractionMethod = "ocr";
         nativeResult.qualityFlags = [...new Set([...(nativeResult.qualityFlags || []), ...(ocr && ocr.confidence < 0.72 ? ["ocr_low_confidence"] : [])])];
-        const result = await maybeUseAiFallback(file, ocr?.text || "", nativeResult, imageBase64);
+        const result = await maybeUseAiFallback(file, ocr?.text || "", nativeResult, imageBase64, controller.signal);
+        throwIfExtractionCancelled(controller.signal);
         let imageWidth: number | undefined;
         let imageHeight: number | undefined;
         try {
@@ -200,6 +232,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
           imageBase64,
           documentIR,
         );
+        throwIfExtractionCancelled(controller.signal);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -218,10 +251,14 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         handleFinishExtraction();
       } else {
         const text = await file.text();
+        throwIfExtractionCancelled(controller.signal);
         const result = await extractQuizWithAI({
           file,
           text,
+          signal: controller.signal,
+          onCancelError: (message) => toast.error(message),
         });
+        throwIfExtractionCancelled(controller.signal);
         setDocument({
           id: `doc-${Date.now().toString(36)}`,
           file,
@@ -238,10 +275,20 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         );
         handleFinishExtraction();
       }
-    } catch {
-      toast.error("Không thể phân tích tệp đề thi. Vui lòng kiểm tra lại cấu trúc file!");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AIImportCancellationError") {
+        toast.error(error.message);
+      } else if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+        toast.info("Đã hủy quá trình bóc tách đề thi.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Không thể phân tích tệp đề thi. Vui lòng kiểm tra lại cấu trúc file!");
+      }
     } finally {
-      setIsProcessing(false, 0);
+      if (started) {
+        if (abortControllerRef.current === controller) abortControllerRef.current = null;
+        setIsCancelling(false);
+        setIsProcessing(false, 0);
+      }
     }
   };
 
@@ -254,6 +301,7 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
   };
 
   const handlePasteProcess = async () => {
+    if (isProcessing) return;
     if (!pastedText.trim()) {
       toast.error("Vui lòng dán nội dung văn bản đề thi!");
       return;
@@ -265,11 +313,16 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
       return;
     }
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setIsProcessing(true, 30);
     try {
       const result = await extractQuizWithAI({
         text: pastedText,
+        signal: controller.signal,
+        onCancelError: (message) => toast.error(message),
       });
+      throwIfExtractionCancelled(controller.signal);
 
       setDocument({
         id: `doc-${Date.now().toString(36)}`,
@@ -287,9 +340,17 @@ export function FileDropzone({ onSuccess }: FileDropzoneProps) {
         `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ văn bản!`
       );
       handleFinishExtraction();
-    } catch {
-      toast.error("Không thể bóc tách nội dung văn bản. Vui lòng thử lại!");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AIImportCancellationError") {
+        toast.error(error.message);
+      } else if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
+        toast.info("Đã hủy quá trình bóc tách văn bản.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Không thể bóc tách nội dung văn bản. Vui lòng thử lại!");
+      }
     } finally {
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+      setIsCancelling(false);
       setIsProcessing(false, 0);
     }
   };
@@ -444,7 +505,21 @@ BẢNG ĐÁP ÁN:
               <Sparkles className="h-3.5 w-3.5 text-teal-700 animate-spin" />
               <span>Hệ thống đang bóc tách câu hỏi, công thức Toán LaTeX và nhận diện đáp án...</span>
             </span>
-            <span>{processProgress}%</span>
+            <span className="flex items-center gap-2">
+              <span>{processProgress}%</span>
+              {isQizzoneApiConfigured && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<X className="h-3.5 w-3.5" />}
+                  disabled={isCancelling}
+                  isLoading={isCancelling}
+                  onClick={cancelExtraction}
+                >
+                  {isCancelling ? "Đang hủy…" : "Hủy"}
+                </Button>
+              )}
+            </span>
           </div>
           <div className="w-full bg-teal-200 rounded-full h-1.5 overflow-hidden">
             <div

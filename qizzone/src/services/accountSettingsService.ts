@@ -1,4 +1,4 @@
-import { edge } from '@/lib/cloud';
+import { edge, isQizzoneApiConfigured, qizzoneApi } from '@/lib/cloud';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -25,6 +25,16 @@ export async function uploadAccountAvatar(file: File): Promise<AvatarUploadResul
   if (file.size > MAX_AVATAR_BYTES) {
     throw new Error('Ảnh đại diện phải nhỏ hơn 2 MB.');
   }
+  if (isQizzoneApiConfigured) {
+    const form = new FormData();
+    form.append('file', file, file.name || 'avatar');
+    const result = await qizzoneApi<{ reference: string }>('/api/v1/media', {
+      method: 'POST',
+      body: form,
+    });
+    return { avatarUrl: result.reference };
+  }
+
   const dataUrl = await readFileAsDataUrl(file);
   return edge<AvatarUploadResult>('upload-account-avatar', { dataUrl }, 30_000);
 }

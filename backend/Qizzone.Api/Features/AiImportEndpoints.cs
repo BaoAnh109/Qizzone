@@ -26,6 +26,7 @@ public static partial class AiImportEndpoints
 
         group.MapPost("/", CreateAsync);
         group.MapGet("/{id:guid}", GetAsync);
+        group.MapPost("/{id:guid}/cancel", CancelAsync);
         return endpoints;
     }
 
@@ -183,6 +184,71 @@ public static partial class AiImportEndpoints
             job.CreatedAt,
             job.UpdatedAt,
             job.CompletedAt,
+        });
+    }
+
+    private static async Task<IResult> CancelAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        QizzoneDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var uid = principal.FindFirst("firebase:uid")?.Value;
+        if (string.IsNullOrWhiteSpace(uid)) return Results.Unauthorized();
+        var isAdmin = principal.FindFirst("qizzone:role")?.Value == "admin";
+        var ownedJob = db.AiImportJobs.Where(item => item.Id == id && (isAdmin || item.OwnerUid == uid));
+        var now = DateTimeOffset.UtcNow;
+
+        if (db.Database.ProviderName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var job = await ownedJob.SingleOrDefaultAsync(cancellationToken);
+            if (job is null) return Results.NotFound();
+            if (job.Status is not ("queued" or "processing" or "cancelled"))
+            {
+                return Results.Conflict(new { jobId = job.Id, status = job.Status });
+            }
+
+            if (job.Status != "cancelled")
+            {
+                job.Status = "cancelled";
+                job.SourceFileName = "";
+                job.RequestJson = "{}";
+                job.ResultJson = null;
+                job.ErrorCode = "job_cancelled";
+                job.LeaseUntil = null;
+                job.CompletedAt = now;
+                job.UpdatedAt = now;
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
+            return Results.Ok(new { jobId = job.Id, status = job.Status, job.UpdatedAt, job.CompletedAt });
+        }
+
+        var updated = await ownedJob
+            .Where(item => item.Status == "queued" || item.Status == "processing")
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Status, "cancelled")
+                .SetProperty(item => item.SourceFileName, "")
+                .SetProperty(item => item.RequestJson, "{}")
+                .SetProperty(item => item.ResultJson, (string?)null)
+                .SetProperty(item => item.ErrorCode, "job_cancelled")
+                .SetProperty(item => item.LeaseUntil, (DateTimeOffset?)null)
+                .SetProperty(item => item.CompletedAt, (DateTimeOffset?)now)
+                .SetProperty(item => item.UpdatedAt, now), cancellationToken);
+
+        var currentJob = await ownedJob.AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        if (currentJob is null) return Results.NotFound();
+        if (updated == 0 && currentJob.Status != "cancelled")
+        {
+            return Results.Conflict(new { jobId = currentJob.Id, status = currentJob.Status });
+        }
+
+        return Results.Ok(new
+        {
+            jobId = currentJob.Id,
+            status = currentJob.Status,
+            currentJob.UpdatedAt,
+            currentJob.CompletedAt,
         });
     }
 

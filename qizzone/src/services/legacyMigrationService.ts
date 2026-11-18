@@ -1,6 +1,6 @@
 import type { User } from '@/types/auth';
 import type { Quiz } from '@/types/quiz';
-import { rpc } from '@/lib/cloud';
+import { isQizzoneApiConfigured, rpc } from '@/lib/cloud';
 import { quizService } from '@/services/quizService';
 import { firebaseAuthService } from '@/services/firebaseAuthService';
 
@@ -184,6 +184,9 @@ export function exportLegacyBackup(user: User): void {
 
 /** Imports only records linked to the current Firebase user's matching legacy email/id. */
 export async function migrateLegacyData(user: User): Promise<void> {
+  if (isQizzoneApiConfigured) {
+    throw new Error('Không thể nhập dữ liệu cũ khi hệ thống API mới đang bật. Dữ liệu vẫn được giữ trên thiết bị; hãy tải JSON dự phòng để lưu bản sao.');
+  }
   if (running) return running;
   const preview = getLegacyMigrationPreview(user);
   if (!preview.hasLegacyData) return;

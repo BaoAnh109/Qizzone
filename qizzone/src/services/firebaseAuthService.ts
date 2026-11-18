@@ -1,5 +1,6 @@
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut, reload, sendEmailVerification, sendPasswordResetEmail, updateProfile, type User as FirebaseUser } from 'firebase/auth';
 import { edge, firebaseAuth, isQizzoneApiConfigured, qizzoneApi, rpc, supabase } from '@/lib/cloud';
+import { resolveMediaUrl } from '@/lib/media';
 import type { User, LoginCredentials, RegisterData, UserRole } from '@/types/auth';
 
 export interface ProfileRow {
@@ -14,6 +15,7 @@ export interface ProfileRow {
   active_role?: UserRole | null;
   base_role?: UserRole | null;
   avatar_url?: string | null;
+  student_class?: string | null;
   created_at: string;
 }
 
@@ -29,6 +31,7 @@ interface ApiProfileResponse {
   teacherRequestBlocked: boolean;
   teacherRequestedAt: string | null;
   avatarUrl: string | null;
+  studentClass: string | null;
   createdAt: string;
 }
 
@@ -45,6 +48,7 @@ function asProfileRow(profile: ApiProfileResponse): ProfileRow {
     teacher_request_blocked: profile.teacherRequestBlocked,
     teacher_requested_at: profile.teacherRequestedAt,
     avatar_url: profile.avatarUrl,
+    student_class: profile.studentClass,
     created_at: profile.createdAt,
   };
 }
@@ -69,9 +73,18 @@ export function mapProfile(p: ProfileRow, activeRole?: UserRole, avatarFallback?
     teacherRequestStatus,
     teacherRequestBlocked: Boolean(p.teacher_request_blocked),
     teacherRequestedAt: p.teacher_requested_at || undefined,
-    avatarUrl: p.avatar_url || avatarFallback || undefined,
+    avatarUrl: resolveMediaUrl(p.avatar_url) || avatarFallback || undefined,
+    studentClass: p.student_class ?? (isQizzoneApiConfigured ? '' : readStoredStudentClass(p.firebase_uid)),
     createdAt: p.created_at,
   };
+}
+
+function readStoredStudentClass(uid: string): string | undefined {
+  try {
+    return localStorage.getItem(`qizzone_student_class_${uid}`) || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const inFlightSync = new Map<string, Promise<User>>();
@@ -206,10 +219,30 @@ export const firebaseAuthService = {
     if (isQizzoneApiConfigured) {
       const profile = await qizzoneApi<ApiProfileResponse>('/api/v1/me', {
         method: 'PATCH',
-        body: JSON.stringify({ fullName: data.fullName.trim() }),
+        body: JSON.stringify({
+          fullName: data.fullName.trim(),
+          ...(data.studentClass === undefined ? {} : { studentClass: data.studentClass.trim() || null }),
+          ...(data.avatarUrl?.startsWith('media://qizzone/') ? { avatarUrl: data.avatarUrl } : {}),
+        }),
       });
+      if (data.studentClass !== undefined) persistStudentClass(current.uid, profile.studentClass);
       return mapProfile(asProfileRow(profile), profile.activeRole, firebaseAvatarUrl(current), current.emailVerified);
     }
-    return mapProfile(await rpc<ProfileRow>('update_my_profile', { p_name: data.fullName.trim(), p_avatar: data.avatarUrl || null }), undefined, firebaseAvatarUrl(current), current.emailVerified);
+    const legacyProfile = await rpc<ProfileRow>('update_my_profile', { p_name: data.fullName.trim(), p_avatar: data.avatarUrl || null });
+    if (data.studentClass !== undefined) {
+      legacyProfile.student_class = data.studentClass.trim() || null;
+      persistStudentClass(current.uid, legacyProfile.student_class);
+    }
+    return mapProfile(legacyProfile, undefined, firebaseAvatarUrl(current), current.emailVerified);
   },
 };
+
+function persistStudentClass(uid: string, studentClass: string | null | undefined): void {
+  try {
+    const key = `qizzone_student_class_${uid}`;
+    if (studentClass?.trim()) localStorage.setItem(key, studentClass.trim());
+    else localStorage.removeItem(key);
+  } catch {
+    // Keep the API profile as the source of truth if browser storage is unavailable.
+  }
+}

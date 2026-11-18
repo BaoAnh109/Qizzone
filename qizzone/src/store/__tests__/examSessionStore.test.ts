@@ -120,6 +120,7 @@ describe('cloud exam session store', () => {
     await vi.waitFor(() => expect(saveAttempts).toBe(2));
     expect((await readExamAutosave(session.id))?.mutations).toHaveLength(0);
     expect((await readExamAutosave(session.id))?.draft).toBeUndefined();
+    expect(useExamSessionStore.getState().saveStatus[quiz.id]).toBe('saved');
   });
 
   it('migrates a legacy localStorage draft into IndexedDB and removes the old copy after durable persistence', async () => {

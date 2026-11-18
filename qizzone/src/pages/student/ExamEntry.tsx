@@ -78,7 +78,13 @@ export function ExamEntry() {
           Phòng thi chưa mở
         </h2>
         <p className="text-xs theme-text-muted">
-          Đề thi này đang ở trạng thái Bản nháp hoặc Đã đóng bởi Giáo viên.
+          {quiz.status === "scheduled" && quiz.opensAt
+            ? `Phòng thi đã được lên lịch và sẽ mở lúc ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(quiz.opensAt))}.`
+            : quiz.status === "scheduled"
+              ? "Phòng thi đã được lên lịch và sẽ tự mở theo thời gian đã hẹn."
+              : quiz.status === "draft"
+                ? "Đề thi này đang ở trạng thái Bản nháp."
+                : "Phòng thi đã đóng bởi Giáo viên."}
         </p>
         <Button variant="outline" onClick={() => navigate("/student")}>
           Quay lại sảnh chính
@@ -99,7 +105,7 @@ export function ExamEntry() {
     }
 
     // Initialize or resume session
-    const studentClassVal = user?.studentClass || (user ? localStorage.getItem(`qizzone_student_class_${user.id}`) || "" : "");
+    const studentClassVal = user?.studentClass ?? (user ? localStorage.getItem(`qizzone_student_class_${user.id}`) || "" : "");
     try {
       await initSession({
         quiz,

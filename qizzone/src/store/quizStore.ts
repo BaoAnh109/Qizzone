@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Quiz } from '@/types/quiz';
+import type { Quiz, QuizStatus } from '@/types/quiz';
 import { quizService, type QuizInput } from '@/services/quizService';
 import { errorMessage } from '@/lib/cloud';
 import { useAuthStore } from '@/store/authStore';
@@ -16,11 +16,13 @@ interface QuizState {
   reset: () => void;
   getQuizById: (id: string) => Quiz | undefined;
   getQuizByCode: (code: string) => Quiz | undefined;
+  resolveQuizByCode: (code: string) => Promise<Quiz | undefined>;
   createQuiz: (data: QuizInput) => Promise<Quiz>;
   updateQuiz: (id: string, data: Partial<Quiz>) => Promise<Quiz>;
   updateQuizAssignments: (id: string, assignedClasses: string[], assignedEmails: string[]) => Promise<Quiz>;
   deleteQuiz: (id: string) => Promise<void>;
   togglePublishStatus: (id: string) => Promise<Quiz>;
+  setQuizStatus: (id: string, status: QuizStatus, opensAt?: string | null, closesAt?: string | null) => Promise<Quiz>;
   duplicateQuiz: (id: string) => Promise<Quiz>;
 }
 
@@ -54,6 +56,23 @@ export const useQuizStore = create<QuizState>((set, get) => ({
   retry: () => get().load(),
   getQuizById: id => get().quizzes.find(q => q.id === id),
   getQuizByCode: code => get().quizzes.find(q => q.code.toUpperCase() === code.trim().toUpperCase() || q.id.toLowerCase() === code.trim().toLowerCase()),
+  resolveQuizByCode: async code => {
+    const normalizedCode = code.trim();
+    if (!normalizedCode) return undefined;
+
+    set({ error: null });
+    try {
+      const quiz = await quizService.getByCode(normalizedCode);
+      if (quiz) {
+        const quizzes = get().quizzes.filter(item => item.id !== quiz.id && item.code.toUpperCase() !== quiz.code.toUpperCase());
+        set({ quizzes: [quiz, ...quizzes], error: null });
+      }
+      return quiz;
+    } catch (error) {
+      set({ error: errorMessage(error) });
+      throw error;
+    }
+  },
   createQuiz: async data => {
     const id = await quizService.save(data);
     await get().load();
@@ -101,14 +120,30 @@ export const useQuizStore = create<QuizState>((set, get) => ({
     if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
       throw new Error('Bạn không có quyền thay đổi trạng thái đề thi của giáo viên khác.');
     }
-    const status = existing.status === 'published' ? 'closed' : 'published';
+    const status = existing.status === 'published' || existing.status === 'scheduled' ? 'closed' : 'published';
     await quizService.setStatus(id, status);
+    await get().load();
+    return get().getQuizById(id)!;
+  },
+  setQuizStatus: async (id, status, opensAt = null, closesAt = null) => {
+    const existing = get().getQuizById(id);
+    if (!existing) throw new Error('Không tìm thấy đề.');
+    const user = useAuthStore.getState().user;
+    if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
+      throw new Error('Bạn không có quyền thay đổi trạng thái đề thi của giáo viên khác.');
+    }
+    await quizService.setStatus(id, status, opensAt, closesAt);
     await get().load();
     return get().getQuizById(id)!;
   },
   duplicateQuiz: async id => {
     const source = get().getQuizById(id);
     if (!source) throw new Error('Không tìm thấy đề.');
+    const serverDuplicate = await quizService.duplicate(id);
+    if (serverDuplicate) {
+      await get().load();
+      return get().getQuizById(serverDuplicate.id) ?? serverDuplicate;
+    }
     return get().createQuiz({ ...source, title: `${source.title} (Bản sao)`, status: 'draft' });
   },
 }));

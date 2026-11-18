@@ -1,5 +1,12 @@
 name: Qizzone CI
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -8,6 +15,7 @@ on:
       - develop
       - 'develop/**'
       - 'devolop/**'
+      - 'feat/**'
       - 'review/**'
   pull_request:
 
@@ -15,6 +23,7 @@ jobs:
   validate-and-build:
     name: Lint, Typecheck & Production Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ./qizzone
@@ -48,6 +57,7 @@ jobs:
   backend-validate:
     name: Backend Restore, Security, Tests & Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17
@@ -86,9 +96,36 @@ jobs:
       - name: Build Backend API and Worker
         run: dotnet build backend/Qizzone.slnx --no-restore --configuration Release
 
+  supabase-sql-validate:
+    name: Supabase Migrations and pgTAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 3.2.0
+
+      - name: Start isolated Supabase stack
+        run: supabase start
+
+      - name: Run SQL migration tests
+        run: supabase test db
+
+      - name: Stop isolated Supabase stack
+        if: always()
+        run: supabase stop --no-backup
+
   container-build:
     name: Build API and Worker Images (AMD64 and ARM64)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Repository

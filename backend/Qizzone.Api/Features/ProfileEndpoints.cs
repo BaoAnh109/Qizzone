@@ -125,6 +125,7 @@ public static class ProfileEndpoints
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
+        var uid = principal.FindFirst("firebase:uid")?.Value;
         var fullName = request.FullName?.Trim();
         if (string.IsNullOrWhiteSpace(fullName) || fullName.Length > 100)
         {
@@ -134,7 +135,58 @@ public static class ProfileEndpoints
             });
         }
 
-        var uid = principal.FindFirst("firebase:uid")?.Value;
+        string? studentClass = null;
+        if (request.StudentClass.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
+        {
+            if (request.StudentClass.ValueKind != JsonValueKind.String)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["studentClass"] = ["Class name must be text or null."],
+                });
+            }
+
+            studentClass = request.StudentClass.GetString()?.Trim();
+            if (studentClass?.Length > 100)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["studentClass"] = ["Class name cannot exceed 100 characters."],
+                });
+            }
+        }
+
+        string? avatarUrl = null;
+        if (request.AvatarUrl.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
+        {
+            if (request.AvatarUrl.ValueKind != JsonValueKind.String)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["avatarUrl"] = ["Avatar URL must be a Qizzone media reference or null."],
+                });
+            }
+
+            avatarUrl = request.AvatarUrl.GetString()?.Trim();
+            if (!string.IsNullOrEmpty(avatarUrl))
+            {
+                if (!MediaEndpoints.TryParseReference(avatarUrl, out var mediaId) ||
+                    !await db.MediaObjects.AsNoTracking().AnyAsync(
+                        item => item.Id == mediaId && item.OwnerUid == uid,
+                        cancellationToken))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["avatarUrl"] = ["Avatar must reference an image uploaded by this account."],
+                    });
+                }
+            }
+            else
+            {
+                avatarUrl = null;
+            }
+        }
+
         var profile = await db.Profiles.SingleOrDefaultAsync(item => item.FirebaseUid == uid, cancellationToken);
         if (profile is null)
         {
@@ -142,6 +194,14 @@ public static class ProfileEndpoints
         }
 
         profile.FullName = fullName;
+        if (request.StudentClass.ValueKind != JsonValueKind.Undefined)
+        {
+            profile.StudentClass = string.IsNullOrWhiteSpace(studentClass) ? null : studentClass;
+        }
+        if (request.AvatarUrl.ValueKind != JsonValueKind.Undefined)
+        {
+            profile.AvatarUrl = avatarUrl;
+        }
         profile.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok(ToResponse(profile));
@@ -249,10 +309,11 @@ public static class ProfileEndpoints
         profile.TeacherRequestBlocked,
         profile.TeacherRequestedAt,
         profile.AvatarUrl,
+        profile.StudentClass,
         profile.ActiveRole,
         profile.Role);
 
-    private sealed record ProfileUpdateRequest(string? FullName);
+    private sealed record ProfileUpdateRequest(string? FullName, JsonElement StudentClass, JsonElement AvatarUrl);
     private sealed record RoleSwitchRequest(string? Role);
 
     private sealed record ProfileResponse(
@@ -265,6 +326,7 @@ public static class ProfileEndpoints
         bool TeacherRequestBlocked,
         DateTimeOffset? TeacherRequestedAt,
         string? AvatarUrl,
+        string? StudentClass,
         string ActiveRole,
         string BaseRole);
 }

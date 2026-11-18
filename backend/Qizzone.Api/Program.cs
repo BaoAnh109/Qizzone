@@ -6,11 +6,15 @@ using Qizzone.Api.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 10 * 1024 * 1024);
-var connectionString = builder.Configuration.GetConnectionString("Qizzone");
+var connectionStringFile = builder.Configuration["ConnectionStrings:QizzoneFile"];
+var connectionString = !string.IsNullOrWhiteSpace(connectionStringFile)
+    ? File.ReadAllText(connectionStringFile).Trim()
+    : builder.Configuration.GetConnectionString("Qizzone");
 var firebaseProjectId = builder.Configuration["Firebase:ProjectId"] ?? builder.Configuration["GOOGLE_CLOUD_PROJECT"];
 var firebaseCredential = builder.Configuration["Firebase:ServiceAccountJson"] ??
     Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON") ??
     Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+var mediaRootPath = builder.Configuration["Media:RootPath"];
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 var allowedHosts = builder.Configuration["AllowedHosts"];
 var bootstrapAdminUids = builder.Configuration.GetSection("Admin:BootstrapUids").Get<string[]>()?
@@ -46,6 +50,11 @@ if (builder.Environment.IsProduction())
         throw new InvalidOperationException("AllowedHosts must list the production API host.");
     }
 
+    if (string.IsNullOrWhiteSpace(mediaRootPath))
+    {
+        throw new InvalidOperationException("Media:RootPath must point to persistent media storage in production.");
+    }
+
     if (bootstrapAdminUids.Length == 0)
     {
         throw new InvalidOperationException("Admin:BootstrapUids must include at least one verified Firebase UID for initial administration.");
@@ -54,12 +63,17 @@ if (builder.Environment.IsProduction())
 
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton<ExamAttemptGateStore>();
+builder.Services.AddSingleton(new LocalMediaStore(mediaRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "media")));
 builder.Services.AddDbContext<QizzoneDbContext>(options =>
     options.UseNpgsql(connectionString ?? "Host=localhost;Database=qizzone;Username=qizzone;Password=local-development-only"));
 builder.Services.AddCors(options => options.AddPolicy("QizzoneFrontend", policy =>
     policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddSingleton<IFirebaseTokenVerifier, FirebaseAdminTokenVerifier>();
 builder.Services.AddScoped<IClaimsTransformation, ProfileClaimsTransformation>();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<QuizScheduleService>();
+}
 builder.Services.AddAuthentication(FirebaseBearerHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, FirebaseBearerHandler>(FirebaseBearerHandler.SchemeName, _ => { });
 builder.Services.AddAuthorization(options =>
@@ -108,6 +122,7 @@ app.MapGet("/health/ready", async (QizzoneDbContext db, CancellationToken cancel
 }).AllowAnonymous();
 
 app.MapProfileEndpoints();
+app.MapMediaEndpoints();
 app.MapAdminEndpoints();
 app.MapQuizEndpoints();
 app.MapExamEndpoints();

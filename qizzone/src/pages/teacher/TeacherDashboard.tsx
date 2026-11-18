@@ -38,13 +38,14 @@ export function TeacherDashboard() {
     : results.filter((r) => quizzes.some((q) => q.id === r.quizId));
 
   const publishedCount = quizzes.filter((q) => q.status === "published").length;
+  const scheduledCount = quizzes.filter((q) => q.status === "scheduled").length;
   const totalSubmissions = teacherSubmissions.length;
 
   const stats = [
     {
       title: "Tổng số đề thi",
       value: quizzes.length.toString(),
-      change: `${publishedCount} đề đang mở thi`,
+      change: `${publishedCount} đề đang mở${scheduledCount ? `, ${scheduledCount} đề đã lên lịch` : ""}`,
       icon: FileQuestion,
       color: "text-blue-700 bg-blue-50 border-blue-100",
     },
@@ -169,6 +170,8 @@ export function TeacherDashboard() {
                       <Badge variant={quiz.status} size="sm" dot>
                         {quiz.status === "published"
                           ? "Đang mở"
+                          : quiz.status === "scheduled"
+                          ? "Sắp mở"
                           : quiz.status === "closed"
                           ? "Đã đóng"
                           : "Bản nháp"}

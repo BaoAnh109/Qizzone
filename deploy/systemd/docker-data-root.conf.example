@@ -1,0 +1,8 @@
+[Unit]
+# Install as /etc/systemd/system/docker.service.d/10-qizzone-data-volume.conf.
+# Docker must fail to start if the persistent OCI block volume is not mounted.
+RequiresMountsFor=/srv/qizzone-data/docker
+
+[Service]
+# Prevent Docker from silently falling back to the boot disk when the data volume is absent.
+ExecStartPre=/usr/bin/mountpoint -q /srv/qizzone-data

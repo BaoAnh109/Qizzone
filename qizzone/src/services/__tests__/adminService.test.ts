@@ -23,11 +23,35 @@ describe('admin teacher approval service', () => {
       created_at: '2026-09-08T00:00:00.000Z',
     }] });
 
-    await expect(adminService.listTeacherApprovals()).resolves.toEqual([{
-      firebaseUid: 'teacher-1', email: 'teacher@example.test', fullName: 'Teacher One',
-      status: 'pending', requestedAt: '2026-09-09T00:00:00.000Z', blocked: false, requestKind: 'legacy_teacher',
-    }]);
+    await expect(adminService.listTeacherApprovals()).resolves.toEqual({
+      requests: [{
+        firebaseUid: 'teacher-1', email: 'teacher@example.test', fullName: 'Teacher One',
+        status: 'pending', requestedAt: '2026-09-09T00:00:00.000Z', blocked: false, requestKind: 'legacy_teacher',
+      }],
+      page: 1, pageSize: 25, totalItems: 1, totalPages: 1,
+    });
     expect(mocks.edge).toHaveBeenCalledWith('manage-teacher-approvals', { action: 'list' }, 15_000);
+  });
+
+  it('maps the requested teacher approval page from the Qizzone API', async () => {
+    mocks.apiConfigured = true;
+    mocks.qizzoneApi.mockResolvedValue({
+      requests: [{
+        firebaseUid: 'student-26', email: 'student-26@example.test', fullName: 'Student 26',
+        role: 'student', approvalStatus: 'approved', teacherRequestStatus: 'pending',
+        teacherRequestBlocked: false, requestedAt: '2026-11-18T00:26:00.000Z', createdAt: '2026-11-17T00:00:00.000Z',
+      }],
+      page: 2, pageSize: 25, totalItems: 26, totalPages: 2,
+    });
+
+    await expect(adminService.listTeacherApprovals(2, 25)).resolves.toEqual({
+      requests: [{
+        firebaseUid: 'student-26', email: 'student-26@example.test', fullName: 'Student 26',
+        status: 'pending', requestedAt: '2026-11-18T00:26:00.000Z', blocked: false, requestKind: 'teacher_access',
+      }],
+      page: 2, pageSize: 25, totalItems: 26, totalPages: 2,
+    });
+    expect(mocks.qizzoneApi).toHaveBeenCalledWith('/api/v1/admin/teacher-requests?page=2&pageSize=25');
   });
 
   it('sends only the target UID and fixed review action', async () => {
@@ -83,6 +107,32 @@ describe('admin teacher approval service', () => {
     );
   });
 
+  it('requests server-filtered account pages and maps their totals', async () => {
+    mocks.apiConfigured = true;
+    mocks.qizzoneApi.mockResolvedValue({
+      accounts: [{
+        firebaseUid: 'blocked-1', email: 'blocked@example.test', fullName: 'Blocked Student',
+        role: 'student', approvalStatus: 'rejected', createdAt: '2026-11-15T10:00:00.000Z',
+        quizCount: 0, submissionCount: 2,
+      }],
+      page: 2, pageSize: 10, totalItems: 11, totalPages: 2, teacherCount: 3, studentCount: 14,
+    });
+
+    await expect(adminService.listAccountsPage({
+      role: 'student', status: 'blocked', search: 'blocked', page: 2, pageSize: 10,
+    })).resolves.toEqual({
+      accounts: [{
+        id: 'blocked-1', firebaseUid: 'blocked-1', email: 'blocked@example.test',
+        fullName: 'Blocked Student', role: 'student', isBlocked: true,
+        createdAt: '2026-11-15T10:00:00.000Z', quizCount: 0, submissionCount: 2,
+      }],
+      page: 2, pageSize: 10, totalItems: 11, totalPages: 2, teacherCount: 3, studentCount: 14,
+    });
+    expect(mocks.qizzoneApi).toHaveBeenCalledWith(
+      '/api/v1/admin/accounts?role=student&status=blocked&search=blocked&page=2&pageSize=10',
+    );
+  });
+
   it('calls edge function to toggle user blocked state', async () => {
     mocks.edge.mockResolvedValue({});
     await adminService.toggleBlockUser('user-1', true);
@@ -100,7 +150,7 @@ describe('admin teacher approval service', () => {
         firebaseUid: 'student-1', email: 'student@example.test', fullName: 'Test Student',
         role: 'student', approvalStatus: 'approved', teacherRequestStatus: 'pending',
         teacherRequestBlocked: false, requestedAt: '2026-11-17T10:00:00.000Z', createdAt: '2026-11-16T10:00:00.000Z',
-      }] })
+      }], page: 1, pageSize: 25, totalItems: 1, totalPages: 1 })
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(undefined)
@@ -111,10 +161,13 @@ describe('admin teacher approval service', () => {
       }] })
       .mockResolvedValueOnce(undefined);
 
-    await expect(adminService.listTeacherApprovals()).resolves.toEqual([{
-      firebaseUid: 'student-1', email: 'student@example.test', fullName: 'Test Student',
-      status: 'pending', requestedAt: '2026-11-17T10:00:00.000Z', blocked: false, requestKind: 'teacher_access',
-    }]);
+    await expect(adminService.listTeacherApprovals()).resolves.toEqual({
+      requests: [{
+        firebaseUid: 'student-1', email: 'student@example.test', fullName: 'Test Student',
+        status: 'pending', requestedAt: '2026-11-17T10:00:00.000Z', blocked: false, requestKind: 'teacher_access',
+      }],
+      page: 1, pageSize: 25, totalItems: 1, totalPages: 1,
+    });
     await adminService.approveTeacher('student-1');
     await adminService.rejectTeacher('student-2');
     await adminService.setTeacherRequestBlocked('student-3', true);
@@ -124,7 +177,7 @@ describe('admin teacher approval service', () => {
     }]);
     await adminService.toggleBlockUser('teacher-1', true);
 
-    expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(1, '/api/v1/admin/teacher-requests');
+    expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(1, '/api/v1/admin/teacher-requests?page=1&pageSize=25');
     expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(2, '/api/v1/admin/teacher-requests/student-1', {
       method: 'PATCH', body: JSON.stringify({ action: 'approve' }),
     });
@@ -134,7 +187,7 @@ describe('admin teacher approval service', () => {
     expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(4, '/api/v1/admin/teacher-requests/student-3', {
       method: 'PATCH', body: JSON.stringify({ action: 'set_blocked', blocked: true }),
     });
-    expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(5, '/api/v1/admin/accounts?role=teacher');
+    expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(5, '/api/v1/admin/accounts?role=teacher&page=1&pageSize=100');
     expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(6, '/api/v1/admin/accounts/teacher-1/access', {
       method: 'PATCH', body: JSON.stringify({ isBlocked: true }),
     });

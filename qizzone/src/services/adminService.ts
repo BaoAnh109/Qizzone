@@ -23,6 +23,14 @@ export interface TeacherApprovalRequest {
   requestKind: 'teacher_access' | 'legacy_teacher';
 }
 
+export interface TeacherApprovalListPage {
+  requests: TeacherApprovalRequest[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface AccountRow {
   id?: string;
   firebase_uid: string;
@@ -46,6 +54,26 @@ export interface UserAccount {
   createdAt: string;
   quizCount: number;
   submissionCount: number;
+}
+
+export type AccountStatusFilter = 'all' | 'active' | 'blocked';
+
+export interface AccountListQuery {
+  role?: 'teacher' | 'student';
+  status?: AccountStatusFilter;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AccountListPage {
+  accounts: UserAccount[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  teacherCount: number;
+  studentCount: number;
 }
 
 function mapRequest(row: TeacherApprovalRow): TeacherApprovalRequest {
@@ -74,8 +102,32 @@ function mapAccount(row: AccountRow): UserAccount {
   };
 }
 
+function mapApiAccount(row: {
+  firebaseUid: string;
+  email: string;
+  fullName: string;
+  role: 'student' | 'teacher';
+  approvalStatus: string;
+  createdAt: string;
+  quizCount: number;
+  submissionCount: number;
+}): UserAccount {
+  return mapAccount({
+    id: row.firebaseUid,
+    firebase_uid: row.firebaseUid,
+    email: row.email,
+    full_name: row.fullName,
+    role: row.role,
+    approval_status: row.approvalStatus,
+    is_blocked: row.approvalStatus === 'rejected' || row.approvalStatus === 'blocked',
+    created_at: row.createdAt,
+    quiz_count: row.quizCount,
+    submission_count: row.submissionCount,
+  });
+}
+
 export const adminService = {
-  async listTeacherApprovals(): Promise<TeacherApprovalRequest[]> {
+  async listTeacherApprovals(page = 1, pageSize = 25): Promise<TeacherApprovalListPage> {
     if (isQizzoneApiConfigured) {
       const result = await qizzoneApi<{ requests: Array<{
         firebaseUid: string;
@@ -87,19 +139,35 @@ export const adminService = {
         teacherRequestBlocked: boolean;
         requestedAt: string | null;
         createdAt: string;
-      }> }>('/api/v1/admin/teacher-requests');
-      return result.requests.map(row => ({
-        firebaseUid: row.firebaseUid,
-        email: row.email,
-        fullName: row.fullName,
-        status: row.role === 'student' && row.teacherRequestStatus !== 'pending' ? 'blocked' : 'pending',
-        requestedAt: row.requestedAt || row.createdAt,
-        blocked: row.teacherRequestBlocked,
-        requestKind: row.role === 'student' ? 'teacher_access' : 'legacy_teacher',
-      }));
+      }>; page: number; pageSize: number; totalItems: number; totalPages: number }>(
+        `/api/v1/admin/teacher-requests?page=${page}&pageSize=${pageSize}`,
+      );
+      return {
+        requests: result.requests.map(row => ({
+          firebaseUid: row.firebaseUid,
+          email: row.email,
+          fullName: row.fullName,
+          status: row.role === 'student' && row.teacherRequestStatus !== 'pending' ? 'blocked' : 'pending',
+          requestedAt: row.requestedAt || row.createdAt,
+          blocked: row.teacherRequestBlocked,
+          requestKind: row.role === 'student' ? 'teacher_access' : 'legacy_teacher',
+        })),
+        page: result.page,
+        pageSize: result.pageSize,
+        totalItems: result.totalItems,
+        totalPages: result.totalPages,
+      };
     }
     const result = await edge<{ requests: TeacherApprovalRow[] }>('manage-teacher-approvals', { action: 'list' }, 15_000);
-    return result.requests.map(mapRequest);
+    const requests = result.requests.map(mapRequest);
+    const start = Math.max(0, (page - 1) * pageSize);
+    return {
+      requests: requests.slice(start, start + pageSize),
+      page,
+      pageSize,
+      totalItems: requests.length,
+      totalPages: Math.ceil(requests.length / pageSize),
+    };
   },
   approveTeacher: (firebaseUid: string) => isQizzoneApiConfigured
     ? qizzoneApi(`/api/v1/admin/teacher-requests/${firebaseUid}`, { method: 'PATCH', body: JSON.stringify({ action: 'approve' }) })
@@ -113,29 +181,13 @@ export const adminService = {
 
   async listAccounts(role?: 'teacher' | 'student'): Promise<UserAccount[]> {
     if (isQizzoneApiConfigured) {
-      const query = role ? `?role=${encodeURIComponent(role)}` : '';
-      const result = await qizzoneApi<{ accounts: Array<{
-        firebaseUid: string;
-        email: string;
-        fullName: string;
-        role: 'student' | 'teacher';
-        approvalStatus: string;
-        createdAt: string;
-        quizCount: number;
-        submissionCount: number;
-      }> }>(`/api/v1/admin/accounts${query}`);
-      return result.accounts.map(row => mapAccount({
-        id: row.firebaseUid,
-        firebase_uid: row.firebaseUid,
-        email: row.email,
-        full_name: row.fullName,
-        role: row.role,
-        approval_status: row.approvalStatus,
-        is_blocked: row.approvalStatus === 'rejected',
-        created_at: row.createdAt,
-        quiz_count: row.quizCount,
-        submission_count: row.submissionCount,
-      }));
+      const accounts: UserAccount[] = [];
+      for (let page = 1; page <= 10_000; page += 1) {
+        const result = await adminService.listAccountsPage({ role, page, pageSize: 100 });
+        accounts.push(...result.accounts);
+        if (result.totalPages === 0 || page >= result.totalPages) break;
+      }
+      return accounts;
     }
     // 1. Try edge function manage-user-accounts if deployed or mocked in tests
     try {
@@ -175,6 +227,70 @@ export const adminService = {
     }
 
     return [];
+  },
+
+  async listAccountsPage(query: AccountListQuery = {}): Promise<AccountListPage> {
+    const page = Math.max(1, Math.floor(query.page ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Math.floor(query.pageSize ?? 25)));
+    const search = query.search?.trim() ?? '';
+    const status = query.status ?? 'all';
+
+    if (isQizzoneApiConfigured) {
+      const params = new URLSearchParams();
+      if (query.role) params.set('role', query.role);
+      if (status !== 'all') params.set('status', status);
+      if (search) params.set('search', search);
+      params.set('page', String(page));
+      params.set('pageSize', String(pageSize));
+      const result = await qizzoneApi<{
+        accounts: Array<{
+          firebaseUid: string;
+          email: string;
+          fullName: string;
+          role: 'student' | 'teacher';
+          approvalStatus: string;
+          createdAt: string;
+          quizCount: number;
+          submissionCount: number;
+        }>;
+        page?: number;
+        pageSize?: number;
+        totalItems?: number;
+        totalPages?: number;
+        teacherCount?: number;
+        studentCount?: number;
+      }>(`/api/v1/admin/accounts?${params.toString()}`);
+      return {
+        accounts: result.accounts.map(mapApiAccount),
+        page: result.page ?? page,
+        pageSize: result.pageSize ?? pageSize,
+        totalItems: result.totalItems ?? result.accounts.length,
+        totalPages: result.totalPages ?? (result.accounts.length > 0 ? 1 : 0),
+        teacherCount: result.teacherCount ?? 0,
+        studentCount: result.studentCount ?? 0,
+      };
+    }
+
+    const allAccounts = await adminService.listAccounts();
+    const normalizedSearch = search.toLocaleLowerCase();
+    const filtered = allAccounts.filter(account => {
+      if (query.role && account.role !== query.role) return false;
+      if (status === 'blocked' && !account.isBlocked) return false;
+      if (status === 'active' && account.isBlocked) return false;
+      return !normalizedSearch ||
+        account.fullName.toLocaleLowerCase().includes(normalizedSearch) ||
+        account.email.toLocaleLowerCase().includes(normalizedSearch);
+    });
+    const totalItems = filtered.length;
+    return {
+      accounts: filtered.slice((page - 1) * pageSize, page * pageSize),
+      page,
+      pageSize,
+      totalItems,
+      totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / pageSize),
+      teacherCount: allAccounts.filter(account => account.role === 'teacher').length,
+      studentCount: allAccounts.filter(account => account.role === 'student').length,
+    };
   },
 
   async toggleBlockUser(userId: string, isBlocked: boolean, role?: 'teacher' | 'student'): Promise<void> {

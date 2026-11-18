@@ -9,6 +9,12 @@ interface QuestionKeyboardShortcutsOptions {
   disabled?: boolean;
 }
 
+export function getShortcutOptionIndex(key: string, optionCount: number): number | undefined {
+  if (!/^[1-5]$/.test(key)) return undefined;
+  const index = Number(key) - 1;
+  return index < optionCount ? index : undefined;
+}
+
 export function useQuestionKeyboardShortcuts({
   optionCount,
   onOptionSelect,
@@ -46,10 +52,8 @@ export function useQuestionKeyboardShortcuts({
         return;
       }
 
-      if (/^[1-4]$/.test(event.key)) {
-        const optionIndex = Number(event.key) - 1;
-        if (optionIndex >= options.optionCount) return;
-
+      const optionIndex = getShortcutOptionIndex(event.key, options.optionCount);
+      if (optionIndex !== undefined) {
         event.preventDefault();
         options.onOptionSelect(optionIndex);
         return;

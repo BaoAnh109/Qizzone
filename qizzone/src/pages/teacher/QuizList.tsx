@@ -219,7 +219,7 @@ export function QuizList() {
 
         {/* Status Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto rounded-md theme-surface-muted p-1 text-xs font-semibold">
-          {(["all", "published", "draft", "closed"] as const).map((st) => (
+          {(["all", "published", "scheduled", "draft", "closed"] as const).map((st) => (
             <button
               key={st}
               type="button"
@@ -234,6 +234,8 @@ export function QuizList() {
                 ? "Tất cả"
                 : st === "published"
                 ? "Đang mở"
+                : st === "scheduled"
+                ? "Sắp mở"
                 : st === "draft"
                 ? "Bản nháp"
                 : "Đã đóng"}
@@ -262,6 +264,8 @@ export function QuizList() {
                     <Badge variant={quiz.status} size="sm" dot>
                       {quiz.status === "published"
                         ? "Đang mở"
+                        : quiz.status === "scheduled"
+                        ? "Sắp mở"
                         : quiz.status === "draft"
                         ? "Bản nháp"
                         : "Đã đóng"}
@@ -414,6 +418,11 @@ export function QuizList() {
                           <>
                             <ToggleRight className="h-4 w-4 text-emerald-600" />
                             <span>Hủy xuất bản</span>
+                          </>
+                        ) : quiz.status === "scheduled" ? (
+                          <>
+                            <ToggleRight className="h-4 w-4 text-amber-600" />
+                            <span>Hủy lịch</span>
                           </>
                         ) : (
                           <>

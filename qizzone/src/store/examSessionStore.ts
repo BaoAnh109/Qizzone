@@ -314,7 +314,7 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
         }
         await persisting.get(quizId);
         const remaining = await readExamAutosave(session.id);
-        if (currentGeneration === generation && saveVersions.get(quizId) === requestVersion) {
+        if (currentGeneration === generation && (saveVersions.get(quizId) ?? 0) === requestVersion) {
           set(state => ({ saveStatus: { ...state.saveStatus, [quizId]: remaining?.mutations.length ? 'pending' : 'saved' } }));
         }
       } catch (error) {

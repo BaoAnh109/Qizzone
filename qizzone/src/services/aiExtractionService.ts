@@ -10,6 +10,8 @@ export interface AIExtractParams {
   file?: File;
   text?: string;
   imageBase64?: string;
+  signal?: AbortSignal;
+  onCancelError?: (message: string) => void;
 }
 
 interface RawSolutionItem {
@@ -120,6 +122,7 @@ function isGroundedOption(id: string, content: string, source: string): boolean 
   if (normalizedContent.length < 2) return false;
   const aliases: Record<string, string[]> = {
     A: ['a', '①'], B: ['b', '②'], C: ['c', '③'], D: ['d', '④'],
+    E: ['e', '⑤'],
   };
   const contentAt = normalizedSource.indexOf(normalizedContent);
   if (contentAt < 0) return false;
@@ -188,17 +191,85 @@ interface AIRequestOptions {
   maxAttempts?: number;
   sourceFileName?: string;
   operation?: 'extract' | 'solve';
+  signal?: AbortSignal;
+  onCancelError?: (message: string) => void;
 }
 
 interface AIImportJobResponse {
   jobId: string;
-  status: 'queued' | 'processing' | 'succeeded' | 'failed';
+  status: 'queued' | 'processing' | 'succeeded' | 'failed' | 'cancelled';
   result?: unknown;
   errorCode?: string | null;
 }
 
+function abortError(): DOMException {
+  return new DOMException('Đã hủy thao tác AI.', 'AbortError');
+}
+
+class AIImportCancellationError extends Error {
+  constructor() {
+    super('Đã dừng chờ kết quả nhưng máy chủ chưa xác nhận hủy job AI. Hãy kiểm tra lại trạng thái job trước khi thử lại.');
+    this.name = 'AIImportCancellationError';
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortError();
+}
+
+function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      value => { signal.removeEventListener('abort', onAbort); resolve(value); },
+      error => { signal.removeEventListener('abort', onAbort); reject(error); },
+    );
+  });
+}
+
+function waitForNextPoll(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!signal) {
+      setTimeout(resolve, 1_000);
+      return;
+    }
+    if (signal.aborted) {
+      reject(abortError());
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, 1_000);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(abortError());
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+async function cancelQueuedAI(jobId: string): Promise<void> {
+  try {
+    await qizzoneApi(`/api/v1/ai-import-jobs/${encodeURIComponent(jobId)}/cancel`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error && error.status === 409) return;
+    throw new AIImportCancellationError();
+  }
+}
+
 async function requestQueuedAI(prompt: string, imageBase64: string | undefined, options: AIRequestOptions, idempotencyKey: string): Promise<unknown> {
-  const accepted = await qizzoneApi<AIImportJobResponse>('/api/v1/ai-import-jobs', {
+  const { signal } = options;
+  throwIfAborted(signal);
+  // Keep the enqueue request alive after a local cancel long enough to learn its
+  // job ID; the continuation below then cancels any job created in that race.
+  const acceptedRequest = qizzoneApi<AIImportJobResponse>('/api/v1/ai-import-jobs', {
     method: 'POST',
     body: JSON.stringify({
       sourceFileName: options.sourceFileName || 'ai-import.txt',
@@ -208,31 +279,68 @@ async function requestQueuedAI(prompt: string, imageBase64: string | undefined, 
       idempotencyKey,
     }),
     signal: AbortSignal.timeout(90_000),
+  }).then(async accepted => {
+    if (signal?.aborted && accepted.jobId) {
+      try {
+        await cancelQueuedAI(accepted.jobId);
+      } catch (error) {
+        options.onCancelError?.(error instanceof Error ? error.message : 'Không xác nhận được yêu cầu hủy job AI.');
+      }
+    }
+    return accepted;
   });
+  const accepted = await withAbort(acceptedRequest, signal);
   if (!accepted.jobId) throw new Error('Máy chủ không trả mã công việc AI.');
 
+  let cancellationSent = false;
+  const cancelIfRequested = async () => {
+    if (!cancellationSent) {
+      cancellationSent = true;
+      await cancelQueuedAI(accepted.jobId);
+    }
+  };
   const deadline = Date.now() + 4 * 60_000;
   while (Date.now() < deadline) {
-    const job = await qizzoneApi<AIImportJobResponse>(`/api/v1/ai-import-jobs/${encodeURIComponent(accepted.jobId)}`);
+    if (signal?.aborted) {
+      await cancelIfRequested();
+      throw abortError();
+    }
+    let job: AIImportJobResponse;
+    try {
+      job = await qizzoneApi<AIImportJobResponse>(`/api/v1/ai-import-jobs/${encodeURIComponent(accepted.jobId)}`, {
+        ...(signal ? { signal } : {}),
+      });
+    } catch (error) {
+      if (signal?.aborted) {
+        await cancelIfRequested();
+        throw abortError();
+      }
+      throw error;
+    }
     if (job.status === 'succeeded') return job.result;
     if (job.status === 'failed') throw new Error(`Công việc AI thất bại (${job.errorCode || 'ai_job_failed'}).`);
-    await new Promise(resolve => setTimeout(resolve, 1_000));
+    if (job.status === 'cancelled') throw abortError();
+    await waitForNextPoll(signal);
   }
   throw new Error('Công việc AI vẫn đang xử lý. Hãy thử lại sau.');
 }
 
 async function requestAI(prompt: string, imageBase64?: string, options: AIRequestOptions = {}): Promise<unknown> {
-  const { maxAttempts = 1, sourceFileName, operation = 'extract' } = options;
+  const { maxAttempts = 1, sourceFileName, operation = 'extract', signal } = options;
   const idempotencyKey = crypto.randomUUID();
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
+      throwIfAborted(signal);
       if (isQizzoneApiConfigured) {
-        return await requestQueuedAI(prompt, imageBase64, { sourceFileName, operation }, idempotencyKey);
+        return await requestQueuedAI(prompt, imageBase64, { sourceFileName, operation, signal, onCancelError: options.onCancelError }, idempotencyKey);
       }
       const response = await edge<{ result: unknown }>('extract-quiz-with-gemini', { prompt, imageBase64 }, 90_000);
+      throwIfAborted(signal);
       return response.result;
     } catch (err) {
+      if (err instanceof AIImportCancellationError) throw err;
+      if (signal?.aborted || (err instanceof DOMException && err.name === 'AbortError')) throw abortError();
       lastErr = err;
       const msg = errorMessage(err);
       const isTransient = /quá tải|thử lại|timeout|503|504|429|network|fetch/i.test(msg);
@@ -247,7 +355,8 @@ async function requestAI(prompt: string, imageBase64?: string, options: AIReques
 }
 
 export async function extractQuizWithAI(params: AIExtractParams): Promise<ExtractionResult> {
-  const { file, text, imageBase64 } = params;
+  const { file, text, imageBase64, signal, onCancelError } = params;
+  throwIfAborted(signal);
   const fileName = file?.name || (imageBase64 ? 'DeThi_AI.png' : 'DeThi_VanBan.txt');
   const fileType: ExtractionResult['fileType'] = imageBase64 ? 'image' : file?.name.toLowerCase().endsWith('.pdf') ? 'pdf' : file?.name.toLowerCase().endsWith('.docx') ? 'docx' : 'text';
   const source = text?.trim() ? `\nNội dung tài liệu:\n${text}` : '';
@@ -272,12 +381,15 @@ export async function extractQuizWithAI(params: AIExtractParams): Promise<Extrac
       parsed.questions.every(question => question.options.length >= 2 &&
         question.options.length <= 5 &&
         question.options.every(option => option.content.trim().length > 0));
-    if (complete) return parsed;
+    if (complete) {
+      throwIfAborted(signal);
+      return parsed;
+    }
   }
   if (text?.trim() && text.length <= MAX_AI_FALLBACK_SOURCE_CHARS) {
     try {
       const prompt = [SYSTEM_PROMPT, source].filter(Boolean).join("\n");
-      const result = parseGroundedAIResult(await requestAI(prompt, imageBase64, { sourceFileName: fileName }), fileName, fileType, file?.size || text?.length || 0, text || "");
+      const result = parseGroundedAIResult(await requestAI(prompt, imageBase64, { sourceFileName: fileName, signal, onCancelError }), fileName, fileType, file?.size || text?.length || 0, text || "");
       if (result) {
         const native = text?.trim() ? parseRawExamText(text, { fileName, fileType }) : undefined;
         const nativeByOrder = new Map((native?.questions || []).map(question => [question.order, question]));
@@ -328,10 +440,13 @@ export async function extractQuizWithAI(params: AIExtractParams): Promise<Extrac
           warningsCount: mergedQuestions.reduce((total, question) => total + (question.warningFlags?.length || 0), 0) + qualityFlags.length,
         };
       }
-    } catch {
+    } catch (error) {
       // Preserve partial parser output when Gemini is unavailable.
+      if (error instanceof AIImportCancellationError) throw error;
+      if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) throw abortError();
     }
   }
+  throwIfAborted(signal);
   if (text?.trim()) {
     const parsed = parseRawExamText(text, { fileName, fileType });
     if (text.length > MAX_AI_FALLBACK_SOURCE_CHARS) {

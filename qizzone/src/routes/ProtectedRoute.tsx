@@ -3,6 +3,7 @@ import { useAuthStore } from "@/store/authStore";
 import type { Role } from "@/types/auth";
 import { getRoleHomeRoute } from "@/routes/navigation";
 import { AuthLoadingFallback } from "@/components/common/RouteLoadingFallback";
+import { isQizzoneApiConfigured } from "@/lib/cloud";
 
 interface ProtectedRouteProps {
   allowedRole?: Role;
@@ -26,7 +27,11 @@ export function ProtectedRoute({
         <div className="max-w-lg space-y-2">
           <h1 className="text-xl font-bold theme-text-primary">Chưa thể kết nối dịch vụ</h1>
           <p className="text-sm theme-text-secondary">{configurationError}</p>
-          <p className="text-xs theme-text-muted">Kiểm tra các biến VITE_FIREBASE_* và VITE_SUPABASE_* trong file .env rồi tải lại trang.</p>
+          <p className="text-xs theme-text-muted">
+            {isQizzoneApiConfigured
+              ? "Kiểm tra các biến VITE_FIREBASE_* trong file .env rồi tải lại trang."
+              : "Kiểm tra các biến VITE_FIREBASE_* và VITE_SUPABASE_* trong file .env rồi tải lại trang."}
+          </p>
         </div>
       </div>
     );

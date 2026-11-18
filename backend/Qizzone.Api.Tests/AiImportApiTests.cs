@@ -57,6 +57,82 @@ public sealed class AiImportApiTests
     }
 
     [Fact]
+    public async Task Teacher_can_cancel_own_queued_or_processing_job_and_cancellation_is_idempotent()
+    {
+        using var factory = new QizzoneApiFactory();
+        await SeedProfileAsync(factory, "teacher-1", "teacher");
+        await SeedProfileAsync(factory, "other-teacher-1", "teacher");
+        using var owner = factory.CreateClient();
+        owner.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "teacher-test-token");
+        var queued = await PostJobAsync(owner, Guid.NewGuid(), "Extract this exam.");
+        Assert.Equal(HttpStatusCode.Accepted, queued.StatusCode);
+        using var queuedBody = JsonDocument.Parse(await queued.Content.ReadAsStringAsync());
+        var jobId = queuedBody.RootElement.GetProperty("jobId").GetGuid();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QizzoneDbContext>();
+            var job = await db.AiImportJobs.SingleAsync(item => item.Id == jobId);
+            job.Status = "processing";
+            job.LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(2);
+            await db.SaveChangesAsync();
+        }
+
+        owner.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "other-teacher-test-token");
+        Assert.Equal(HttpStatusCode.NotFound, (await owner.PostAsync($"/api/v1/ai-import-jobs/{jobId}/cancel", null)).StatusCode);
+
+        owner.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "teacher-test-token");
+        using var cancelled = await owner.PostAsync($"/api/v1/ai-import-jobs/{jobId}/cancel", null);
+        Assert.Equal(HttpStatusCode.OK, cancelled.StatusCode);
+        using var cancelledBody = JsonDocument.Parse(await cancelled.Content.ReadAsStringAsync());
+        Assert.Equal("cancelled", cancelledBody.RootElement.GetProperty("status").GetString());
+
+        using var repeated = await owner.PostAsync($"/api/v1/ai-import-jobs/{jobId}/cancel", null);
+        Assert.Equal(HttpStatusCode.OK, repeated.StatusCode);
+        using var scopeAfterCancel = factory.Services.CreateScope();
+        var stored = await scopeAfterCancel.ServiceProvider.GetRequiredService<QizzoneDbContext>().AiImportJobs.SingleAsync(item => item.Id == jobId);
+        Assert.Equal("cancelled", stored.Status);
+        Assert.Equal("job_cancelled", stored.ErrorCode);
+        Assert.Equal("{}", stored.RequestJson);
+        Assert.Equal("", stored.SourceFileName);
+        Assert.Null(stored.LeaseUntil);
+        Assert.NotNull(stored.CompletedAt);
+
+        var secondQueued = await PostJobAsync(owner, Guid.NewGuid(), "Extract another exam.");
+        using var secondQueuedBody = JsonDocument.Parse(await secondQueued.Content.ReadAsStringAsync());
+        var secondJobId = secondQueuedBody.RootElement.GetProperty("jobId").GetGuid();
+        using var queuedCancellation = await owner.PostAsync($"/api/v1/ai-import-jobs/{secondJobId}/cancel", null);
+        Assert.Equal(HttpStatusCode.OK, queuedCancellation.StatusCode);
+        using var queuedCancellationBody = JsonDocument.Parse(await queuedCancellation.Content.ReadAsStringAsync());
+        Assert.Equal("cancelled", queuedCancellationBody.RootElement.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task Completed_ai_import_job_cannot_be_cancelled()
+    {
+        using var factory = new QizzoneApiFactory();
+        await SeedProfileAsync(factory, "teacher-1", "teacher");
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "teacher-test-token");
+        var queued = await PostJobAsync(client, Guid.NewGuid(), "Extract this exam.");
+        using var body = JsonDocument.Parse(await queued.Content.ReadAsStringAsync());
+        var jobId = body.RootElement.GetProperty("jobId").GetGuid();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QizzoneDbContext>();
+            var job = await db.AiImportJobs.SingleAsync(item => item.Id == jobId);
+            job.Status = "succeeded";
+            job.ResultJson = "{\"result\":{}}";
+            job.CompletedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        using var response = await client.PostAsync($"/api/v1/ai-import-jobs/{jobId}/cancel", null);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Ai_import_rejects_invalid_image_signatures_and_non_teacher_accounts()
     {
         using var factory = new QizzoneApiFactory();

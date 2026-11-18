@@ -1,0 +1,23 @@
+services:
+  data-migration:
+    profiles: [data-migration]
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.data-migration
+    environment:
+      QIZZONE_MIGRATION_SOURCE_CONNECTION_STRING_FILE: /run/secrets/source_connection_string
+      QIZZONE_MIGRATION_TARGET_CONNECTION_STRING_FILE: /run/secrets/qizzone_migration_connection_string
+    secrets:
+      - source_connection_string
+      - qizzone_migration_connection_string
+    networks:
+      - edge
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: [plan]
+
+secrets:
+  source_connection_string:
+    file: ${QIZZONE_MIGRATION_SOURCE_CONNECTION_STRING_FILE:?Set QIZZONE_MIGRATION_SOURCE_CONNECTION_STRING_FILE in deploy/.env.pilot}

@@ -5,7 +5,7 @@ vi.mock('@/lib/cloud', () => ({
 }));
 vi.mock('@/services/quizService', () => ({
   quizService: {
-    list: vi.fn(), save: vi.fn(), delete: vi.fn(), setStatus: vi.fn(),
+    list: vi.fn(), getByCode: vi.fn(), save: vi.fn(), delete: vi.fn(), setStatus: vi.fn(),
   },
 }));
 
@@ -59,5 +59,42 @@ describe('Supabase quiz store', () => {
     const updated = await useQuizStore.getState().togglePublishStatus(quiz.id);
     expect(quizService.setStatus).toHaveBeenCalledWith(quiz.id, 'closed');
     expect(updated.status).toBe('closed');
+  });
+
+  it('schedules a quiz through the server status endpoint with UTC boundaries', async () => {
+    const opensAt = '2026-12-01T09:00:00.000Z';
+    const closesAt = '2026-12-01T10:00:00.000Z';
+    const scheduledQuiz = { ...quiz, status: 'scheduled' as const, opensAt, closesAt };
+    useQuizStore.setState({ quizzes: [quiz] });
+    vi.mocked(quizService.setStatus).mockResolvedValue(undefined);
+    vi.mocked(quizService.list).mockResolvedValue([scheduledQuiz]);
+
+    const updated = await useQuizStore.getState().setQuizStatus(quiz.id, 'scheduled', opensAt, closesAt);
+
+    expect(quizService.setStatus).toHaveBeenCalledWith(quiz.id, 'scheduled', opensAt, closesAt);
+    expect(updated).toEqual(scheduledQuiz);
+  });
+
+  it('cancels a scheduled room instead of publishing it immediately', async () => {
+    useQuizStore.setState({ quizzes: [{ ...quiz, status: 'scheduled' }] });
+    vi.mocked(quizService.setStatus).mockResolvedValue(undefined);
+    vi.mocked(quizService.list).mockResolvedValue([{ ...quiz, status: 'closed' }]);
+
+    const updated = await useQuizStore.getState().togglePublishStatus(quiz.id);
+
+    expect(quizService.setStatus).toHaveBeenCalledWith(quiz.id, 'closed');
+    expect(updated.status).toBe('closed');
+  });
+
+  it('resolves a room code directly and caches only the matching quiz', async () => {
+    const otherQuiz = { ...quiz, id: 'quiz-2', code: 'DEF456' };
+    useQuizStore.setState({ quizzes: [otherQuiz] });
+    vi.mocked(quizService.getByCode).mockResolvedValue(quiz);
+
+    await expect(useQuizStore.getState().resolveQuizByCode(' abc123 ')).resolves.toEqual(quiz);
+
+    expect(quizService.getByCode).toHaveBeenCalledWith('abc123');
+    expect(useQuizStore.getState().quizzes).toEqual([quiz, otherQuiz]);
+    expect(useQuizStore.getState().error).toBeNull();
   });
 });

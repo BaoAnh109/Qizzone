@@ -15,8 +15,7 @@ public sealed class AiImportWorker(
     private const int MutationCleanupBatchSize = 1000;
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(1);
     private readonly TimeSpan _leaseDuration = TimeSpan.FromMinutes(2);
-    private readonly string _connectionString = configuration.GetConnectionString("Qizzone") ??
-        configuration["ConnectionStrings:Qizzone"] ?? "";
+    private readonly string _connectionString = ResolveConnectionString(configuration);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -134,9 +133,15 @@ public sealed class AiImportWorker(
             {
                 throw new GeminiPermanentException("job_payload_invalid");
             }
-            var result = await gemini.ExtractAsync(payload, cancellationToken);
-            await SaveSuccessAsync(dataSource, job, result, cancellationToken);
-            logger.LogInformation("AI import job {JobId} completed on attempt {Attempt}.", job.Id, job.AttemptCount);
+            var result = await ExtractWithCancellationMonitorAsync(dataSource, job, payload, cancellationToken);
+            if (await SaveSuccessAsync(dataSource, job, result, cancellationToken))
+            {
+                logger.LogInformation("AI import job {JobId} completed on attempt {Attempt}.", job.Id, job.AttemptCount);
+            }
+        }
+        catch (AiImportJobCancelledException)
+        {
+            logger.LogInformation("AI import job {JobId} was cancelled or its lease expired.", job.Id);
         }
         catch (GeminiTransientException exception)
         {
@@ -170,7 +175,85 @@ public sealed class AiImportWorker(
         }
     }
 
-    private static async Task SaveSuccessAsync(NpgsqlDataSource dataSource, ClaimedJob job, string resultJson, CancellationToken cancellationToken)
+    private async Task<string> ExtractWithCancellationMonitorAsync(
+        NpgsqlDataSource dataSource,
+        ClaimedJob job,
+        AiImportPayload payload,
+        CancellationToken stoppingToken)
+    {
+        using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        using var monitorStop = new CancellationTokenSource();
+        var monitor = MonitorJobLeaseAsync(dataSource, job, operationCancellation, monitorStop.Token);
+        try
+        {
+            return await gemini.ExtractAsync(payload, operationCancellation.Token);
+        }
+        catch (OperationCanceledException) when (operationCancellation.IsCancellationRequested && !stoppingToken.IsCancellationRequested)
+        {
+            throw new AiImportJobCancelledException();
+        }
+        finally
+        {
+            monitorStop.Cancel();
+            try
+            {
+                await monitor;
+            }
+            catch (OperationCanceledException) when (monitorStop.IsCancellationRequested)
+            {
+                // Stop the lease watcher after extraction finishes.
+            }
+        }
+    }
+
+    private async Task MonitorJobLeaseAsync(
+        NpgsqlDataSource dataSource,
+        ClaimedJob job,
+        CancellationTokenSource operationCancellation,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try
+            {
+                if (!await IsClaimActiveAsync(dataSource, job, cancellationToken))
+                {
+                    operationCancellation.Cancel();
+                    return;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning("AI import lease check failed for job {JobId} with {ErrorType}.", job.Id, exception.GetType().Name);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+        }
+    }
+
+    private static async Task<bool> IsClaimActiveAsync(
+        NpgsqlDataSource dataSource,
+        ClaimedJob job,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT EXISTS (
+                SELECT 1 FROM ai_import_jobs
+                WHERE id = @id AND status = 'processing' AND lease_until = @lease_until
+            );
+            """;
+        command.Parameters.AddWithValue("id", job.Id);
+        command.Parameters.AddWithValue("lease_until", job.LeaseUntil);
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken) ?? false);
+    }
+
+    private static async Task<bool> SaveSuccessAsync(NpgsqlDataSource dataSource, ClaimedJob job, string resultJson, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
         await using var command = connection.CreateCommand();
@@ -183,7 +266,7 @@ public sealed class AiImportWorker(
         command.Parameters.AddWithValue("id", job.Id);
         command.Parameters.AddWithValue("lease_until", job.LeaseUntil);
         command.Parameters.AddWithValue("result", resultJson);
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
     }
 
     private static async Task SaveFailureAsync(
@@ -237,4 +320,18 @@ public sealed class AiImportWorker(
     }
 
     private sealed record ClaimedJob(Guid Id, string RequestJson, int AttemptCount, DateTimeOffset LeaseUntil);
+
+    private sealed class AiImportJobCancelledException : Exception { }
+
+    private static string ResolveConnectionString(IConfiguration configuration)
+    {
+        var secretFile = configuration["ConnectionStrings:QizzoneFile"];
+        if (!string.IsNullOrWhiteSpace(secretFile))
+        {
+            return File.ReadAllText(secretFile).Trim();
+        }
+
+        return configuration.GetConnectionString("Qizzone") ??
+            configuration["ConnectionStrings:Qizzone"] ?? "";
+    }
 }

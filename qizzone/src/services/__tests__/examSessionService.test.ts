@@ -60,6 +60,9 @@ describe("examSessionService", () => {
     const apiAttempt = {
       id: "attempt-1",
       quizId: "quiz-1",
+      quizTitle: "Demo exam",
+      subject: "Math",
+      roomCode: "ABC123",
       studentId: "student-1",
       studentName: "Test Student",
       studentClass: "12A1",
@@ -76,8 +79,14 @@ describe("examSessionService", () => {
       isSubmitted: false,
       lastSavedAt: "2026-11-17T10:01:00.000Z",
       questions: [
-        { id: "question-2", options: [{ id: "D" }, { id: "A" }] },
-        { id: "question-1", options: [{ id: "B" }, { id: "C" }] },
+        {
+          id: "question-2", order: 0, content: "Second question", images: [], type: "single_choice",
+          options: [{ id: "D", content: "four" }, { id: "A", content: "one" }], points: 1,
+        },
+        {
+          id: "question-1", order: 1, content: "First question", images: [], type: "single_choice",
+          options: [{ id: "B", content: "two" }, { id: "C", content: "three" }], points: 2,
+        },
       ],
     };
     mocks.qizzoneApi
@@ -105,10 +114,17 @@ describe("examSessionService", () => {
     await examSessionService.finalizeExpired();
 
     expect(sessions[0]).toMatchObject({
+      quizTitle: "Demo exam",
+      subject: "Math",
+      roomCode: "ABC123",
       startTime: Date.parse(apiAttempt.startedAt),
       endTime: Date.parse(apiAttempt.endsAt),
       questionOrder: ["question-2", "question-1"],
       optionOrder: { "question-2": ["D", "A"], "question-1": ["B", "C"] },
+      questions: [
+        { id: "question-2", content: "Second question", correctAnswers: [], explanation: "" },
+        { id: "question-1", content: "First question", correctAnswers: [], explanation: "" },
+      ],
     });
     expect(started).toMatchObject({ quizId: "quiz-1", revision: 3 });
     expect(mocks.qizzoneApi).toHaveBeenNthCalledWith(1, "/api/v1/exam-attempts/");

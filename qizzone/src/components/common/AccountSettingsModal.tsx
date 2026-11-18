@@ -23,6 +23,7 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [fullName, setFullName] = useState(() => user?.fullName || '');
+  const [studentClass, setStudentClass] = useState(() => user?.studentClass || '');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -68,6 +69,10 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
       setProfileError('Tên cần có từ 2 đến 100 ký tự.');
       return;
     }
+    if (studentClass.trim().length > 100) {
+      setProfileError('Tên lớp không được vượt quá 100 ký tự.');
+      return;
+    }
     if (!user) return;
 
     setIsSavingProfile(true);
@@ -78,7 +83,11 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
         const uploaded = await uploadAccountAvatar(avatarFile);
         avatarUrl = uploaded.avatarUrl;
       }
-      await updateProfile({ fullName: trimmedName, avatarUrl });
+      await updateProfile({
+        fullName: trimmedName,
+        avatarUrl,
+        ...(user.role === 'student' ? { studentClass: studentClass.trim() } : {}),
+      });
       toast.success('Thông tin tài khoản đã được cập nhật.');
       onClose();
     } catch (error) {
@@ -225,6 +234,19 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
                 onChange={event => setFullName(event.target.value)}
                 helperText="Tên này sẽ hiển thị trong hồ sơ và các hoạt động của bạn."
               />
+
+              {user?.role === 'student' && (
+                <Input
+                  id="account-student-class"
+                  label="Lớp của bạn"
+                  value={studentClass}
+                  maxLength={100}
+                  autoComplete="off"
+                  disabled={isSavingProfile}
+                  onChange={event => setStudentClass(event.target.value)}
+                  helperText="Lớp tự khai dùng để hiện đề giáo viên giao trên trang chủ."
+                />
+              )}
 
               <div className="space-y-1.5">
                 <label htmlFor="account-email" className="block text-sm font-medium theme-text-secondary">Email đăng nhập</label>

@@ -45,6 +45,25 @@ describe("Grounded AI extraction fallback", () => {
     expect(swappedOptionLabel).toBeNull();
   });
 
+  it("keeps a grounded fifth option in the AI fallback", () => {
+    const fiveOptionSource = "Câu 4: Chọn phương án đúng?\nA. Một\nB. Hai\nC. Ba\nD. Bốn\nE. Năm";
+    const result = parseGroundedAIResult({
+      questions: [{
+        order: 4,
+        content: "Chọn phương án đúng?",
+        options: [
+          { id: "A", content: "Một" },
+          { id: "B", content: "Hai" },
+          { id: "C", content: "Ba" },
+          { id: "D", content: "Bốn" },
+          { id: "E", content: "Năm" },
+        ],
+      }],
+    }, "sample.txt", "text", fiveOptionSource.length, fiveOptionSource);
+
+    expect(result?.questions[0].options.map(option => option.id)).toEqual(["A", "B", "C", "D", "E"]);
+  });
+
   it("runs fallback only when a structural gap has enough source options to recover", () => {
     const complete = parseRawExamText("Câu 1: Chọn giao thức.\nA. HTTP\nB. HTML");
     const sourceOnlyHasOneOption = parseRawExamText("Câu 1: Chọn giao thức.\nA. HTTP");

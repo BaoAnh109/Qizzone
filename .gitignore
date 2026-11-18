@@ -20,9 +20,14 @@ dist-ssr/
 # Environment Variables
 .env
 .env.*
-!=.env.example
+!deploy/.env.example
+!deploy/.env.pilot.example
+!deploy/.env.oci.example
 firebase-service-account*.json
 **/firebase-service-account*.json
+deploy/secrets/
+deploy/backups/
+backend/Qizzone.Api/App_Data/media/
 supabase/functions/.env*
 !supabase/functions/.env.example
 supabase/.temp/
@@ -48,3 +53,5 @@ docs/*
 !docs/tasks/**
 !docs/audit/
 !docs/audit/**
+!docs/plans/
+!docs/plans/**

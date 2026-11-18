@@ -1,7 +1,7 @@
 import type { ExtractedQuestion, ExtractionResult } from "@/types/extractor";
 import type { DocumentIR, DocumentIRBlock } from "@/types/documentIR";
 import { OPTION_IDS, type OptionId, type Question } from "@/types/quiz";
-import { supabase } from "@/lib/cloud";
+import { isQizzoneApiConfigured, qizzoneApi, supabase } from "@/lib/cloud";
 import { QUESTION_MEDIA_BUCKET } from "@/lib/questionMedia";
 
 const MAX_IMAGE_DATA_LENGTH = 900_000;
@@ -144,7 +144,7 @@ async function convertImageToJpeg(value: string): Promise<Blob> {
   return blob;
 }
 
-/** Uploads extracted data URLs once and stores lightweight public-storage references in quiz JSON. */
+/** Uploads extracted data URLs once and stores lightweight media references in quiz JSON. */
 export async function persistQuestionImages(questions: Question[], ownerId?: string): Promise<Question[]> {
   const dataImages = [...new Set(questions.flatMap(question => [
     ...(question.images || []),
@@ -154,7 +154,7 @@ export async function persistQuestionImages(questions: Question[], ownerId?: str
   if (!ownerId) throw new Error("Không xác định được tài khoản giáo viên để lưu hình đề thi.");
   if (dataImages.length > 80) throw new Error("Đề vượt quá giới hạn 80 hình; hãy giảm số hình rồi thử lại.");
 
-  const client = supabase();
+  const client = isQizzoneApiConfigured ? undefined : supabase();
   const stored = new Map<string, string>();
   let totalBytes = 0;
   for (let index = 0; index < dataImages.length; index += 4) {
@@ -166,8 +166,18 @@ export async function persistQuestionImages(questions: Question[], ownerId?: str
       const blob = await convertImageToJpeg(image);
       totalBytes += blob.size;
       if (totalBytes > 15_000_000) throw new Error("Tổng dung lượng hình trong đề vượt quá 15 MB.");
+      if (isQizzoneApiConfigured) {
+        const form = new FormData();
+        form.append("file", blob, "question-image.jpg");
+        const uploaded = await qizzoneApi<{ reference: string }>("/api/v1/media", {
+          method: "POST",
+          body: form,
+        });
+        return [image, uploaded.reference] as const;
+      }
+
       const path = `${ownerId}/${crypto.randomUUID()}.jpg`;
-      const { error } = await client.storage.from(QUESTION_MEDIA_BUCKET).upload(path, blob, {
+      const { error } = await client!.storage.from(QUESTION_MEDIA_BUCKET).upload(path, blob, {
         contentType: "image/jpeg",
         cacheControl: "31536000",
         upsert: false,

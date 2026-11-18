@@ -1,0 +1,38 @@
+services:
+  worker:
+    profiles: [ai]
+    image: qizzone-worker:${QIZZONE_RELEASE_SHA:?Set QIZZONE_RELEASE_SHA to the approved Git SHA}
+    build:
+      context: ../backend
+      dockerfile: Qizzone.Worker/Dockerfile
+      args:
+        QIZZONE_RELEASE_SHA: ${QIZZONE_RELEASE_SHA:?Set QIZZONE_RELEASE_SHA to the approved Git SHA}
+    labels:
+      org.opencontainers.image.revision: ${QIZZONE_RELEASE_SHA:?Set QIZZONE_RELEASE_SHA to the approved Git SHA}
+    init: true
+    stop_grace_period: 60s
+    environment:
+      ConnectionStrings__QizzoneFile: /run/secrets/qizzone_app_connection_string
+      Gemini__ApiKeyFile: /run/secrets/gemini_api_key
+      Gemini__Model: ${GEMINI_MODEL:-gemini-3.8-flash}
+    secrets:
+      - qizzone_app_connection_string
+      - gemini_api_key
+    networks:
+      - edge
+      - data
+    mem_limit: ${WORKER_MEMORY_LIMIT:-1g}
+    cpus: ${WORKER_CPU_LIMIT:-0.25}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+secrets:
+  gemini_api_key:
+    file: ${GEMINI_API_KEY_FILE:?Set GEMINI_API_KEY_FILE in deploy/.env.oci}

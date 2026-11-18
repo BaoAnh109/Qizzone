@@ -1,0 +1,29 @@
+[Unit]
+Description=Encrypted Qizzone PostgreSQL and media backup with offsite verification
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/qizzone/backup.env
+Environment=QIZZONE_BACKUP_ENV_FILE=/etc/qizzone/production.env
+Environment=QIZZONE_BACKUP_COMPOSE_FILE=/opt/qizzone/app/deploy/compose.oci.yaml
+Environment=QIZZONE_BACKUP_PROJECT_NAME=qizzone-oci
+Environment=QIZZONE_BACKUP_MEDIA_VOLUME=qizzone-oci-media-data
+Environment=QIZZONE_BACKUP_DIR=/srv/qizzone-data/backups
+Environment=QIZZONE_BACKUP_REQUIRE_OFFSITE=1
+Environment=QIZZONE_BACKUP_DELETE_LOCAL_AFTER_OFFSITE=1
+WorkingDirectory=/opt/qizzone/app
+ExecStart=/usr/bin/bash /opt/qizzone/app/deploy/scripts/backup-postgres.sh
+UMask=0077
+TimeoutStartSec=30min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/srv/qizzone-data/backups

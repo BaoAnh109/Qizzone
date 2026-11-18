@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Qizzone encrypted offsite backup after each 20-minute interval
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=20min
+AccuracySec=1min
+Unit=qizzone-backup.service
+
+[Install]
+WantedBy=timers.target

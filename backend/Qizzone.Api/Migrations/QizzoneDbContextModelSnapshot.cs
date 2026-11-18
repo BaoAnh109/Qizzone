@@ -110,7 +110,7 @@ namespace Qizzone.Api.Migrations
 
                             t.HasCheckConstraint("ai_import_jobs_result_object_check", "result IS NULL OR jsonb_typeof(result) = 'object'");
 
-                            t.HasCheckConstraint("ai_import_jobs_status_check", "status IN ('queued','processing','succeeded','failed')");
+                            t.HasCheckConstraint("ai_import_jobs_status_check", "status IN ('queued','processing','succeeded','failed','cancelled')");
                         });
                 });
 
@@ -321,6 +321,13 @@ namespace Qizzone.Api.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("revision");
 
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot")
+                        .HasDefaultValueSql("'{}'::jsonb");
+
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("started_at");
@@ -375,6 +382,8 @@ namespace Qizzone.Api.Migrations
                             t.HasCheckConstraint("exam_attempts_pass_percentage_check", "pass_percentage BETWEEN 0 AND 100");
 
                             t.HasCheckConstraint("exam_attempts_revision_check", "revision >= 0");
+
+                            t.HasCheckConstraint("exam_attempts_snapshot_object_check", "jsonb_typeof(snapshot) = 'object'");
                         });
                 });
 
@@ -481,6 +490,60 @@ namespace Qizzone.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Qizzone.Api.Data.MediaObject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Extension")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("extension");
+
+                    b.Property<long>("LengthBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("length_bytes");
+
+                    b.Property<string>("OwnerUid")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("owner_uid");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUid", "CreatedAt")
+                        .HasDatabaseName("media_objects_owner_created");
+
+                    b.ToTable("media_objects", null, t =>
+                        {
+                            t.HasCheckConstraint("media_objects_content_type_check", "content_type IN ('image/jpeg','image/png','image/webp')");
+
+                            t.HasCheckConstraint("media_objects_extension_check", "extension IN ('.jpg','.png','.webp')");
+
+                            t.HasCheckConstraint("media_objects_length_check", "length_bytes > 0 AND length_bytes <= 2097152");
+                        });
+                });
+
             modelBuilder.Entity("Qizzone.Api.Data.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -566,7 +629,7 @@ namespace Qizzone.Api.Migrations
                         {
                             t.HasCheckConstraint("practice_answers_correct_array_check", "jsonb_typeof(correct_answers) = 'array'");
 
-                            t.HasCheckConstraint("practice_answers_selected_array_check", "jsonb_typeof(selected_answers) = 'array' AND jsonb_array_length(selected_answers) BETWEEN 1 AND 4");
+                            t.HasCheckConstraint("practice_answers_selected_array_check", "jsonb_typeof(selected_answers) = 'array' AND jsonb_array_length(selected_answers) BETWEEN 1 AND 5");
                         });
                 });
 
@@ -723,6 +786,11 @@ namespace Qizzone.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("role");
+
+                    b.Property<string>("StudentClass")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("student_class");
 
                     b.Property<bool>("TeacherRequestBlocked")
                         .HasColumnType("boolean")
@@ -889,7 +957,7 @@ namespace Qizzone.Api.Migrations
 
                     b.ToTable("question_answer_keys", null, t =>
                         {
-                            t.HasCheckConstraint("question_answer_keys_answers_array_check", "jsonb_typeof(correct_answers) = 'array' AND jsonb_array_length(correct_answers) BETWEEN 1 AND 4");
+                            t.HasCheckConstraint("question_answer_keys_answers_array_check", "jsonb_typeof(correct_answers) = 'array' AND jsonb_array_length(correct_answers) BETWEEN 1 AND 5");
                         });
                 });
 
@@ -900,6 +968,10 @@ namespace Qizzone.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closes_at");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -924,6 +996,10 @@ namespace Qizzone.Api.Migrations
                     b.Property<string>("LegacyId")
                         .HasColumnType("text")
                         .HasColumnName("legacy_id");
+
+                    b.Property<DateTimeOffset?>("OpensAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("opens_at");
 
                     b.Property<string>("SettingsJson")
                         .IsRequired()
@@ -966,14 +1042,22 @@ namespace Qizzone.Api.Migrations
                     b.HasIndex("TeacherUid")
                         .HasDatabaseName("quizzes_teacher");
 
+                    b.HasIndex("Status", "ClosesAt")
+                        .HasDatabaseName("quizzes_schedule_close");
+
+                    b.HasIndex("Status", "OpensAt")
+                        .HasDatabaseName("quizzes_schedule_open");
+
                     b.HasIndex("TeacherUid", "LegacyId")
                         .IsUnique();
 
                     b.ToTable("quizzes", null, t =>
                         {
+                            t.HasCheckConstraint("quizzes_schedule_check", "(status <> 'scheduled' OR opens_at IS NOT NULL) AND (closes_at IS NULL OR opens_at IS NULL OR closes_at > opens_at)");
+
                             t.HasCheckConstraint("quizzes_settings_object_check", "jsonb_typeof(settings) = 'object'");
 
-                            t.HasCheckConstraint("quizzes_status_check", "status IN ('draft','published','closed')");
+                            t.HasCheckConstraint("quizzes_status_check", "status IN ('draft','scheduled','published','closed')");
                         });
                 });
 
@@ -1041,6 +1125,15 @@ namespace Qizzone.Api.Migrations
                     b.HasOne("Qizzone.Api.Data.ExamAttempt", null)
                         .WithMany()
                         .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Qizzone.Api.Data.MediaObject", b =>
+                {
+                    b.HasOne("Qizzone.Api.Data.Profile", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUid")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

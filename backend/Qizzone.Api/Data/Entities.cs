@@ -17,8 +17,20 @@ public sealed class Profile
     public DateTimeOffset? TeacherReviewedAt { get; set; }
     public string? TeacherReviewedBy { get; set; }
     public string? AvatarUrl { get; set; }
+    public string? StudentClass { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed class MediaObject
+{
+    public Guid Id { get; set; }
+    public required string OwnerUid { get; set; }
+    public required string ContentType { get; set; }
+    public required string Extension { get; set; }
+    public long LengthBytes { get; set; }
+    public required string Sha256 { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
 public sealed class Quiz
@@ -30,6 +42,8 @@ public sealed class Quiz
     public string Description { get; set; } = "";
     public required string Code { get; set; }
     public string Status { get; set; } = "draft";
+    public DateTimeOffset? OpensAt { get; set; }
+    public DateTimeOffset? ClosesAt { get; set; }
     public string SettingsJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -78,6 +92,7 @@ public sealed class ExamAttempt
     public decimal PassPercentage { get; set; }
     public bool AllowReview { get; set; }
     public Guid[] QuestionOrder { get; set; } = [];
+    public string SnapshotJson { get; set; } = "{}";
     public string OptionOrderJson { get; set; } = "{}";
     public string FlaggedIdsJson { get; set; } = "[]";
     public int CurrentIndex { get; set; }

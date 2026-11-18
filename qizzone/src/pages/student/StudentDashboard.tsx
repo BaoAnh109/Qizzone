@@ -56,23 +56,21 @@ export function StudentDashboard() {
     void checkAndAutoSubmitExpired();
   }, [checkAndAutoSubmitExpired]);
 
-  // In-progress active sessions count (only valid within time)
-  const inProgressQuizzes = publishedQuizzes.filter((q) => {
-    const s = activeSessions[q.id];
-    return isSessionInProgress(s);
-  });
+  // Keep active attempts visible even if a teacher closes the room after they start.
+  const inProgressSessions = Object.values(activeSessions).filter(isSessionInProgress);
 
   // Match available quizzes for this student based on Class or Email
   // MẶC ĐỊNH: Đề public không gán lớp hoặc email sẽ KHÔNG hiển thị trên trang chủ
   // Chỉ khi được gán Email hoặc Lớp thì học sinh phù hợp mới thấy trên trang chủ
   const userEmail = (user?.email || "").trim().toLowerCase();
-  const userClassNorm = (user?.studentClass || "").trim().toLowerCase();
+  const studentClass = user?.studentClass || "";
+  const userClassNorm = studentClass.trim().toLowerCase();
 
   const getQuizAudienceBadge = (quiz: Quiz) => {
     const assignedClasses = (quiz.settings.assignedClasses || []).map((c) => c.trim().toLowerCase());
     const assignedEmails = (quiz.settings.assignedEmails || []).map((e) => e.trim().toLowerCase());
 
-    if (userEmail && assignedEmails.includes(userEmail)) {
+    if (quiz.isAssignedToCurrentUser || (userEmail && assignedEmails.includes(userEmail))) {
       return (
         <Badge variant="primary" size="sm" className="font-bold flex items-center gap-1">
           <Mail className="h-3 w-3" />
@@ -85,7 +83,7 @@ export function StudentDashboard() {
       return (
         <Badge variant="success" size="sm" className="font-bold flex items-center gap-1">
           <GraduationCap className="h-3 w-3" />
-          <span>Lớp {user?.studentClass}</span>
+          <span>Lớp {studentClass}</span>
         </Badge>
       );
     }
@@ -108,6 +106,8 @@ export function StudentDashboard() {
 
     const hasClassRestriction = assignedClasses.length > 0;
     const hasEmailRestriction = assignedEmails.length > 0;
+
+    if (quiz.isAssignedToCurrentUser) return true;
 
     // 1. Mặc định: đề không giao cho lớp hay email nào sẽ KHÔNG hiển thị sẵn trên màn hình
     if (!hasClassRestriction && !hasEmailRestriction) {
@@ -245,45 +245,47 @@ export function StudentDashboard() {
       </div>
 
       {/* Active In-Progress Sessions (if any) */}
-      {inProgressQuizzes.length > 0 && (
+      {inProgressSessions.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Timer className="h-5 w-5 text-amber-600 animate-pulse" />
             <h2 className="text-lg font-bold theme-text-primary">
-              Bài thi đang làm dở ({inProgressQuizzes.length})
+              Bài thi đang làm dở ({inProgressSessions.length})
             </h2>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {inProgressQuizzes.map((quiz) => {
-              const activeSession = activeSessions[quiz.id];
-              const answeredCount = Object.keys(activeSession?.answers || {}).length;
+            {inProgressSessions.map((activeSession) => {
+              const quiz = publishedQuizzes.find((item) => item.id === activeSession.quizId);
+              const answeredCount = Object.keys(activeSession.answers || {}).length;
+              const totalQuestions = quiz?.totalQuestions ?? activeSession.questionOrder?.length ?? 0;
+              const durationMinutes = quiz?.settings.durationMinutes ?? activeSession.durationMinutes;
 
               return (
-                <Card key={quiz.id} className="border-amber-300 bg-amber-50/30 overflow-hidden shadow-xs">
+                <Card key={activeSession.quizId} className="border-amber-300 bg-amber-50/30 overflow-hidden shadow-xs">
                   <CardHeader className="pb-3 bg-amber-100/50">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <Badge variant="secondary" size="sm">
-                        {quiz.subject}
+                        {quiz?.subject || activeSession.subject || "Bài thi"}
                       </Badge>
                       <Badge variant="warning" size="sm" dot className="font-bold">
-                        Đang làm ({answeredCount}/{quiz.totalQuestions} câu)
+                        Đang làm ({answeredCount}/{totalQuestions} câu)
                       </Badge>
                     </div>
                     <CardTitle className="text-base font-bold theme-text-primary line-clamp-1">
-                      {quiz.title}
+                      {quiz?.title || activeSession.quizTitle || "Bài thi đang làm dở"}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="pt-3 space-y-3">
                     <div className="flex items-center justify-between text-xs theme-text-secondary">
-                      <span>Mã: <strong className="font-mono text-teal-700">{quiz.code}</strong></span>
-                      <span>Thời gian: {quiz.settings.durationMinutes > 0 ? `${quiz.settings.durationMinutes} phút` : "Không giới hạn"}</span>
+                      <span>Mã: <strong className="font-mono text-teal-700">{quiz?.code || activeSession.roomCode || "—"}</strong></span>
+                      <span>Thời gian: {durationMinutes > 0 ? `${durationMinutes} phút` : "Không giới hạn"}</span>
                     </div>
                     <Button
                       variant="primary"
                       size="sm"
                       className="w-full font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
-                      onClick={() => navigate(`/student/quiz/${quiz.id}`)}
+                      onClick={() => navigate(`/student/quiz/${activeSession.quizId}`)}
                       leftIcon={<Play className="h-4 w-4 fill-current" />}
                     >
                       Tiếp tục làm bài
@@ -298,12 +300,12 @@ export function StudentDashboard() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className={inProgressQuizzes.length > 0 ? "border-amber-300 bg-amber-50/20" : ""}>
+        <Card className={inProgressSessions.length > 0 ? "border-amber-300 bg-amber-50/20" : ""}>
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold theme-text-muted">Bài đang làm dở</p>
               <p className="text-2xl font-extrabold text-amber-700 mt-1 font-mono">
-                {inProgressQuizzes.length}
+                {inProgressSessions.length}
               </p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">

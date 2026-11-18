@@ -42,7 +42,7 @@ export function QuizRoom() {
   const sourceResultId = searchParams.get("sourceResultId");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const getQuizById = useQuizStore((state) => state.getQuizById);
+  const quizzes = useQuizStore((state) => state.quizzes);
 
   // Direct reactive Zustand selectors
   const activeSessions = useExamSessionStore((state) => state.activeSessions);
@@ -60,8 +60,34 @@ export function QuizRoom() {
 
   const toast = useToast();
 
-  const quiz = quizId ? getQuizById(quizId) : undefined;
+  const storedQuiz = quizId ? quizzes.find((item) => item.id === quizId) : undefined;
   const session = quizId ? activeSessions[quizId] : undefined;
+  const quiz = useMemo(() => {
+    if (storedQuiz) return storedQuiz;
+    if (!session?.questions?.length) return undefined;
+    const questions = session.questions;
+    return {
+      id: session.quizId,
+      title: session.quizTitle || "Bài thi đang làm dở",
+      subject: session.subject || "Bài thi",
+      teacherId: "",
+      code: session.roomCode || "",
+      status: "closed" as const,
+      settings: {
+        durationMinutes: session.durationMinutes,
+        shuffleQuestions: false,
+        shuffleOptions: false,
+        allowReview: false,
+        maxAttempts: 0,
+        passPercentage: 0,
+      },
+      questions,
+      totalQuestions: questions.length,
+      totalPoints: questions.reduce((total, question) => total + question.points, 0),
+      createdAt: new Date(session.startTime).toISOString(),
+      updatedAt: new Date(session.startTime).toISOString(),
+    };
+  }, [storedQuiz, session]);
 
   const sourceResult = sourceResultId ? getResultById(sourceResultId) : undefined;
   const incorrectQuestionIds = useMemo(() => {

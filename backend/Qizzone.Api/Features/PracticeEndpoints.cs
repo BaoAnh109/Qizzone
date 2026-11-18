@@ -46,6 +46,7 @@ public static class PracticeEndpoints
             return Results.Forbid();
         }
 
+        await using var quizTransaction = await QuizConfigurationLock.AcquireSharedAsync(db, request.QuizId, cancellationToken);
         var quiz = await db.Quizzes.AsNoTracking()
             .Include(item => item.Questions)
             .SingleOrDefaultAsync(item => item.Id == request.QuizId, cancellationToken);
@@ -97,6 +98,10 @@ public static class PracticeEndpoints
         db.PracticeSessions.Add(session);
         db.AuditEvents.Add(CreateAudit(uid, "practice.started", session.Id, new { quizId = quiz.Id, questionCount = session.QuestionOrder.Length }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
         return Results.Created($"/api/v1/practice-sessions/{session.Id}", ToSessionResponse(session));
     }
 
@@ -137,6 +142,7 @@ public static class PracticeEndpoints
             return Results.Conflict(new { error = "There are no incorrect answers to retry." });
         }
 
+        await using var quizTransaction = await QuizConfigurationLock.AcquireSharedAsync(db, source.QuizId, cancellationToken);
         var quiz = await db.Quizzes.AsNoTracking()
             .Include(item => item.Questions)
             .SingleOrDefaultAsync(item => item.Id == source.QuizId, cancellationToken);
@@ -173,6 +179,10 @@ public static class PracticeEndpoints
         db.PracticeSessions.Add(session);
         db.AuditEvents.Add(CreateAudit(uid, "practice.retried", session.Id, new { sourceSessionId = source.Id, mode = request.Mode }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
         return Results.Created($"/api/v1/practice-sessions/{session.Id}", ToSessionResponse(session));
     }
 
@@ -201,6 +211,7 @@ public static class PracticeEndpoints
             return Results.Ok(new { status = "invalidated", message = session.FailureMessage });
         }
 
+        await using var quizTransaction = await QuizConfigurationLock.AcquireSharedAsync(db, session.QuizId, cancellationToken);
         var quiz = await db.Quizzes.AsNoTracking()
             .Include(item => item.Questions)
             .SingleOrDefaultAsync(item => item.Id == session.QuizId, cancellationToken);
@@ -233,9 +244,33 @@ public static class PracticeEndpoints
             return Results.NotFound();
         }
 
+        await using var quizTransaction = await QuizConfigurationLock.AcquireSharedAsync(db, session.QuizId, cancellationToken);
+        await PracticeSessionLock.AcquireAsync(db, session.Id, cancellationToken);
+        await RefreshSessionAsync(db, session, cancellationToken);
         if (session.Status != "in_progress")
         {
             return Results.Conflict(new { error = "This practice session is not in progress." });
+        }
+
+        var quiz = await db.Quizzes.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == session.QuizId, cancellationToken);
+        if (quiz is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (quiz.UpdatedAt != session.QuizUpdatedAt)
+        {
+            session.Status = "invalidated";
+            session.FailureMessage = "The quiz changed during this practice session.";
+            session.FinishedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            if (quizTransaction is not null)
+            {
+                await quizTransaction.CommitAsync(cancellationToken);
+            }
+
+            return Results.Conflict(new { error = session.FailureMessage });
         }
 
         if (session.Answers.SingleOrDefault(item => item.QuestionId == questionId) is { } existingAnswer)
@@ -290,9 +325,19 @@ public static class PracticeEndpoints
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            if (quizTransaction is not null)
+            {
+                await quizTransaction.CommitAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException)
         {
+            if (quizTransaction is not null)
+            {
+                await quizTransaction.RollbackAsync(cancellationToken);
+                await quizTransaction.DisposeAsync();
+            }
+
             // The session/question primary key makes concurrent retries idempotent.
             db.ChangeTracker.Clear();
             var savedAnswer = await db.PracticeAnswers.AsNoTracking()
@@ -327,6 +372,14 @@ public static class PracticeEndpoints
             return Results.Ok(JsonSerializer.Deserialize<JsonElement>(session.ResultJson, JsonOptions));
         }
 
+        await using var quizTransaction = await QuizConfigurationLock.AcquireSharedAsync(db, session.QuizId, cancellationToken);
+        await PracticeSessionLock.AcquireAsync(db, session.Id, cancellationToken);
+        await RefreshSessionAsync(db, session, cancellationToken);
+        if (session.Status == "completed" && !string.IsNullOrWhiteSpace(session.ResultJson))
+        {
+            return Results.Ok(JsonSerializer.Deserialize<JsonElement>(session.ResultJson, JsonOptions));
+        }
+
         if (session.Status != "in_progress")
         {
             return Results.Conflict(new { error = "This practice session cannot be finished." });
@@ -342,6 +395,10 @@ public static class PracticeEndpoints
             session.FailureMessage = "The quiz changed during this practice session.";
             session.FinishedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
+            if (quizTransaction is not null)
+            {
+                await quizTransaction.CommitAsync(cancellationToken);
+            }
             return Results.Conflict(new { error = session.FailureMessage });
         }
 
@@ -393,6 +450,10 @@ public static class PracticeEndpoints
             correctCount,
         }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
         return Results.Ok(result);
     }
 
@@ -496,6 +557,17 @@ public static class PracticeEndpoints
     {
         try { return JsonSerializer.Deserialize<List<QuizEndpoints.OptionResponse>>(json, JsonOptions) ?? []; }
         catch (JsonException) { return []; }
+    }
+
+    private static async Task RefreshSessionAsync(
+        QizzoneDbContext db,
+        PracticeSession session,
+        CancellationToken cancellationToken)
+    {
+        await db.Entry(session).ReloadAsync(cancellationToken);
+        var answers = db.Entry(session).Collection(item => item.Answers);
+        answers.IsLoaded = false;
+        await answers.LoadAsync(cancellationToken);
     }
 
     private static Dictionary<string, List<string>> DeserializeOptionOrder(string json)

@@ -103,7 +103,7 @@ export function BatchActionBar() {
           if (message) {
             setSolveStatusMessage(message);
           }
-        }
+        },
       );
 
       if (timerIntervalRef.current) {

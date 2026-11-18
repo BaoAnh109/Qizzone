@@ -39,8 +39,10 @@ import { QuestionContent } from "@/components/common/QuestionContent";
 import { MathRenderer } from "@/components/common/MathRenderer";
 import { persistQuestionImages } from "@/utils/parsers/questionMedia";
 import { useToast } from "@/hooks/useToast";
+import { isQizzoneApiConfigured } from "@/lib/cloud";
 import { QuizCreationEntry } from "@/components/teacher/QuizCreationEntry";
-import type { OptionId, Question, QuizSettings } from "@/types/quiz";
+import { type OptionId, type Question, type QuizSettings } from "@/types/quiz";
+import { addQuestionOption, removeQuestionOption } from "@/utils/questionOptions";
 
 interface CreateQuizLocationState {
   initialQuestions?: Question[];
@@ -73,13 +75,26 @@ const POPULAR_SUBJECTS = [
   "Đề thi Tổng hợp",
 ];
 
+function toDateTimeLocal(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function dateTimeLocalToIso(value: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export function CreateQuiz() {
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as CreateQuizLocationState | undefined;
   const { quizId } = useParams();
   const user = useAuthStore((state) => state.user);
-  const { createQuiz, updateQuiz, getQuizById } = useQuizStore();
+  const { createQuiz, updateQuiz, getQuizById, setQuizStatus } = useQuizStore();
   const toast = useToast();
 
   const isEditing = !!quizId;
@@ -128,6 +143,8 @@ export function CreateQuiz() {
   const [description, setDescription] = useState(
     locationState?.initialDescription || existingQuiz?.description || ""
   );
+  const [opensAt, setOpensAt] = useState(() => toDateTimeLocal(existingQuiz?.opensAt));
+  const [closesAt, setClosesAt] = useState(() => toDateTimeLocal(existingQuiz?.closesAt));
 
   const [settings, setSettings] = useState<QuizSettings>(() => existingQuiz
     ? { ...existingQuiz.settings, practiceEnabled: existingQuiz.settings.practiceEnabled !== false }
@@ -227,6 +244,8 @@ export function CreateQuiz() {
     setSubjectPreset(POPULAR_SUBJECTS.includes(existingQuiz.subject) ? existingQuiz.subject : "custom");
     setCustomSubject(POPULAR_SUBJECTS.includes(existingQuiz.subject) ? "" : existingQuiz.subject);
     setDescription(existingQuiz.description || "");
+    setOpensAt(toDateTimeLocal(existingQuiz.opensAt));
+    setClosesAt(toDateTimeLocal(existingQuiz.closesAt));
     setSettings({ ...existingQuiz.settings, practiceEnabled: existingQuiz.settings.practiceEnabled !== false });
     setQuestions(existingQuiz.questions);
   }, [existingQuiz]);
@@ -313,6 +332,26 @@ export function CreateQuiz() {
     );
   };
 
+  const handleAddOption = (questionIndex: number) => {
+    setQuestions((prev) => prev.map((question, index) => {
+      if (index !== questionIndex) return question;
+      const options = addQuestionOption(question.options);
+      return options === question.options ? question : { ...question, options };
+    }));
+  };
+
+  const handleRemoveOption = (questionIndex: number, optionId: OptionId) => {
+    setQuestions((prev) => prev.map((question, index) => {
+      if (index !== questionIndex) return question;
+      const updated = removeQuestionOption(question.options, question.correctAnswers, optionId);
+      if (updated.options === question.options) return question;
+      return {
+        ...question,
+        ...updated,
+      };
+    }));
+  };
+
   const handleToggleCorrectAnswer = (
     questionIndex: number,
     optId: OptionId
@@ -338,11 +377,29 @@ export function CreateQuiz() {
   };
 
   // Validate and Save
-  const handleSaveQuiz = async (status: "draft" | "published") => {
-    if (status === "published" && requiresSourceReview && !sourceReviewed) {
+  const handleSaveQuiz = async (status: "draft" | "published" | "scheduled") => {
+    if (status !== "draft" && requiresSourceReview && !sourceReviewed) {
       toast.error("Vui lòng xác nhận đã rà soát câu hỏi, phương án và đáp án theo tài liệu gốc.");
       setCurrentStep(2);
       return;
+    }
+    if (status === "scheduled") {
+      if (!isQizzoneApiConfigured) {
+        toast.error("Lên lịch phòng thi yêu cầu kết nối backend Qizzone V2.");
+        return;
+      }
+      const openIso = dateTimeLocalToIso(opensAt);
+      const closeIso = dateTimeLocalToIso(closesAt);
+      if (!openIso || new Date(openIso).getTime() <= Date.now()) {
+        toast.error("Chọn thời điểm mở phòng trong tương lai.");
+        setCurrentStep(3);
+        return;
+      }
+      if (closesAt && (!closeIso || new Date(closeIso).getTime() <= new Date(openIso).getTime())) {
+        toast.error("Thời điểm đóng phòng phải sau thời điểm mở.");
+        setCurrentStep(3);
+        return;
+      }
     }
     if (!title.trim()) {
       toast.error("Vui lòng nhập tiêu đề bài thi");
@@ -384,39 +441,52 @@ export function CreateQuiz() {
 
     try {
       const questionsWithStoredImages = await persistQuestionImages(questions, user?.id);
+      const scheduledOpenIso = status === "scheduled" ? dateTimeLocalToIso(opensAt) : null;
+      const scheduledCloseIso = status === "scheduled" ? dateTimeLocalToIso(closesAt) : null;
       if (isEditing && quizId) {
         await updateQuiz(quizId, {
-        title: title.trim(),
-        subject: resolvedSubject,
-        description: description.trim(),
-        settings,
-        questions: questionsWithStoredImages,
-        status,
+          title: title.trim(),
+          subject: resolvedSubject,
+          description: description.trim(),
+          settings,
+          questions: questionsWithStoredImages,
+          // The V2 status endpoint owns schedule transitions and their UTC times.
+          status: status === "scheduled" ? existingQuiz?.status || "draft" : status,
         });
+        if (status === "scheduled" || existingQuiz?.status === "scheduled") {
+          await setQuizStatus(quizId, status, scheduledOpenIso, scheduledCloseIso);
+        }
         toast.success(
-        status === "published"
-          ? "Đề thi đã được xuất bản và cập nhật thành công!"
-          : "Đã lưu bản nháp đề thi thành công!"
+          status === "published"
+            ? "Đề thi đã được xuất bản và cập nhật thành công!"
+            : status === "scheduled"
+              ? "Đã lên lịch mở phòng thi."
+              : "Đã lưu bản nháp đề thi thành công!"
         );
       } else {
         const created = await createQuiz({
-        title: title.trim(),
-        subject: resolvedSubject,
-        description: description.trim(),
-        teacherId: user?.id || "user-tea-001",
-        teacherName: user?.fullName || user?.name || "Giáo viên",
-        code: "",
-        status,
-        settings,
-        questions: questionsWithStoredImages,
-        totalQuestions: questions.length,
-        totalPoints: Math.round(questions.reduce((sum, q) => sum + (q.points || 1), 0) * 100) / 100,
+          title: title.trim(),
+          subject: resolvedSubject,
+          description: description.trim(),
+          teacherId: user?.id || "user-tea-001",
+          teacherName: user?.fullName || user?.name || "Giáo viên",
+          code: "",
+          status: status === "scheduled" ? "draft" : status,
+          settings,
+          questions: questionsWithStoredImages,
+          totalQuestions: questions.length,
+          totalPoints: Math.round(questions.reduce((sum, q) => sum + (q.points || 1), 0) * 100) / 100,
         });
+        if (status === "scheduled") {
+          await setQuizStatus(created.id, "scheduled", scheduledOpenIso, scheduledCloseIso);
+        }
 
         toast.success(
-        status === "published"
-          ? `Xuất bản thành công! Mã phòng thi: ${created.code}`
-          : "Đã lưu bản nháp đề thi thành công!"
+          status === "published"
+            ? `Xuất bản thành công! Mã phòng thi: ${created.code}`
+            : status === "scheduled"
+              ? `Đã lên lịch mở phòng thi. Mã phòng: ${created.code}`
+              : "Đã lưu bản nháp đề thi thành công!"
         );
       }
       navigate("/teacher/quizzes");
@@ -469,6 +539,17 @@ export function CreateQuiz() {
           >
             Lưu bản nháp
           </Button>
+
+          {isQizzoneApiConfigured && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleSaveQuiz("scheduled")}
+              disabled={requiresSourceReview && !sourceReviewed}
+            >
+              {existingQuiz?.status === "scheduled" ? "Cập nhật lịch" : "Lên lịch"}
+            </Button>
+          )}
 
           <Button
             variant="primary"
@@ -648,11 +729,21 @@ export function CreateQuiz() {
                   />
                   <ImageAttachments images={question.images} alt={`Hình trong nội dung câu ${question.order}`} />
 
-                  {/* 4 Options */}
                   <div className="space-y-3 pt-2">
-                    <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider">
-                      Các lựa chọn đáp án (Click nút đáp án để chọn đáp án đúng):
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider">
+                        Các lựa chọn đáp án (Click nút đáp án để chọn đáp án đúng):
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={question.options.length >= 5}
+                        onClick={() => handleAddOption(qIdx)}
+                        leftIcon={<Plus className="h-4 w-4" />}
+                      >
+                        Thêm phương án
+                      </Button>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {question.options.map((opt) => {
@@ -686,6 +777,16 @@ export function CreateQuiz() {
                                 <span>
                                   Đáp án {opt.id} {isCorrect && "(Đúng)"}
                                 </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveOption(qIdx, opt.id)}
+                                disabled={question.options.length <= 2}
+                                aria-label={`Xóa phương án ${opt.id}`}
+                                title={question.options.length <= 2 ? "Cần giữ ít nhất 2 phương án" : `Xóa phương án ${opt.id}`}
+                                className="rounded-md p-1 theme-text-muted hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <X className="h-4 w-4" />
                               </button>
                             </div>
 
@@ -1296,6 +1397,36 @@ export function CreateQuiz() {
                 </div>
               </div>
 
+              {isQizzoneApiConfigured && (
+                <section className="rounded-xl border theme-border bg-sky-50/70 p-4 space-y-3" aria-labelledby="quiz-schedule-heading">
+                  <div>
+                    <h3 id="quiz-schedule-heading" className="text-sm font-bold theme-text-primary">Lịch mở phòng thi</h3>
+                    <p className="mt-1 text-xs theme-text-secondary">Múi giờ theo thiết bị của bạn; máy chủ lưu và xử lý thời gian UTC. Để trống giờ đóng nếu phòng không tự đóng.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm font-semibold theme-text-secondary">
+                      <span>Mở phòng lúc *</span>
+                      <input
+                        type="datetime-local"
+                        value={opensAt}
+                        onChange={(event) => setOpensAt(event.target.value)}
+                        className="h-10 w-full rounded-xl border theme-border-strong theme-surface px-3 text-sm theme-text-primary shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500"
+                      />
+                    </label>
+                    <label className="space-y-1.5 text-sm font-semibold theme-text-secondary">
+                      <span>Tự đóng phòng lúc (không bắt buộc)</span>
+                      <input
+                        type="datetime-local"
+                        value={closesAt}
+                        min={opensAt || undefined}
+                        onChange={(event) => setClosesAt(event.target.value)}
+                        className="h-10 w-full rounded-xl border theme-border-strong theme-surface px-3 text-sm theme-text-primary shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-500"
+                      />
+                    </label>
+                  </div>
+                </section>
+              )}
+
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t theme-border">
                 <Button
@@ -1314,6 +1445,17 @@ export function CreateQuiz() {
                   >
                     Lưu bản nháp
                   </Button>
+
+                  {isQizzoneApiConfigured && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleSaveQuiz("scheduled")}
+                      disabled={requiresSourceReview && !sourceReviewed}
+                      className="flex-1 sm:flex-none"
+                    >
+                      {existingQuiz?.status === "scheduled" ? "Cập nhật lịch" : "Lên lịch"}
+                    </Button>
+                  )}
 
                   <Button
                     variant="primary"

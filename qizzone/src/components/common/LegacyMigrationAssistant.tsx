@@ -4,6 +4,7 @@ import type { User } from '@/types/auth';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/hooks/useToast';
+import { isQizzoneApiConfigured } from '@/lib/cloud';
 import {
   exportLegacyBackup,
   getLegacyMigrationPreview,
@@ -55,7 +56,7 @@ export function LegacyMigrationAssistant({ user, onCompleted }: Props) {
           <Button variant="outline" onClick={() => exportLegacyBackup(user)} leftIcon={<Download className="h-4 w-4" />}>
             Tải JSON dự phòng
           </Button>
-          <Button onClick={() => void migrate()} isLoading={isMigrating} leftIcon={<Database className="h-4 w-4" />}>
+          <Button disabled={isMigrating || isQizzoneApiConfigured} onClick={() => void migrate()} isLoading={isMigrating} leftIcon={<Database className="h-4 w-4" />}>
             Xác nhận chuyển dữ liệu
           </Button>
         </>
@@ -79,6 +80,12 @@ export function LegacyMigrationAssistant({ user, onCompleted }: Props) {
           <ShieldCheck className="h-5 w-5 shrink-0" />
           <p>Chỉ dữ liệu khớp email và mã người dùng cũ mới được nhập. Mật khẩu, token giả và Gemini API key không bao giờ được tải lên.</p>
         </div>
+        {isQizzoneApiConfigured && (
+          <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p>Dữ liệu cũ chưa thể nhập an toàn khi hệ thống mới đang bật. Bản gốc vẫn được giữ trên thiết bị; hãy tải JSON dự phòng để lưu bản sao.</p>
+          </div>
+        )}
         {(preview.skippedCount > 0 || !preview.hasMatchingProfile) && (
           <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">
             <AlertTriangle className="h-5 w-5 shrink-0" />

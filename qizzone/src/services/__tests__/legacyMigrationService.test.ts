@@ -4,7 +4,11 @@ import { quizService } from '@/services/quizService';
 import { getLegacyMigrationPreview, migrateLegacyData } from '@/services/legacyMigrationService';
 import type { User } from '@/types/auth';
 
-vi.mock('@/lib/cloud', () => ({ rpc: vi.fn() }));
+const mocks = vi.hoisted(() => ({ apiConfigured: false }));
+vi.mock('@/lib/cloud', () => ({
+  get isQizzoneApiConfigured() { return mocks.apiConfigured; },
+  rpc: vi.fn(),
+}));
 vi.mock('@/services/quizService', () => ({
   quizService: { save: vi.fn() },
 }));
@@ -40,6 +44,7 @@ describe('legacy migration assistant', () => {
 
   beforeEach(() => {
     storage = new MemoryStorage();
+    mocks.apiConfigured = false;
     vi.stubGlobal('window', { localStorage: storage });
     vi.clearAllMocks();
     vi.mocked(rpc).mockResolvedValue(undefined);
@@ -77,5 +82,14 @@ describe('legacy migration assistant', () => {
 
     await migrateLegacyData(teacher);
     expect(storage.getItem('qizzone_quizzes_db')).toBeNull();
+  });
+
+  it('keeps local data when V2 blocks legacy import', async () => {
+    mocks.apiConfigured = true;
+
+    await expect(migrateLegacyData(teacher)).rejects.toThrow('API mới đang bật');
+    expect(quizService.save).not.toHaveBeenCalled();
+    expect(storage.getItem('qizzone_quizzes_db')).not.toBeNull();
+    expect(storage.getItem('qizzone_auth_session')).not.toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -12,7 +12,7 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { adminService, type UserAccount } from "@/services/adminService";
+import { adminService, type AccountStatusFilter, type UserAccount } from "@/services/adminService";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,8 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import type { Quiz } from "@/types/quiz";
 
+const ACCOUNT_PAGE_SIZE = 25;
+
 export function AccountManagement() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -31,46 +33,52 @@ export function AccountManagement() {
 
   const [activeTab, setActiveTab] = useState<"teacher" | "student">("teacher");
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<AccountStatusFilter>("all");
+  const [page, setPage] = useState(1);
   const [accounts, setAccounts] = useState<UserAccount[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [roleCounts, setRoleCounts] = useState({ teacher: 0, student: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const accountRequestId = useRef(0);
 
   // Modal for teacher's quizzes
   const [selectedTeacher, setSelectedTeacher] = useState<UserAccount | null>(null);
   const [isQuizzesModalOpen, setIsQuizzesModalOpen] = useState(false);
 
   const loadAccounts = useCallback(async () => {
+    const requestId = ++accountRequestId.current;
     setIsLoading(true);
     try {
-      const data = await adminService.listAccounts();
-      setAccounts(data);
+      const result = await adminService.listAccountsPage({
+        role: activeTab,
+        status: statusFilter,
+        search: searchTerm,
+        page,
+        pageSize: ACCOUNT_PAGE_SIZE,
+      });
+      if (requestId !== accountRequestId.current) return;
+      setAccounts(result.accounts);
+      setTotalItems(result.totalItems);
+      setTotalPages(result.totalPages);
+      setRoleCounts({ teacher: result.teacherCount, student: result.studentCount });
     } catch {
-      toast.error("Không thể tải danh sách tài khoản.");
+      if (requestId === accountRequestId.current) {
+        toast.error("Không thể tải danh sách tài khoản.");
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === accountRequestId.current) setIsLoading(false);
     }
-  }, [toast]);
+  }, [activeTab, page, searchTerm, statusFilter, toast]);
 
   useEffect(() => {
-    let isMounted = true;
-    adminService
-      .listAccounts()
-      .then((data) => {
-        if (isMounted) {
-          setAccounts(data);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          toast.error("Không thể tải danh sách tài khoản.");
-          setIsLoading(false);
-        }
-      });
+    const timeout = window.setTimeout(() => void loadAccounts(), searchTerm.trim() ? 250 : 0);
     return () => {
-      isMounted = false;
+      window.clearTimeout(timeout);
+      accountRequestId.current += 1;
     };
-  }, [toast]);
+  }, [loadAccounts, searchTerm]);
 
   const handleToggleBlock = async (account: UserAccount) => {
     const nextBlocked = !account.isBlocked;
@@ -83,16 +91,12 @@ export function AccountManagement() {
     setProcessingId(account.id);
     try {
       await adminService.toggleBlockUser(account.id, nextBlocked, account.role);
-      setAccounts((prev) =>
-        prev.map((acc) =>
-          acc.id === account.id ? { ...acc, isBlocked: nextBlocked } : acc
-        )
-      );
       toast.success(
         nextBlocked
           ? `Đã khóa tài khoản "${account.fullName}" thành công.`
           : `Đã mở khóa tài khoản "${account.fullName}" thành công.`
       );
+      await loadAccounts();
     } catch {
       toast.error("Không thể thay đổi trạng thái tài khoản. Vui lòng thử lại!");
     } finally {
@@ -105,18 +109,9 @@ export function AccountManagement() {
     setIsQuizzesModalOpen(true);
   };
 
-  const teachersList = accounts.filter((acc) => acc.role === "teacher");
-  const studentsList = accounts.filter((acc) => acc.role === "student");
-
-  const currentTabAccounts = activeTab === "teacher" ? teachersList : studentsList;
-
-  const filteredAccounts = currentTabAccounts.filter((acc) => {
-    const term = searchTerm.toLowerCase();
-    return (
-      acc.fullName.toLowerCase().includes(term) ||
-      acc.email.toLowerCase().includes(term)
-    );
-  });
+  const filteredAccounts = accounts;
+  const firstVisibleAccount = totalItems === 0 ? 0 : (page - 1) * ACCOUNT_PAGE_SIZE + 1;
+  const lastVisibleAccount = Math.min(page * ACCOUNT_PAGE_SIZE, totalItems);
 
   // Calculate actual quizzes for selected teacher
   const teacherQuizzes: Quiz[] = selectedTeacher
@@ -158,7 +153,10 @@ export function AccountManagement() {
         <div className="inline-flex rounded-xl theme-surface-muted p-1 border theme-border">
           <button
             type="button"
-            onClick={() => setActiveTab("teacher")}
+            onClick={() => {
+              setActiveTab("teacher");
+              setPage(1);
+            }}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition cursor-pointer ${
               activeTab === "teacher"
                 ? "theme-surface text-teal-700 shadow-xs font-bold"
@@ -168,13 +166,16 @@ export function AccountManagement() {
             <GraduationCap className="h-4 w-4" />
             <span>Giáo viên</span>
             <span className="ml-1 rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">
-              {teachersList.length}
+              {roleCounts.teacher}
             </span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveTab("student")}
+            onClick={() => {
+              setActiveTab("student");
+              setPage(1);
+            }}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition cursor-pointer ${
               activeTab === "student"
                 ? "theme-surface text-teal-700 shadow-xs font-bold"
@@ -184,7 +185,7 @@ export function AccountManagement() {
             <Users className="h-4 w-4" />
             <span>Học sinh</span>
             <span className="ml-1 rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">
-              {studentsList.length}
+              {roleCounts.student}
             </span>
           </button>
         </div>
@@ -194,10 +195,30 @@ export function AccountManagement() {
           <Input
             placeholder="Tìm theo tên hoặc email..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            maxLength={100}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             leftIcon={<Search className="h-4 w-4" />}
           />
         </div>
+        <label className="w-full sm:w-44">
+          <span className="sr-only">Lọc trạng thái tài khoản</span>
+          <select
+            aria-label="Lọc trạng thái tài khoản"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value as AccountStatusFilter);
+              setPage(1);
+            }}
+            className="h-11 w-full rounded-lg border theme-border theme-surface px-3 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-teal-600"
+          >
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="blocked">Đã khóa</option>
+          </select>
+        </label>
       </div>
 
       {/* Accounts Table Card */}
@@ -348,6 +369,35 @@ export function AccountManagement() {
         </div>
       </Card>
 
+      <div className="flex flex-col gap-3 rounded-xl border theme-border theme-surface px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm theme-text-secondary" role="status" aria-live="polite">
+          {totalItems === 0
+            ? "Không có tài khoản phù hợp."
+            : `Hiển thị ${firstVisibleAccount}–${lastVisibleAccount} trên ${totalItems} tài khoản`}
+        </p>
+        <div className="flex items-center justify-end gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Trước
+          </Button>
+          <span className="min-w-20 text-center text-sm theme-text-secondary">
+            Trang {totalPages === 0 ? 1 : page} / {Math.max(1, totalPages)}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || totalPages === 0 || page >= totalPages}
+            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+          >
+            Tiếp
+          </Button>
+        </div>
+      </div>
+
       {/* Teacher Quizzes Modal */}
       <Modal
         isOpen={isQuizzesModalOpen}
@@ -377,6 +427,8 @@ export function AccountManagement() {
                       <Badge variant={quiz.status} size="sm" dot>
                         {quiz.status === "published"
                           ? "Đang mở"
+                          : quiz.status === "scheduled"
+                          ? "Sắp mở"
                           : quiz.status === "draft"
                           ? "Bản nháp"
                           : "Đã đóng"}

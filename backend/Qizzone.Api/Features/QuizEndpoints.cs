@@ -18,10 +18,12 @@ public static class QuizEndpoints
             .WithTags("Quizzes")
             .RequireAuthorization("ActiveUser");
 
+        group.MapGet("/by-code/{code}", GetByCodeAsync);
         group.MapGet("/", ListAsync);
         group.MapGet("/{id:guid}", GetAsync);
         group.MapGet("/{id:guid}/reports", GetResultsReportAsync).RequireAuthorization("Teacher");
         group.MapPost("/", CreateAsync).RequireAuthorization("Teacher");
+        group.MapPost("/{id:guid}/duplicate", DuplicateAsync).RequireAuthorization("Teacher");
         group.MapPut("/{id:guid}", UpdateAsync).RequireAuthorization("Teacher");
         group.MapDelete("/{id:guid}", DeleteAsync).RequireAuthorization("Teacher");
         group.MapPut("/{id:guid}/assignments", UpdateAssignmentsAsync).RequireAuthorization("Teacher");
@@ -38,30 +40,98 @@ public static class QuizEndpoints
         var uid = principal.FindFirst("firebase:uid")!.Value;
         var isAdmin = HasRole(principal, "admin");
         var hasTeacherAccess = HasRole(principal, "teacher");
+        var now = DateTimeOffset.UtcNow;
+        var viewerProfile = !isAdmin && !hasTeacherAccess
+            ? await db.Profiles.AsNoTracking()
+                .Where(item => item.FirebaseUid == uid)
+                .Select(item => new { item.Email, item.StudentClass })
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
 
-        var query = db.Quizzes.AsNoTracking()
-            .Include(item => item.Questions)
-            .ThenInclude(item => item.AnswerKey)
-            .AsQueryable();
-
-        if (!isAdmin)
+        var isStudentWithFallbackProvider = !isAdmin && !hasTeacherAccess &&
+            db.Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL";
+        IQueryable<Quiz> query;
+        if (!isAdmin && !hasTeacherAccess && !isStudentWithFallbackProvider)
         {
-            query = query.Where(item => item.Status == "published" || (hasTeacherAccess && item.TeacherUid == uid));
+            query = QueryStudentVisibleQuizzes(db, now, viewerProfile?.Email, viewerProfile?.StudentClass)
+                .AsNoTracking()
+                .Include(item => item.Questions)
+                .ThenInclude(item => item.AnswerKey);
+        }
+        else
+        {
+            query = db.Quizzes.AsNoTracking()
+                .Include(item => item.Questions)
+                .ThenInclude(item => item.AnswerKey);
+
+            if (!isAdmin)
+            {
+                query = query.Where(item =>
+                    (item.Status == "published" && (item.ClosesAt == null || item.ClosesAt > now)) ||
+                    (item.Status == "scheduled" && item.OpensAt <= now && (item.ClosesAt == null || item.ClosesAt > now)) ||
+                    (hasTeacherAccess && item.TeacherUid == uid));
+            }
         }
 
-        var quizzes = await query.OrderByDescending(item => item.CreatedAt)
-            .Take(500)
+        var orderedQuery = query.OrderByDescending(item => item.CreatedAt);
+        var quizzes = await (isStudentWithFallbackProvider
+            ? orderedQuery
+            : orderedQuery.Take(500)).ToListAsync(cancellationToken);
+        if (isStudentWithFallbackProvider)
+        {
+            quizzes = quizzes
+                .Where(quiz => IsAssignedToCurrentUser(quiz, viewerProfile?.Email, viewerProfile?.StudentClass))
+                .Take(500)
+                .ToList();
+        }
+
+        var profileUids = quizzes.Select(item => item.TeacherUid).Append(uid).Distinct().ToArray();
+        var profiles = await db.Profiles.AsNoTracking()
+            .Where(item => profileUids.Contains(item.FirebaseUid))
+            .Select(item => new { item.FirebaseUid, item.FullName, item.Email, item.StudentClass })
             .ToListAsync(cancellationToken);
-        var teacherUids = quizzes.Select(item => item.TeacherUid).Distinct().ToArray();
-        var teacherNames = await db.Profiles.AsNoTracking()
-            .Where(item => teacherUids.Contains(item.FirebaseUid))
-            .ToDictionaryAsync(item => item.FirebaseUid, item => item.FullName, cancellationToken);
+        var teacherNames = profiles.ToDictionary(item => item.FirebaseUid, item => item.FullName);
+        var viewerEmail = viewerProfile?.Email ?? profiles.FirstOrDefault(item => item.FirebaseUid == uid)?.Email;
+        var viewerClass = viewerProfile?.StudentClass ?? profiles.FirstOrDefault(item => item.FirebaseUid == uid)?.StudentClass;
 
         return Results.Ok(quizzes.Select(quiz => ToResponse(
             quiz,
             teacherNames.GetValueOrDefault(quiz.TeacherUid),
-            canSeeAnswerKey: isAdmin || (hasTeacherAccess && quiz.TeacherUid == uid))));
+            canSeeAnswerKey: isAdmin || (hasTeacherAccess && quiz.TeacherUid == uid),
+            isAssignedToCurrentUser: IsAssignedToCurrentUser(quiz, viewerEmail, viewerClass))));
     }
+
+    private static IQueryable<Quiz> QueryStudentVisibleQuizzes(
+        QizzoneDbContext db,
+        DateTimeOffset now,
+        string? email,
+        string? studentClass) => db.Quizzes.FromSqlInterpolated($"""
+            SELECT quiz.*
+            FROM quizzes AS quiz
+            WHERE (
+                (quiz.status = 'published' AND (quiz.closes_at IS NULL OR quiz.closes_at > {now}))
+                OR
+                (quiz.status = 'scheduled' AND quiz.opens_at <= {now} AND (quiz.closes_at IS NULL OR quiz.closes_at > {now}))
+            )
+            AND (
+                EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements_text(
+                        CASE WHEN jsonb_typeof(quiz.settings -> 'assignedEmails') = 'array'
+                             THEN quiz.settings -> 'assignedEmails' ELSE '[]'::jsonb END
+                    ) AS email_assignment(value)
+                    WHERE lower(btrim(email_assignment.value)) = lower(btrim({email}))
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM jsonb_array_elements_text(
+                        CASE WHEN jsonb_typeof(quiz.settings -> 'assignedClasses') = 'array'
+                             THEN quiz.settings -> 'assignedClasses' ELSE '[]'::jsonb END
+                    ) AS class_assignment(value)
+                    WHERE lower(btrim(class_assignment.value)) = lower(btrim({studentClass}))
+                )
+            )
+            """);
 
     private static async Task<IResult> GetAsync(
         Guid id,
@@ -78,20 +148,93 @@ public static class QuizEndpoints
             return Results.NotFound();
         }
 
-        var uid = principal.FindFirst("firebase:uid")!.Value;
-        var canSeeAnswerKey = HasRole(principal, "admin") ||
-            (HasRole(principal, "teacher") && quiz.TeacherUid == uid);
-        if (!canSeeAnswerKey && quiz.Status != "published")
+        return await CreateQuizReadResultAsync(quiz, principal, db, cancellationToken);
+    }
+
+    private static async Task<IResult> GetByCodeAsync(
+        string code,
+        ClaimsPrincipal principal,
+        QizzoneDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var normalizedCode = code.Trim().ToUpperInvariant();
+        if (normalizedCode.Length != 6 || normalizedCode.Any(character => !char.IsAsciiLetterOrDigit(character)))
         {
             return Results.NotFound();
         }
 
-        var teacherName = await db.Profiles.AsNoTracking()
-            .Where(item => item.FirebaseUid == quiz.TeacherUid)
-            .Select(item => item.FullName)
-            .SingleOrDefaultAsync(cancellationToken);
+        var quiz = await db.Quizzes.AsNoTracking()
+            .Include(item => item.Questions)
+            .ThenInclude(item => item.AnswerKey)
+            .SingleOrDefaultAsync(item => item.Code == normalizedCode, cancellationToken);
 
-        return Results.Ok(ToResponse(quiz, teacherName, canSeeAnswerKey));
+        return await CreateQuizReadResultAsync(quiz, principal, db, cancellationToken);
+    }
+
+    private static async Task<IResult> CreateQuizReadResultAsync(
+        Quiz? quiz,
+        ClaimsPrincipal principal,
+        QizzoneDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (quiz is null)
+        {
+            return Results.NotFound();
+        }
+
+        var uid = principal.FindFirst("firebase:uid")!.Value;
+        var canSeeAnswerKey = HasRole(principal, "admin") ||
+            (HasRole(principal, "teacher") && quiz.TeacherUid == uid);
+        if (!canSeeAnswerKey && QuizRoomSchedule.GetEffectiveStatus(quiz, DateTimeOffset.UtcNow) != "published")
+        {
+            return Results.NotFound();
+        }
+
+        var relatedProfiles = await db.Profiles.AsNoTracking()
+            .Where(item => item.FirebaseUid == quiz.TeacherUid || item.FirebaseUid == uid)
+            .Select(item => new { item.FirebaseUid, item.FullName, item.Email, item.StudentClass })
+            .ToListAsync(cancellationToken);
+        var teacherName = relatedProfiles.FirstOrDefault(item => item.FirebaseUid == quiz.TeacherUid)?.FullName;
+        var viewerProfile = relatedProfiles.FirstOrDefault(item => item.FirebaseUid == uid);
+
+        return Results.Ok(ToResponse(
+            quiz,
+            teacherName,
+            canSeeAnswerKey,
+            IsAssignedToCurrentUser(quiz, viewerProfile?.Email, viewerProfile?.StudentClass)));
+    }
+
+    private static bool IsAssignedToCurrentUser(Quiz quiz, string? email, string? studentClass)
+    {
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(studentClass)) return false;
+
+        try
+        {
+            var settings = JsonNode.Parse(quiz.SettingsJson)?.AsObject();
+            return MatchesAssignment(settings, "assignedEmails", email) ||
+                MatchesAssignment(settings, "assignedClasses", studentClass);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private static bool MatchesAssignment(JsonObject? settings, string key, string? candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate) || settings?[key] is not { } valuesNode)
+        {
+            return false;
+        }
+
+        var normalizedCandidate = candidate.Trim();
+        return DeserializeStringList(valuesNode.ToJsonString(JsonOptions))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Any(value => string.Equals(value.Trim(), normalizedCandidate, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<IResult> GetResultsReportAsync(
@@ -297,6 +440,9 @@ public static class QuizEndpoints
             return validation;
         }
 
+        var mediaValidation = await ValidateOwnedMediaReferencesAsync(request, uid, db, cancellationToken);
+        if (mediaValidation is not null) return mediaValidation;
+
         var profile = await db.Profiles.AsNoTracking()
             .SingleOrDefaultAsync(item => item.FirebaseUid == uid, cancellationToken);
         if (profile is null)
@@ -340,12 +486,16 @@ public static class QuizEndpoints
         CancellationToken cancellationToken)
     {
         var uid = principal.FindFirst("firebase:uid")!.Value;
-        var validation = Validate(request, uid);
+        var validation = Validate(request, uid, allowScheduledStatus: true);
         if (validation is not null)
         {
             return validation;
         }
 
+        var mediaValidation = await ValidateOwnedMediaReferencesAsync(request, uid, db, cancellationToken);
+        if (mediaValidation is not null) return mediaValidation;
+
+        await using var quizTransaction = await QuizConfigurationLock.AcquireAsync(db, id, cancellationToken);
         var quiz = await db.Quizzes
             .Include(item => item.Questions)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
@@ -359,32 +509,148 @@ public static class QuizEndpoints
             return Results.Forbid();
         }
 
+        if (request.Status == "scheduled" && quiz.Status != "scheduled")
+        {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["status"] = ["Use the status endpoint with schedule times to schedule a quiz room."],
+            });
+        }
+
         if (await db.ExamAttempts.AnyAsync(item => item.QuizId == id, cancellationToken))
         {
             return Results.Conflict(new { error = "This quiz already has exam attempts. Duplicate it before changing its questions." });
         }
 
+        if (await db.PracticeSessions.AnyAsync(item => item.QuizId == id, cancellationToken))
+        {
+            return Results.Conflict(new { error = "This quiz already has practice sessions. Duplicate it before changing its questions." });
+        }
+
         var now = DateTimeOffset.UtcNow;
+        db.Questions.RemoveRange(quiz.Questions);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var updatedQuestions = request.Questions!
+            .Select((question, index) => BuildQuestion(question, index + 1, now))
+            .ToList();
+        foreach (var question in updatedQuestions)
+        {
+            question.QuizId = quiz.Id;
+            question.Quiz = quiz;
+        }
+
         quiz.Title = request.Title!.Trim();
         quiz.Subject = request.Subject!.Trim();
         quiz.Description = request.Description?.Trim() ?? "";
-        quiz.Status = request.Status ?? quiz.Status;
+        // Scheduling is changed only through the status endpoint, which validates both times.
+        // Keep a scheduled room scheduled when an older editor submits its legacy status field.
+        if (quiz.Status != "scheduled")
+        {
+            quiz.Status = request.Status ?? quiz.Status;
+        }
         quiz.SettingsJson = JsonSerializer.Serialize(NormalizeSettings(request.Settings!), JsonOptions);
         quiz.UpdatedAt = now;
-        db.Questions.RemoveRange(quiz.Questions);
-        quiz.Questions = request.Questions!.Select((question, index) => BuildQuestion(question, index + 1, now)).ToList();
+        quiz.Questions = updatedQuestions;
+        db.Questions.AddRange(updatedQuestions);
         db.AuditEvents.Add(CreateAudit(uid, "quiz.updated", "quiz", quiz.Id.ToString(), new
         {
             questionCount = quiz.Questions.Count,
             quiz.Status,
         }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
 
         var teacherName = await db.Profiles.AsNoTracking()
             .Where(item => item.FirebaseUid == quiz.TeacherUid)
             .Select(item => item.FullName)
             .SingleOrDefaultAsync(cancellationToken);
         return Results.Ok(ToResponse(quiz, teacherName, canSeeAnswerKey: true));
+    }
+
+    private static async Task<IResult> DuplicateAsync(
+        Guid id,
+        ClaimsPrincipal principal,
+        QizzoneDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var uid = principal.FindFirst("firebase:uid")!.Value;
+        await using var sourceLock = await QuizConfigurationLock.AcquireSharedAsync(db, id, cancellationToken);
+        var source = await db.Quizzes.AsNoTracking()
+            .Include(item => item.Questions)
+            .ThenInclude(item => item.AnswerKey)
+            .SingleOrDefaultAsync(item => item.Id == id && item.TeacherUid == uid, cancellationToken);
+        if (source is null)
+        {
+            return Results.NotFound();
+        }
+
+        var profile = await db.Profiles.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.FirebaseUid == uid, cancellationToken);
+        if (profile is null)
+        {
+            return Results.Forbid();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        const string suffix = " (Bản sao)";
+        var title = source.Title[..Math.Min(source.Title.Length, 300 - suffix.Length)].TrimEnd() + suffix;
+        var duplicate = new Quiz
+        {
+            Id = Guid.NewGuid(),
+            TeacherUid = uid,
+            Title = title,
+            Subject = source.Subject,
+            Description = source.Description,
+            Code = NewRoomCode(),
+            Status = "draft",
+            SettingsJson = source.SettingsJson,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Questions = source.Questions.OrderBy(item => item.Ordinal).Select(question =>
+            {
+                var questionId = Guid.NewGuid();
+                return new Question
+                {
+                    Id = questionId,
+                    QuizId = Guid.Empty,
+                    Ordinal = question.Ordinal,
+                    Content = question.Content,
+                    ImagesJson = question.ImagesJson,
+                    Type = question.Type,
+                    OptionsJson = question.OptionsJson,
+                    Points = question.Points,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    AnswerKey = question.AnswerKey is null ? null : new QuestionAnswerKey
+                    {
+                        QuestionId = questionId,
+                        CorrectAnswersJson = question.AnswerKey.CorrectAnswersJson,
+                        Explanation = question.AnswerKey.Explanation,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    },
+                };
+            }).ToList(),
+        };
+        foreach (var question in duplicate.Questions) question.QuizId = duplicate.Id;
+
+        db.Quizzes.Add(duplicate);
+        db.AuditEvents.Add(CreateAudit(uid, "quiz.duplicated", "quiz", duplicate.Id.ToString(), new
+        {
+            sourceQuizId = source.Id,
+            questionCount = duplicate.Questions.Count,
+        }));
+        await db.SaveChangesAsync(cancellationToken);
+        if (sourceLock is not null)
+        {
+            await sourceLock.CommitAsync(cancellationToken);
+        }
+
+        return Results.Created($"/api/v1/quizzes/{duplicate.Id}", ToResponse(duplicate, profile.FullName, canSeeAnswerKey: true));
     }
 
     private static async Task<IResult> UpdateAssignmentsAsync(
@@ -394,6 +660,7 @@ public static class QuizEndpoints
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
+        await using var quizTransaction = await QuizConfigurationLock.AcquireAsync(db, id, cancellationToken);
         var quiz = await db.Quizzes.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (quiz is null)
         {
@@ -427,6 +694,10 @@ public static class QuizEndpoints
             emailCount = emails.Values.Count,
         }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
 
         return Results.NoContent();
     }
@@ -438,14 +709,51 @@ public static class QuizEndpoints
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
-        if (request.Status is not ("draft" or "published" or "closed"))
+        if (request.Status is not ("draft" or "scheduled" or "published" or "closed"))
         {
             return Results.ValidationProblem(new Dictionary<string, string[]>
             {
-                ["status"] = ["Status must be draft, published, or closed."],
+                ["status"] = ["Status must be draft, scheduled, published, or closed."],
             });
         }
 
+        var now = DateTimeOffset.UtcNow;
+        var opensAt = request.OpensAt?.ToUniversalTime();
+        var closesAt = request.ClosesAt?.ToUniversalTime();
+        var scheduleErrors = new Dictionary<string, string[]>();
+        if (request.Status == "scheduled")
+        {
+            if (opensAt is null || opensAt <= now)
+            {
+                scheduleErrors["opensAt"] = ["A scheduled room must open at a future time (UTC)."];
+            }
+            if (closesAt is not null && opensAt is not null && closesAt <= opensAt)
+            {
+                scheduleErrors["closesAt"] = ["The close time must be later than the open time."];
+            }
+        }
+        else if (request.Status == "published")
+        {
+            if (opensAt is not null && opensAt > now)
+            {
+                scheduleErrors["opensAt"] = ["Use scheduled status for a future opening time."];
+            }
+            if (closesAt is not null && closesAt <= now)
+            {
+                scheduleErrors["closesAt"] = ["The close time must be in the future."];
+            }
+        }
+        else if (opensAt is not null || closesAt is not null)
+        {
+            scheduleErrors["opensAt"] = ["Draft and closed rooms cannot have schedule times."];
+        }
+
+        if (scheduleErrors.Count > 0)
+        {
+            return Results.ValidationProblem(scheduleErrors);
+        }
+
+        await using var quizTransaction = await QuizConfigurationLock.AcquireAsync(db, id, cancellationToken);
         var quiz = await db.Quizzes.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (quiz is null)
         {
@@ -458,16 +766,32 @@ public static class QuizEndpoints
             return Results.Forbid();
         }
 
-        if (request.Status == "published" &&
+        if (request.Status is "scheduled" or "published" &&
             !await db.Questions.AnyAsync(item => item.QuizId == id, cancellationToken))
         {
-            return Results.Conflict(new { error = "Add at least one question before publishing this quiz." });
+            return Results.Conflict(new { error = "Add at least one question before opening this quiz room." });
         }
 
         quiz.Status = request.Status!;
-        quiz.UpdatedAt = DateTimeOffset.UtcNow;
-        db.AuditEvents.Add(CreateAudit(uid, "quiz.status_changed", "quiz", quiz.Id.ToString(), new { quiz.Status }));
+        quiz.OpensAt = request.Status switch
+        {
+            "scheduled" => opensAt,
+            "published" => null,
+            _ => null,
+        };
+        quiz.ClosesAt = request.Status is "scheduled" or "published" ? closesAt : null;
+        quiz.UpdatedAt = now;
+        db.AuditEvents.Add(CreateAudit(uid, "quiz.status_changed", "quiz", quiz.Id.ToString(), new
+        {
+            quiz.Status,
+            quiz.OpensAt,
+            quiz.ClosesAt,
+        }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
         return Results.NoContent();
     }
 
@@ -477,6 +801,7 @@ public static class QuizEndpoints
         QizzoneDbContext db,
         CancellationToken cancellationToken)
     {
+        await using var quizTransaction = await QuizConfigurationLock.AcquireAsync(db, id, cancellationToken);
         var quiz = await db.Quizzes.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (quiz is null)
         {
@@ -502,10 +827,14 @@ public static class QuizEndpoints
         db.Quizzes.Remove(quiz);
         db.AuditEvents.Add(CreateAudit(uid, "quiz.deleted", "quiz", quiz.Id.ToString(), new { quiz.Title }));
         await db.SaveChangesAsync(cancellationToken);
+        if (quizTransaction is not null)
+        {
+            await quizTransaction.CommitAsync(cancellationToken);
+        }
         return Results.NoContent();
     }
 
-    private static IResult? Validate(QuizWriteRequest request, string mediaOwnerUid)
+    private static IResult? Validate(QuizWriteRequest request, string mediaOwnerUid, bool allowScheduledStatus = false)
     {
         var errors = new Dictionary<string, string[]>();
         if (request.Settings is null)
@@ -518,8 +847,11 @@ public static class QuizEndpoints
             errors["subject"] = ["Subject must be between 1 and 100 characters."];
         if ((request.Description?.Length ?? 0) > 5000)
             errors["description"] = ["Description cannot exceed 5000 characters."];
-        if (request.Status is not null && request.Status is not ("draft" or "published" or "closed"))
-            errors["status"] = ["Status must be draft, published, or closed."];
+        if (request.Status is not null && request.Status is not ("draft" or "published" or "closed") &&
+            !(allowScheduledStatus && request.Status == "scheduled"))
+            errors["status"] = [allowScheduledStatus
+                ? "Status must be draft, scheduled, published, or closed."
+                : "Status must be draft, published, or closed."];
         if (request.LegacyId is { Length: > 200 })
             errors["legacyId"] = ["Legacy ID cannot exceed 200 characters."];
 
@@ -637,7 +969,11 @@ public static class QuizEndpoints
         return question;
     }
 
-    private static QuizResponse ToResponse(Quiz quiz, string? teacherName, bool canSeeAnswerKey)
+    private static QuizResponse ToResponse(
+        Quiz quiz,
+        string? teacherName,
+        bool canSeeAnswerKey,
+        bool isAssignedToCurrentUser = false)
     {
         var settings = JsonNode.Parse(quiz.SettingsJson)?.AsObject() ?? new JsonObject();
         if (!canSeeAnswerKey)
@@ -665,13 +1001,16 @@ public static class QuizEndpoints
             quiz.TeacherUid,
             teacherName,
             quiz.Code,
-            quiz.Status,
+            QuizRoomSchedule.GetEffectiveStatus(quiz, DateTimeOffset.UtcNow),
+            quiz.OpensAt,
+            quiz.ClosesAt,
             settingsElement,
             questions,
             questions.Count,
             questions.Sum(item => item.Points),
             quiz.CreatedAt,
-            quiz.UpdatedAt);
+            quiz.UpdatedAt,
+            isAssignedToCurrentUser);
     }
 
     private static List<string> DeserializeStringList(string json)
@@ -791,6 +1130,8 @@ public static class QuizEndpoints
 
     private static bool ValidMediaReference(string value, string ownerUid)
     {
+        if (MediaEndpoints.TryParseReference(value, out _)) return true;
+
         const string prefix = "storage://qizzone-question-media/";
         if (value.Length > 512 || !value.StartsWith(prefix, StringComparison.Ordinal) || value.Contains("..", StringComparison.Ordinal) ||
             value.Contains('\\') || value.Contains('%') || value.Contains('?') || value.Contains('#') || value.Any(char.IsControl))
@@ -802,6 +1143,32 @@ public static class QuizEndpoints
         return pathParts.Length >= 2 &&
             pathParts[0] == ownerUid &&
             pathParts.All(part => part.Length > 0 && part is not ("." or ".."));
+    }
+
+    private static async Task<IResult?> ValidateOwnedMediaReferencesAsync(
+        QuizWriteRequest request,
+        string ownerUid,
+        QizzoneDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var mediaIds = request.Questions!
+            .SelectMany(question => (question.Images ?? [])
+                .Concat((question.Options ?? []).SelectMany(option => option.Images ?? [])))
+            .Where(image => image is not null && image.StartsWith(MediaEndpoints.ReferencePrefix, StringComparison.Ordinal))
+            .Select(image => MediaEndpoints.TryParseReference(image, out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        if (mediaIds.Length == 0) return null;
+
+        var ownedMediaCount = await db.MediaObjects.AsNoTracking()
+            .CountAsync(item => item.OwnerUid == ownerUid && mediaIds.Contains(item.Id), cancellationToken);
+        return ownedMediaCount == mediaIds.Length
+            ? null
+            : Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["questions.images"] = ["Every Qizzone media reference must belong to the current account."],
+            });
     }
 
     private static bool IsValidEmail(string value)
@@ -878,7 +1245,7 @@ public static class QuizEndpoints
         public List<string>? AssignedEmails { get; init; } = [];
     }
 
-    public sealed record QuizStatusRequest(string? Status);
+    public sealed record QuizStatusRequest(string? Status, DateTimeOffset? OpensAt, DateTimeOffset? ClosesAt);
 
     public sealed record QuizResponse(
         string Id,
@@ -889,12 +1256,15 @@ public static class QuizEndpoints
         string? TeacherName,
         string Code,
         string Status,
+        DateTimeOffset? OpensAt,
+        DateTimeOffset? ClosesAt,
         JsonElement Settings,
         List<QuestionResponse> Questions,
         int TotalQuestions,
         decimal TotalPoints,
         DateTimeOffset CreatedAt,
-        DateTimeOffset UpdatedAt);
+        DateTimeOffset UpdatedAt,
+        bool IsAssignedToCurrentUser);
 
     public sealed record QuestionResponse(
         string Id,

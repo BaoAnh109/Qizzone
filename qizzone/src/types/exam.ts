@@ -1,4 +1,4 @@
-import type { OptionId, OptionItem } from "./quiz";
+import type { OptionId, OptionItem, Question } from "./quiz";
 
 export type AcademicRank = "Xuất sắc" | "Giỏi" | "Khá" | "Trung bình" | "Yếu";
 
@@ -11,6 +11,11 @@ export interface StudentAnswer {
 
 export interface ExamSession {
   quizId: string;
+  quizTitle?: string;
+  subject?: string;
+  roomCode?: string;
+  questions?: Question[];
+  questionOrder?: string[];
   studentId: string;
   studentName: string;
   studentClass?: string;

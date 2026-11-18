@@ -1,0 +1,11 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0.404
+ARG QIZZONE_RELEASE_SHA=unknown
+LABEL org.opencontainers.image.revision=$QIZZONE_RELEASE_SHA
+WORKDIR /src
+COPY dotnet-tools.json .config/dotnet-tools.json
+COPY Qizzone.Api/Qizzone.Api.csproj Qizzone.Api/
+COPY Qizzone.Api/packages.lock.json Qizzone.Api/
+RUN dotnet tool restore --tool-manifest .config/dotnet-tools.json \
+    && dotnet restore Qizzone.Api/Qizzone.Api.csproj --locked-mode
+COPY Qizzone.Api/ Qizzone.Api/
+ENTRYPOINT ["dotnet", "tool", "run", "dotnet-ef", "--"]

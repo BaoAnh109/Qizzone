@@ -7,8 +7,15 @@ public sealed class QizzoneDbContextFactory : IDesignTimeDbContextFactory<Qizzon
 {
     public QizzoneDbContext CreateDbContext(string[] args)
     {
+        var connectionStringFile = Environment.GetEnvironmentVariable("ConnectionStrings__QizzoneFile");
+        var connectionString = !string.IsNullOrWhiteSpace(connectionStringFile)
+            ? File.ReadAllText(connectionStringFile).Trim()
+            : Environment.GetEnvironmentVariable("ConnectionStrings__Qizzone");
+
         var options = new DbContextOptionsBuilder<QizzoneDbContext>()
-            .UseNpgsql("Host=localhost;Database=qizzone;Username=qizzone;Password=design-time-only")
+            .UseNpgsql(string.IsNullOrWhiteSpace(connectionString)
+                ? "Host=localhost;Database=qizzone;Username=qizzone;Password=design-time-only"
+                : connectionString)
             .Options;
 
         return new QizzoneDbContext(options);

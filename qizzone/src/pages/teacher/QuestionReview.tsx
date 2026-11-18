@@ -58,6 +58,8 @@ export function QuestionReview() {
               <Badge variant={quiz.status} size="sm" dot>
                 {quiz.status === "published"
                   ? "Đã xuất bản"
+                  : quiz.status === "scheduled"
+                  ? "Đã lên lịch"
                   : quiz.status === "closed"
                   ? "Đã đóng"
                   : "Bản nháp"}
@@ -161,7 +163,6 @@ export function QuestionReview() {
             </CardHeader>
 
             <CardContent className="p-6 space-y-4">
-              {/* 4 Options Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {q.options.map((opt) => {
                   const isCorrect = q.correctAnswers.includes(opt.id);
