@@ -1,5 +1,5 @@
 import type { ExamResult } from "@/types/exam";
-import type { OptionId, OptionItem, Question } from "@/types/quiz";
+import { OPTION_IDS, type OptionId, type OptionItem, type Question } from "@/types/quiz";
 
 export interface QuestionAnalytics {
   questionId: string;
@@ -13,8 +13,6 @@ export interface QuestionAnalytics {
   accuracyPercent: number;
   optionCounts: Record<OptionId, number>;
 }
-
-const OPTION_IDS: OptionId[] = ["A", "B", "C", "D"];
 
 export function calculateQuestionAnalytics(
   questions: Pick<Question, "id" | "order" | "content" | "options">[],

@@ -148,7 +148,7 @@ type PdfBounds = [number, number, number, number];
 
 function isLikelyChartLabel(text: string): boolean {
   const value = text.trim();
-  if (!value || value.length > 8 || /^[A-D][.)]$/iu.test(value)) return false;
+  if (!value || value.length > 8 || /^[A-E][.)]$/iu.test(value)) return false;
   const allowedPunctuation = "°◦%.,:+-−×÷=()[]_/";
   return [...value].every(character => /[\p{N}\p{L}\p{M}]/u.test(character) || allowedPunctuation.includes(character));
 }

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { solveMissingAnswersWithAI } from "@/services/aiExtractionService";
-import type { OptionId } from "@/types/quiz";
+import { OPTION_IDS, type OptionId } from "@/types/quiz";
 import type {
   ExtractedQuestion,
   ExtractionResult,
@@ -212,14 +212,14 @@ export const useExtractionStore = create<ExtractionState>()((set) => ({
   },
 
   applyBatchAnswerKey: (answerKeyString) => {
-    const regex = /(?:Câu\s*)?(\d+)[\s.:\-)_]*([A-D])\b/gi;
+    const regex = /(?:Câu\s*)?(\d+)[\s.:\-)_]*([A-E])\b/gi;
     let match: RegExpExecArray | null;
     const map: Record<number, OptionId> = {};
 
     while ((match = regex.exec(answerKeyString)) !== null) {
       const qNum = parseInt(match[1], 10);
       const ans = match[2].toUpperCase() as OptionId;
-      if (qNum > 0 && ["A", "B", "C", "D"].includes(ans)) {
+      if (qNum > 0 && OPTION_IDS.includes(ans)) {
         map[qNum] = ans;
       }
     }

@@ -244,7 +244,7 @@ public static class PracticeEndpoints
         }
 
         if (!session.QuestionOrder.Contains(questionId) || request.SelectedAnswers is null ||
-            request.SelectedAnswers.Count is < 1 or > 4 ||
+            request.SelectedAnswers.Count is < 1 or > 5 ||
             request.SelectedAnswers.Any(answer => string.IsNullOrWhiteSpace(answer)) ||
             request.SelectedAnswers.Distinct(StringComparer.Ordinal).Count() != request.SelectedAnswers.Count)
         {

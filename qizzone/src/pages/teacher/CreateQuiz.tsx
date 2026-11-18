@@ -365,8 +365,8 @@ export function CreateQuiz() {
         return;
       }
       const optionIds = q.options.map(option => option.id);
-      if (q.options.length < 2 || q.options.length > 4 || q.options.some(option => !option.content.trim()) || new Set(optionIds).size !== optionIds.length) {
-        toast.error(`Câu ${i + 1} cần có từ 2 đến 4 phương án hợp lệ, không trùng nhãn.`);
+      if (q.options.length < 2 || q.options.length > 5 || q.options.some(option => !option.content.trim()) || new Set(optionIds).size !== optionIds.length) {
+        toast.error(`Câu ${i + 1} cần có từ 2 đến 5 phương án hợp lệ, không trùng nhãn.`);
         setCurrentStep(1);
         return;
       }
@@ -1019,7 +1019,7 @@ export function CreateQuiz() {
                     />
                     <div>
                       <p className="text-sm font-semibold theme-text-primary">
-                        Đảo thứ tự đáp án (A, B, C, D)
+                        Đảo thứ tự đáp án (A, B, C, D, E)
                       </p>
                       <p className="text-xs theme-text-muted">
                         Xáo trộn các lựa chọn để chống nhìn bài.

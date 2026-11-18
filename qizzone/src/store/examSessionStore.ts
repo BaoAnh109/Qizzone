@@ -63,7 +63,7 @@ function readLocalDraft(session: CloudSession): LocalExamDraft | undefined {
     const allowedQuestions = new Set(session.questionOrder || []);
     const validAnswers = value.answers && typeof value.answers === 'object' && !Array.isArray(value.answers)
       && Object.entries(value.answers).every(([questionId, selected]) =>
-        allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 4
+        allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 5
         && selected.every(optionId => typeof optionId === 'string'));
     const validFlags = Array.isArray(value.flaggedQuestionIds)
       && value.flaggedQuestionIds.every(questionId => typeof questionId === 'string' && allowedQuestions.has(questionId));
@@ -102,7 +102,7 @@ function recoverLocalDraft(session: CloudSession): { session: CloudSession; rest
 function restoreSnapshot(session: CloudSession, draft: PendingExamMutation): CloudSession {
   const allowedQuestions = new Set(session.questionOrder || []);
   const answers = Object.fromEntries(Object.entries(draft.answers || {}).filter(([questionId, selected]) =>
-    allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 4
+    allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 5
       && selected.every(optionId => typeof optionId === 'string')).map(([questionId, selected]) =>
     [questionId, selected as OptionId[]]));
   const flaggedQuestionIds = (draft.flaggedQuestionIds || []).filter(questionId => allowedQuestions.has(questionId));

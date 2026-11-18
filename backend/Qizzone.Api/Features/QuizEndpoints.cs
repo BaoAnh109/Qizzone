@@ -567,8 +567,8 @@ public static class QuizEndpoints
             var options = question.Options ?? [];
             var correctAnswers = question.CorrectAnswers ?? [];
             var questionImages = question.Images ?? [];
-            if (options.Count is < 2 or > 4)
-                errors[$"{key}.options"] = ["A question must have between 2 and 4 options."];
+            if (options.Count is < 2 or > 5)
+                errors[$"{key}.options"] = ["A question must have between 2 and 5 options."];
             if (question.Points <= 0 || question.Points > 1000)
                 errors[$"{key}.points"] = ["Points must be greater than 0 and at most 1000."];
             if (questionImages.Count > 8)
@@ -583,12 +583,12 @@ public static class QuizEndpoints
             }
 
             var optionIds = options.Select(option => option.Id ?? "").ToArray();
-            if (optionIds.Any(option => option is not ("A" or "B" or "C" or "D")) || optionIds.Distinct(StringComparer.Ordinal).Count() != optionIds.Length)
-                errors[$"{key}.options"] = ["Option IDs must be unique values from A, B, C, or D."];
+            if (optionIds.Any(option => option is not ("A" or "B" or "C" or "D" or "E")) || optionIds.Distinct(StringComparer.Ordinal).Count() != optionIds.Length)
+                errors[$"{key}.options"] = ["Option IDs must be unique values from A, B, C, D, or E."];
             if (options.Any(option => string.IsNullOrWhiteSpace(option.Content) || option.Content.Trim().Length > 20000 || (option.Images?.Count ?? 0) > 8))
                 errors[$"{key}.options"] = ["Option text or images are invalid."];
 
-            if (correctAnswers.Count is < 1 or > 4 ||
+            if (correctAnswers.Count is < 1 or > 5 ||
                 correctAnswers.Any(answer => answer is null) ||
                 correctAnswers.Distinct(StringComparer.Ordinal).Count() != correctAnswers.Count ||
                 correctAnswers.Any(answer => !optionIds.Contains(answer, StringComparer.Ordinal)))
@@ -770,6 +770,7 @@ public static class QuizEndpoints
             ["B"] = 0,
             ["C"] = 0,
             ["D"] = 0,
+            ["E"] = 0,
         };
     }
 

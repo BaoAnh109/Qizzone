@@ -102,7 +102,7 @@ public sealed class GeminiClient(HttpClient httpClient, IOptions<GeminiOptions> 
                         {
                             id = new { type = "STRING" },
                             order = new { type = "INTEGER" },
-                            correctAnswer = new { type = "STRING", @enum = new[] { "A", "B", "C", "D" } },
+                            correctAnswer = new { type = "STRING", @enum = new[] { "A", "B", "C", "D", "E" } },
                             explanation = new { type = "STRING" },
                         },
                         required = new[] { "order", "correctAnswer", "explanation" },
@@ -134,7 +134,7 @@ public sealed class GeminiClient(HttpClient httpClient, IOptions<GeminiOptions> 
                                     type = "OBJECT",
                                     properties = new
                                     {
-                                        id = new { type = "STRING", @enum = new[] { "A", "B", "C", "D" } },
+                                        id = new { type = "STRING", @enum = new[] { "A", "B", "C", "D", "E" } },
                                         content = new { type = "STRING" },
                                     },
                                     required = new[] { "id", "content" },
@@ -172,7 +172,7 @@ public sealed class GeminiClient(HttpClient httpClient, IOptions<GeminiOptions> 
             var id = solution.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.String
                 ? idValue.GetString()
                 : null;
-            if (answer is not ("A" or "B" or "C" or "D") || string.IsNullOrWhiteSpace(explanation) || explanation.Length > 2000 || id?.Length > 128)
+            if (answer is not ("A" or "B" or "C" or "D" or "E") || string.IsNullOrWhiteSpace(explanation) || explanation.Length > 2000 || id?.Length > 128)
             {
                 throw new GeminiPermanentException("gemini_invalid_schema");
             }
@@ -198,7 +198,7 @@ public sealed class GeminiClient(HttpClient httpClient, IOptions<GeminiOptions> 
                 !seenOrders.Add(order) || !question.TryGetProperty("content", out var contentValue) ||
                 contentValue.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(contentValue.GetString()) ||
                 !question.TryGetProperty("options", out var optionsValue) || optionsValue.ValueKind != JsonValueKind.Array ||
-                optionsValue.GetArrayLength() is < 2 or > 4)
+                optionsValue.GetArrayLength() is < 2 or > 5)
             {
                 throw new GeminiPermanentException("gemini_invalid_schema");
             }
@@ -214,7 +214,7 @@ public sealed class GeminiClient(HttpClient httpClient, IOptions<GeminiOptions> 
                 }
                 var id = idValue.GetString()?.ToUpperInvariant();
                 var text = optionContent.GetString();
-                if (id is not ("A" or "B" or "C" or "D") || !optionIds.Add(id) || string.IsNullOrWhiteSpace(text))
+                if (id is not ("A" or "B" or "C" or "D" or "E") || !optionIds.Add(id) || string.IsNullOrWhiteSpace(text))
                 {
                     throw new GeminiPermanentException("gemini_invalid_schema");
                 }

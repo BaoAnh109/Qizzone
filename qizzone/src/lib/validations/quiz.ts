@@ -1,7 +1,8 @@
 import { z } from "zod";
+import { OPTION_IDS } from "@/types/quiz";
 
 export const optionSchema = z.object({
-  id: z.enum(["A", "B", "C", "D"]),
+  id: z.enum(OPTION_IDS),
   content: z.string().min(1, "Nội dung đáp án không được để trống"),
 });
 
@@ -14,9 +15,9 @@ export const questionSchema = z
     options: z
       .array(optionSchema)
       .min(2, "Mỗi câu hỏi phải có ít nhất 2 đáp án")
-      .max(4, "Tối đa 4 đáp án"),
+      .max(5, "Tối đa 5 đáp án"),
     correctAnswers: z
-      .array(z.enum(["A", "B", "C", "D"]))
+      .array(z.enum(OPTION_IDS))
       .min(1, "Vui lòng chọn ít nhất 1 đáp án đúng"),
     explanation: z.string().optional(),
     points: z.number().positive("Điểm số phải lớn hơn 0").default(1),

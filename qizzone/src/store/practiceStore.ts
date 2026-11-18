@@ -9,10 +9,9 @@ import type {
   PracticeSession,
   PracticeSessionStatus,
 } from '@/types/practice';
-import type { OptionId, OptionItem, QuestionType } from '@/types/quiz';
+import { OPTION_IDS, type OptionId, type OptionItem, type QuestionType } from '@/types/quiz';
 import { practiceErrorMessage } from '@/utils/practice';
 
-const OPTION_IDS: OptionId[] = ['A', 'B', 'C', 'D'];
 type UnknownRecord = Record<string, unknown>;
 
 interface LocalPracticeDraft {
@@ -208,7 +207,7 @@ function readDraft(session: PracticeSession): Partial<LocalPracticeDraft> | unde
     const questionIds = new Set(session.questionOrder);
     const validAnswers = !!value.answers && typeof value.answers === 'object' && !Array.isArray(value.answers)
       && Object.entries(value.answers).every(([questionId, selected]) => questionIds.has(questionId)
-        && Array.isArray(selected) && selected.length <= 4
+        && Array.isArray(selected) && selected.length <= 5
         && selected.every(optionId => typeof optionId === 'string' && OPTION_IDS.includes(optionId as OptionId)));
     const validFlags = Array.isArray(value.flaggedQuestionIds)
       && value.flaggedQuestionIds.every(questionId => typeof questionId === 'string' && questionIds.has(questionId));

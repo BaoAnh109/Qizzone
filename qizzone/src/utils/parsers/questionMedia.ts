@@ -1,10 +1,9 @@
 import type { ExtractedQuestion, ExtractionResult } from "@/types/extractor";
 import type { DocumentIR, DocumentIRBlock } from "@/types/documentIR";
-import type { OptionId, Question } from "@/types/quiz";
+import { OPTION_IDS, type OptionId, type Question } from "@/types/quiz";
 import { supabase } from "@/lib/cloud";
 import { QUESTION_MEDIA_BUCKET } from "@/lib/questionMedia";
 
-const OPTION_IDS: OptionId[] = ["A", "B", "C", "D"];
 const MAX_IMAGE_DATA_LENGTH = 900_000;
 
 type ImageBounds = [number, number, number, number];
@@ -231,10 +230,10 @@ function htmlToPlainText(value: string): string {
 
 function optionAtImagePosition(rawSegment: string, imageIndex: number): OptionId | undefined {
   const plainBeforeImage = htmlToPlainText(rawSegment.slice(0, imageIndex));
-  const lineMarkers = [...plainBeforeImage.matchAll(/(?:^|\n)\s*([A-D])\s*[.)\-:]\s*/gi)];
+  const lineMarkers = [...plainBeforeImage.matchAll(/(?:^|\n)\s*([A-E])\s*[.)\-:]\s*/gi)];
   const inlineMarkers = lineMarkers.length
     ? lineMarkers
-    : [...plainBeforeImage.matchAll(/(?:^|\s)([A-D])\s*[.)\-:]\s+(?=\S)/gi)];
+    : [...plainBeforeImage.matchAll(/(?:^|\s)([A-E])\s*[.)\-:]\s+(?=\S)/gi)];
   const marker = inlineMarkers.at(-1)?.[1]?.toUpperCase() as OptionId | undefined;
   return marker && OPTION_IDS.includes(marker) ? marker : undefined;
 }

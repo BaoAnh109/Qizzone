@@ -1,4 +1,4 @@
-import type { OptionId } from "@/types/quiz";
+import { OPTION_IDS, type OptionId } from "@/types/quiz";
 import { MAX_EXTRACTED_QUESTIONS } from "@/config/extractionLimits";
 import type {
   DetectionStrategy,
@@ -15,7 +15,7 @@ import type {
  * bao quanh nhãn hoặc chữ cái đáp án.
  */
 const TRAILING_ANSWER_PATTERN =
-  /((?:^|<p[^>]*>|<div[^>]*>|<li[^>]*>|<br\s*\/?>|\r?\n)\s*)(?:<[^>]*>\s*)*(?:Đáp\s*án|ĐA|Answer(?:\s*key)?)\s*[:：\-–—]?\s*(?:<[^>]*>\s*)*([A-D])\s*(?:[.)])?\s*(?:<\/[^>]*>\s*)*$/iu;
+  /((?:^|<p[^>]*>|<div[^>]*>|<li[^>]*>|<br\s*\/?>|\r?\n)\s*)(?:<[^>]*>\s*)*(?:Đáp\s*án|ĐA|Answer(?:\s*key)?)\s*[:：\-–—]?\s*(?:<[^>]*>\s*)*([A-E])\s*(?:[.)])?\s*(?:<\/[^>]*>\s*)*$/iu;
 
 /**
  * Lấy đáp án từ dòng cuối câu hỏi nếu tài liệu ghi rõ "Đáp án: A".
@@ -24,7 +24,7 @@ export function extractTrailingAnswer(rawBlock: string): OptionId | undefined {
   const match = rawBlock.match(TRAILING_ANSWER_PATTERN);
   const answer = match?.[2]?.toUpperCase() as OptionId | undefined;
 
-  return answer && ["A", "B", "C", "D"].includes(answer)
+  return answer && OPTION_IDS.includes(answer)
     ? answer
     : undefined;
 }
@@ -69,7 +69,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
     .split(/[\r\n]+/)
     .map((line) => line.trim())
     .find(Boolean);
-  if (firstSectionLine && /^Đáp\s*án\s*[:：\-–—]\s*[A-D]$/iu.test(firstSectionLine)) {
+  if (firstSectionLine && /^Đáp\s*án\s*[:：\-–—]\s*[A-E]$/iu.test(firstSectionLine)) {
     return answerMap;
   }
 
@@ -100,7 +100,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
         for (let c = 0; c < Math.min(qRow.length, aRow.length); c++) {
           const qNum = parseInt(qRow[c].replace(/\D/g, ""), 10);
           const ans = aRow[c].toUpperCase().trim() as OptionId;
-          if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(ans)) {
+          if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && OPTION_IDS.includes(ans)) {
             recordAnswer(qNum, ans);
           }
         }
@@ -112,7 +112,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
       for (let c = 0; c < row.length - 1; c += 2) {
         const qNum = parseInt(row[c].replace(/\D/g, ""), 10);
         const ans = row[c + 1].toUpperCase().trim() as OptionId;
-        if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(ans)) {
+        if (qNum > 0 && qNum <= MAX_EXTRACTED_QUESTIONS && OPTION_IDS.includes(ans)) {
           recordAnswer(qNum, ans);
         }
       }
@@ -123,8 +123,8 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
   // Hỗ trợ các dấu bọc/đánh dấu thường gặp: [A], (A), ✓ A, → B, ★ C, “Đáp án C”.
   const answerText = cleanMathAndHtml(textToScan);
   const pairRegexes = [
-    /(?:Câu|Question|Bài|Q)\s*(\d{1,4})\s*[:.)-]\s*(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gim,
-    /\b(\d{1,4})\s*(?:[.:)-]\s*)?(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-D])\s*(?:\]|\))?(?=$|[\s,;.])/gi,
+    /(?:Câu|Question|Bài|Q)\s*(\d{1,4})\s*[:.)-]\s*(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-E])\s*(?:\]|\))?(?=$|[\s,;.])/gim,
+    /\b(\d{1,4})\s*(?:[.:)-]\s*)?(?:(?:Đáp\s*án|Answer)\s*[:：-]?\s*)?(?:[✓✔★*→➜➤➔]\s*)*(?:\[|\()?\s*([A-E])\s*(?:\]|\))?(?=$|[\s,;.])/gi,
   ];
 
   for (const regex of pairRegexes) {
@@ -132,7 +132,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
     while ((match = regex.exec(answerText)) !== null) {
       const questionNum = parseInt(match[1], 10);
       const answer = match[2].toUpperCase() as OptionId;
-      if (questionNum > 0 && questionNum <= MAX_EXTRACTED_QUESTIONS && ["A", "B", "C", "D"].includes(answer)) {
+      if (questionNum > 0 && questionNum <= MAX_EXTRACTED_QUESTIONS && OPTION_IDS.includes(answer)) {
         recordAnswer(questionNum, answer);
       }
     }
@@ -190,7 +190,7 @@ function joinWrappedQuestionText(text: string): string {
 }
 
 /**
- * Tách nội dung câu hỏi và các lựa chọn A, B, C, D một cách chuẩn xác từ khối văn bản
+ * Tách nội dung câu hỏi và các lựa chọn A–E một cách chuẩn xác từ khối văn bản
  */
 export function splitOptionsFromBlock(questionBlockText: string, allowCompactOptionLabels = false): {
   questionPrompt: string;
@@ -199,9 +199,9 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
   const labeledBinaryBlock = labelStandaloneTrueFalseOptions(questionBlockText);
   if (labeledBinaryBlock) return splitOptionsFromBlock(labeledBinaryBlock, allowCompactOptionLabels);
 
-  // Regex tìm các đáp án A, B, C, D (chữ HOA [A-D], tránh nhầm với từ thường như "công.", "bộ.")
+  // Regex tìm các đáp án A–E (chữ HOA, tránh nhầm với từ thường như "công.", "bộ.")
   const headerRegex =
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-D]|[①②③④])\s*([*✓])?\s*([.:)/-])?/giu;
+    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<li[^>]*>|<td[^>]*>|\t|\s{2,}|(?<=[.;!?)])\s+)(?:<[^>]*>)*\s*([*✓•xX()[\]])?\s*(?:<[^>]*>)*\s*([A-E]|[①②③④⑤])\s*([*✓])?\s*([.:)/-])?/giu;
 
   const matches: Array<{
     index: number;
@@ -214,7 +214,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
   let match: RegExpExecArray | null;
   while ((match = headerRegex.exec(questionBlockText)) !== null) {
     const optionLabelEnd = match.index + match[0].lastIndexOf(match[2]) + match[2].length;
-    if (!match[4] && !/[①②③④]/.test(match[2])) {
+    if (!match[4] && !/[①②③④⑤]/.test(match[2])) {
       // Do not consume the newline before a rejected A/B/C/D-like word. The
       // next real option may immediately follow that newline (PDF text often
       // joins a one-letter option body such as "A" with the next lowercase label).
@@ -228,7 +228,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
       const previousLineStart = questionBlockText.lastIndexOf("\n", optionStart - 1) + 1;
       const beforeOptionOnLine = questionBlockText.slice(previousLineStart, optionStart);
       const candidateLetter = match[2].toUpperCase() as OptionId;
-      const previousLetter: Partial<Record<OptionId, OptionId>> = { B: "A", C: "B", D: "C" };
+      const previousLetter: Partial<Record<OptionId, OptionId>> = { B: "A", C: "B", D: "C", E: "D" };
       const isSequentialLowercaseLabel = match[2] !== candidateLetter &&
         matches.at(-1)?.letter === previousLetter[candidateLetter];
       const followsPromptBoundary = /[?!.]\s+$/u.test(beforeOptionOnLine);
@@ -239,7 +239,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
     }
     const marker = match[1] || match[3] || undefined;
     const rawLetter = match[2].toUpperCase();
-    const letter = (rawLetter === "①" ? "A" : rawLetter === "②" ? "B" : rawLetter === "③" ? "C" : rawLetter === "④" ? "D" : rawLetter) as OptionId;
+    const letter = (rawLetter === "①" ? "A" : rawLetter === "②" ? "B" : rawLetter === "③" ? "C" : rawLetter === "④" ? "D" : rawLetter === "⑤" ? "E" : rawLetter) as OptionId;
     matches.push({
       index: match.index,
       letter,
@@ -249,9 +249,9 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
     });
   }
 
-  const expectedOrder: OptionId[] = ["A", "B", "C", "D"];
+  const expectedOrder: OptionId[] = [...OPTION_IDS];
   const uppercaseOptionRegex =
-    /(?:^|[\r\n]|\s+)(?:<[^>]*>\s*)*([A-D])\s*([.:)/-])(?=\s|<|$)/g;
+    /(?:^|[\r\n]|\s+)(?:<[^>]*>\s*)*([A-E])\s*([.:)/-])(?=\s|<|$)/g;
   const uppercaseMatches: typeof matches = [];
   let uppercaseMatch: RegExpExecArray | null;
   while ((uppercaseMatch = uppercaseOptionRegex.exec(questionBlockText)) !== null) {
@@ -287,7 +287,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
     ? bestUppercaseSequence
     : matches;
 
-  // Lọc chỉ giữ lại A, B, C, D theo thứ tự hợp lệ (A -> B -> C -> D)
+  // Lọc chỉ giữ lại A–E theo thứ tự hợp lệ.
   const orderedMatches: typeof matches = [];
   let expectedIndex = 0;
 
@@ -356,12 +356,12 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
 
     const hasSpecialMarker =
       (current.marker && /[*✓xX]/.test(current.marker)) ||
-      /(?:^|\s)[*✓]\s*[A-D]/i.test(rawSlice) ||
-      /[*✓]\s*[A-D]/i.test(rawSlice);
+      /(?:^|\s)[*✓]\s*[A-E]/i.test(rawSlice) ||
+      /[*✓]\s*[A-E]/i.test(rawSlice);
 
     // Bỏ phần chữ cái "A.", "B." ở đầu để lấy nội dung đáp án
     const contentWithoutHeader = rawSlice.replace(
-      /^(?:[\s\n\r]|<[^>]*>|[*✓•[\]xX()])*(?:[A-D]|[①②③④])\s*[.:)/-]?(?:<\/[^>]*>)*/i,
+      /^(?:[\s\n\r]|<[^>]*>|[*✓•[\]xX()])*(?:[A-E]|[①②③④⑤])\s*[.:)/-]?(?:<\/[^>]*>)*/i,
       ""
     );
 
@@ -445,7 +445,7 @@ export function parseSingleQuestionBlock(
   let confidenceScore = 0.85;
 
   // Chiến lược 1: Bảng đáp án cuối đề (Answer Key Table) -> 99%
-  if (tableAnswer && ["A", "B", "C", "D"].includes(tableAnswer) && options.some(option => option.id === tableAnswer)) {
+  if (tableAnswer && OPTION_IDS.includes(tableAnswer) && options.some(option => option.id === tableAnswer)) {
     correctAnswers = [tableAnswer];
     detectionStrategy = "answer_table";
     confidenceScore = 0.99;
@@ -501,7 +501,7 @@ export function parseSingleQuestionBlock(
   // Chiến lược 7: Trích xuất từ Lời giải chi tiết ("Chọn A", "Đáp án A") -> 88%
   if (correctAnswers.length === 0 && explanation) {
     const explAnswerMatch = explanation.match(
-      /(?:Chọn|Đáp\s*án(?:\s*đúng)?|Câu\s*trả\s*lời(?:\s*là)?|Suy\s*ra(?:\s*chọn)?|Do\s*đó(?:\s*chọn)?)[\s.:\->]*([A-D])\b/i
+      /(?:Chọn|Đáp\s*án(?:\s*đúng)?|Câu\s*trả\s*lời(?:\s*là)?|Suy\s*ra(?:\s*chọn)?|Do\s*đó(?:\s*chọn)?)[\s.:\->]*([A-E])\b/i
     );
     if (explAnswerMatch) {
       const detected = explAnswerMatch[1].toUpperCase() as OptionId;
@@ -522,7 +522,7 @@ export function parseSingleQuestionBlock(
   addEvidence("underline", options.filter(option => option.isUnderline).map(option => option.id), "option_underline_v1");
   addEvidence("highlight_color", options.filter(option => option.isHighlighted).map(option => option.id), "option_highlight_or_color_v1");
   const explanationEvidence = explanation?.match(
-    /(?:Chọn|Đáp\s*án(?:\s*đúng)?|Câu\s*trả\s*lời(?:\s*là)?|Suy\s*ra(?:\s*chọn)?|Do\s*đó(?:\s*chọn)?)[\s.:\->]*([A-D])\b/i
+    /(?:Chọn|Đáp\s*án(?:\s*đúng)?|Câu\s*trả\s*lời(?:\s*là)?|Suy\s*ra(?:\s*chọn)?|Do\s*đó(?:\s*chọn)?)[\s.:\->]*([A-E])\b/i
   );
   if (explanationEvidence) {
     addEvidence("explanation_text", [explanationEvidence[1].toUpperCase() as OptionId], "explicit_explanation_choice_v1");
@@ -731,7 +731,7 @@ export function parseRawExamText(
   if (sourceQuestionNumbers.some((number, index) => index > 0 && number !== sourceQuestionNumbers[index - 1] + 1)) {
     qualityFlags.push("question_number_gap_or_duplicate");
   }
-  if (extractedQuestions.some(question => question.options.length < 2 || question.options.length > 4 || question.options.some(option => !option.content.trim()))) {
+  if (extractedQuestions.some(question => question.options.length < 2 || question.options.length > 5 || question.options.some(option => !option.content.trim()))) {
     qualityFlags.push("invalid_option_structure");
   }
   if (extractedQuestions.some(question => question.answerStatus === "ambiguous")) qualityFlags.push("answer_evidence_conflict");
@@ -792,6 +792,8 @@ export function cleanMathAndHtml(htmlOrText: string): string {
     .replace(/<mark[^>]*>/gi, "")
     .replace(/<\/mark>/gi, "")
     .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");

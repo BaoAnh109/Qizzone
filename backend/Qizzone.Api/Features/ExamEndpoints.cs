@@ -333,7 +333,7 @@ public static class ExamEndpoints
         {
             if (!Guid.TryParse(rawQuestionId, out var questionId) || !questionIds.Contains(questionId) ||
                 !questions.TryGetValue(questionId, out var question) || rawAnswers is null ||
-                rawAnswers.Count > 4 || rawAnswers.Any(answer => string.IsNullOrWhiteSpace(answer)) ||
+                rawAnswers.Count > 5 || rawAnswers.Any(answer => string.IsNullOrWhiteSpace(answer)) ||
                 rawAnswers.Distinct(StringComparer.Ordinal).Count() != rawAnswers.Count)
             {
                 errors[$"answers.{rawQuestionId}"] = ["Answer entry is invalid."];

@@ -1,6 +1,7 @@
 export type QuestionType = "single_choice" | "multiple_choice" | "true_false";
 
-export type OptionId = "A" | "B" | "C" | "D";
+export const OPTION_IDS = ["A", "B", "C", "D", "E"] as const;
+export type OptionId = (typeof OPTION_IDS)[number];
 
 export interface OptionItem {
   id: OptionId;

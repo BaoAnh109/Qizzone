@@ -80,9 +80,9 @@ function isQuiz(value: unknown): value is Quiz {
       const optionIds = new Set(question.options?.map(option => option.id));
       return typeof question.id === 'string' && typeof question.content === 'string' && question.content.trim().length > 0
         && ['single_choice', 'multiple_choice', 'true_false'].includes(question.type)
-        && Array.isArray(question.options) && question.options.length >= 2 && question.options.length <= 4
+        && Array.isArray(question.options) && question.options.length >= 2 && question.options.length <= 5
         && optionIds.size === question.options.length
-        && question.options.every(option => ['A', 'B', 'C', 'D'].includes(option.id) && option.content.trim().length > 0)
+        && question.options.every(option => ['A', 'B', 'C', 'D', 'E'].includes(option.id) && option.content.trim().length > 0)
         && Array.isArray(question.correctAnswers) && question.correctAnswers.length > 0
         && question.correctAnswers.every(answer => optionIds.has(answer))
         && typeof question.points === 'number' && question.points > 0;

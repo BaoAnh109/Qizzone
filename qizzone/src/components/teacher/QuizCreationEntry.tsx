@@ -80,7 +80,7 @@ export function QuizCreationEntry({ onManualCreate }: QuizCreationEntryProps) {
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
                     <strong className="theme-text-primary font-semibold block mb-0.5">
-                      Đầy đủ 4 phương án trắc nghiệm A, B, C, D
+                      Hỗ trợ tối đa 5 phương án trắc nghiệm A, B, C, D, E
                     </strong>
                     Tùy chọn đáp án đúng, thêm lời giải chi tiết giải thích cho từng câu hỏi khi học sinh xem lại.
                   </div>

@@ -4,7 +4,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useExtractionStore } from "@/store/extractionStore";
 import { useToast } from "@/hooks/useToast";
-import type { OptionId } from "@/types/quiz";
+import { OPTION_IDS, type OptionId } from "@/types/quiz";
 
 interface Props {
   isOpen: boolean;
@@ -41,7 +41,7 @@ export function QuickAnswerKeyModal({ isOpen, onClose }: Props) {
       isOpen={isOpen}
       onClose={onClose}
       title="Nhập Nhanh Bảng Đáp Án (Quick Answer Key)"
-      description="Dán chuỗi đáp án hoặc click chọn nhanh đáp án A, B, C, D cho toàn bộ danh sách câu hỏi."
+      description="Dán chuỗi đáp án hoặc click chọn nhanh đáp án A, B, C, D, E cho toàn bộ danh sách câu hỏi."
       footer={
         <div className="flex items-center justify-between w-full">
           <Button variant="outline" onClick={onClose}>
@@ -93,7 +93,7 @@ export function QuickAnswerKeyModal({ isOpen, onClose }: Props) {
                 </span>
 
                 <div className="flex items-center gap-1">
-                  {(["A", "B", "C", "D"] as const).map((letter) => {
+                  {OPTION_IDS.map((letter) => {
                     const isSelected = q.correctAnswers.includes(letter);
                     return (
                       <button
