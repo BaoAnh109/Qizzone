@@ -10,7 +10,7 @@ COPY Qizzone.Worker/ Qizzone.Worker/
 WORKDIR /src/Qizzone.Worker
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0.15 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.15 AS runtime
 ARG QIZZONE_RELEASE_SHA=unknown
 LABEL org.opencontainers.image.revision=$QIZZONE_RELEASE_SHA
 WORKDIR /app
