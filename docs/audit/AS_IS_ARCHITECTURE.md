@@ -9,7 +9,7 @@
 
 Frontend vẫn là React + TypeScript + Vite, Firebase Authentication và Supabase. Nhánh hiện tại đã bổ sung một ASP.NET Core 10 API, EF Core/Npgsql schema/migrations và adapters frontend cho identity/profile, admin, quiz, exam và practice. Các adapter hoạt động khi cấu hình `VITE_QIZZONE_API_BASE_URL`; service chưa chuyển tiếp tục dùng Supabase.
 
-Đây là giai đoạn chuyển tiếp, chưa phải kiến trúc production độc lập Supabase. API/worker Gemini và migration idempotency đã được bổ sung, nhưng chưa chạy trên PostgreSQL hoặc gọi Gemini thật. Upload/object storage mới, data import/reconciliation, staging deployment, restore evidence và release pipeline vẫn chưa có.
+Đây là giai đoạn chuyển tiếp, chưa phải kiến trúc production độc lập Supabase. API/worker Gemini và migration idempotency đã được bổ sung; API integration tests pass trên PostgreSQL 17 ephemeral, nhưng chưa chạy trên target database hoặc gọi Gemini thật. Upload/object storage mới, data import/reconciliation, staging deployment, restore evidence và release pipeline vẫn chưa có.
 
 ## Thành phần hiện có
 
@@ -22,7 +22,7 @@ Frontend vẫn là React + TypeScript + Vite, Firebase Authentication và Supaba
 | Endpoint API | Profile/role/admin, quiz CRUD/assignment/status, exam start/autosave/submit/student and owned-quiz results, practice start/check/finish/retry/history, durable AI import jobs |
 | Frontend migration | `firebaseAuthService`, `adminService`, `quizService`, `examSessionService`, `practiceService` có API branch và Supabase fallback |
 | Dịch vụ chưa chuyển | Upload/avatar/media, teacher reports/analytics, một số account settings và legacy migration vẫn phụ thuộc Supabase Edge/Storage/RPC; Gemini API branch có worker nhưng chưa cutover |
-| Container/CI | Có Dockerfiles API và worker; run #155 build thành công cả hai image cho linux/amd64 và linux/arm64; workflow chạy frontend/backend audit, tests và build; chưa publish image hoặc deploy |
+| Container/CI | Có Dockerfiles API và worker; run #158 build thành công cả hai image cho linux/amd64 và linux/arm64; workflow chạy frontend/backend audit, tests và build; chưa publish image hoặc deploy |
 | Data migration | Schema đích và bảng checkpoint có source code, nhưng chưa có exporter/importer/reconciliation chạy thật |
 
 ## Luồng chạy hiện tại
@@ -43,19 +43,19 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 - Reports/analytics cho giáo viên, lớp/phòng thi, exports và đầy đủ contract parity.
 - Browser E2E cho IndexedDB outbox/ACK/replay, Web Lock thực giữa các tab, conflict nhiều thiết bị, quota failure và mạng chập chờn; local tests đã kiểm tra fail-closed lock path nhưng chưa chạy browser/PostgreSQL thật.
 - Import dữ liệu Supabase/Storage/Firebase mapping, kiểm tra legacy localStorage và đối soát counts/checksums.
-- PostgreSQL migration/API integration: GitHub Actions run [#155](https://github.com/BaoAnh109/Qizzone/actions/runs/44095085400) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
+- PostgreSQL migration/API integration: GitHub Actions run [#158](https://github.com/BaoAnh109/Qizzone/actions/runs/44099953969) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; có kiểm thử 100 submit requests qua hai API host độc lập. Vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
 - Docker Compose runtime, image publish, Northflank staging, Vercel Preview tích hợp API.
 - E2E, concurrency/load/chaos/security tests và SLO/cost evidence.
 
 ## Kiểm thử và kiểm tra
 
-- Frontend GitHub Actions run #155: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint, npm audit and Vite build passed.
-- Backend GitHub Actions run #155: **17 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; local 100-submit test uses EF InMemory. This does not validate migration against the intended environment or a multi-instance race.
-- GitHub Actions run #155 successfully built API and worker images for `linux/amd64` and `linux/arm64`; images were not pushed to a registry.
+- Frontend GitHub Actions run #158: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint, npm audit and Vite build passed.
+- Backend GitHub Actions run #158: **18 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; one API test submits concurrently through two independent hosts and verifies a single persisted result. This does not validate migration against the intended environment or sustained load/failure recovery.
+- GitHub Actions run #158 successfully built API and worker images for `linux/amd64` and `linux/arm64`; images were not pushed to a registry.
 - API/worker Release build đạt; idempotent migration SQL 26,371 bytes đã sinh tại `%TEMP%`; EF migrations ran in ephemeral PostgreSQL in CI, but the generated deployment script has not been applied to a target database.
 - `tsc -b`, ESLint `src`, Vite production build: đạt.
 - NuGet vulnerability audit in CI: không phát hiện vulnerable packages theo nguồn advisory hiện tại. npm audit in CI reported 0 vulnerabilities.
-- Test 100 submit song song chỉ xác nhận serialization trong một API process với EF InMemory; chưa chứng minh nhiều instance trên PostgreSQL. Các kết quả local không thay thế PostgreSQL integration, staging, E2E, tải, restore hay deploy evidence.
+- The prior single-host 100-submit test still checks same-host serialization (using EF InMemory when local PostgreSQL is not configured); CI run #158 also covers 100 submissions across two independent hosts on PostgreSQL. Neither test substitutes for staging, sustained load, failure recovery, restore or deploy evidence.
 
 ## Deploy hiện tại
 

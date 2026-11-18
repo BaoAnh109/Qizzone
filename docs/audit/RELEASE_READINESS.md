@@ -19,21 +19,21 @@
 
 | Check | Result | Scope/limit |
 |---|---|---|
-| Frontend Vitest | 165 passed, 24 skipped; 33 files passed, 2 skipped | GitHub Actions run #155, source app only; nested user copy excluded |
-| TypeScript `tsc -b` | Passed | GitHub Actions run #155; no browser E2E |
-| ESLint `eslint src` | Passed | GitHub Actions run #155 |
-| Vite production build | Passed | GitHub Actions run #155; static bundle, no production env values |
-| NPM dependency audit | Passed; 0 vulnerabilities | GitHub Actions run #155, `npm audit --audit-level=high` |
-| .NET API integration tests | 17 passed against PostgreSQL 17 | GitHub Actions run #155; ephemeral service and isolated per-test schemas, not the intended staging/production database |
-| .NET worker tests | 6 passed | GitHub Actions run #155; Gemini HTTP is mocked |
-| .NET solution Release build | Passed | GitHub Actions run #155; API and worker compile |
-| API and worker containers | Both images built for `linux/amd64` and `linux/arm64` | GitHub Actions run #155; build-only, not pushed to a registry or deployed |
-| PostgreSQL CI path | Passed remotely | Run #155 starts PostgreSQL 17 and applies EF migrations in isolated schemas; no target-environment migration or rollback rehearsal |
+| Frontend Vitest | 165 passed, 24 skipped; 33 files passed, 2 skipped | GitHub Actions run #158, source app only; nested user copy excluded |
+| TypeScript `tsc -b` | Passed | GitHub Actions run #158; no browser E2E |
+| ESLint `eslint src` | Passed | GitHub Actions run #158 |
+| Vite production build | Passed | GitHub Actions run #158; static bundle, no production env values |
+| NPM dependency audit | Passed; 0 vulnerabilities | GitHub Actions run #158, `npm audit --audit-level=high` |
+| .NET API integration tests | 18 passed against PostgreSQL 17, including 100 concurrent submissions across two independent API hosts | GitHub Actions run #158; ephemeral service and isolated per-test schema, not the intended staging/production database |
+| .NET worker tests | 6 passed | GitHub Actions run #158; Gemini HTTP is mocked |
+| .NET solution Release build | Passed | GitHub Actions run #158; API and worker compile |
+| API and worker containers | Both images built for `linux/amd64` and `linux/arm64` | GitHub Actions run #158; build-only, not pushed to a registry or deployed |
+| PostgreSQL CI path | Passed remotely | Run #158 starts PostgreSQL 17 and applies EF migrations in isolated schemas; no target-environment migration or rollback rehearsal |
 | EF migration review | Idempotent SQL script generated (26,371 bytes); no pending model changes | CI migration execution passed on ephemeral PostgreSQL; deployment script has not run against a target database and no rollback rehearsal exists |
 | NuGet vulnerable package audit | No vulnerable packages reported | Current configured NuGet advisory sources |
-| npm dependency audit | Passed; 0 vulnerabilities reported | Confirmed by GitHub Actions run #155 against the checked-in lockfile |
+| npm dependency audit | Passed; 0 vulnerabilities reported | Confirmed by GitHub Actions run #158 against the checked-in lockfile |
 
-GitHub Actions run [#155](https://github.com/BaoAnh109/Qizzone/actions/runs/44095085400) passed on implementation revision `ef40422d62cc0e0ba6d80b2b8cc3fc10a1c7e445`. No deployed URL or runtime smoke test exists.
+GitHub Actions run [#158](https://github.com/BaoAnh109/Qizzone/actions/runs/44099953969) passed on implementation revision `ef5a34067f0c27c0fbb3300fa62dd263b6cfcda6`. The cross-host PostgreSQL test submitted the same attempt 100 times through two API hosts and verified one result, one audit event and one revision increment. No deployed URL or runtime smoke test exists.
 
 ## Live source data evidence
 
@@ -49,8 +49,8 @@ Security metadata review found RLS enabled across the business tables, with no d
 |---|---|---|
 | Feature | **FAIL** | Autosave local outbox and API idempotency are implemented and unit/API-tested; uploads/storage, teacher reports/classes, full API parity and Supabase runtime migration remain |
 | Data | **FAIL** | Production inventory/export/import, UID mapping, reconciliation, PostgreSQL rehearsal and restore |
-| Security | **PARTIAL** | API enforces teacher ownership, image signature/size, quota and idempotency; no malware scanning, PostgreSQL IDOR/concurrency suite, external review or complete secret-rotation evidence |
-| Quality | **FAIL** | Frontend CI passed (165 tests, 24 skipped), npm audit reported 0 vulnerabilities, 17 API tests passed on ephemeral PostgreSQL 17, 6 worker tests passed with mocked Gemini, and API/worker images built for both architectures in run #155; the 100-request submit race still ran against EF InMemory with an in-process gate; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
+| Security | **PARTIAL** | API enforces teacher ownership, image signature/size, quota and idempotency; no malware scanning, broader PostgreSQL ownership/concurrency suite, external review or complete secret-rotation evidence |
+| Quality | **FAIL** | Frontend CI passed (165 tests, 24 skipped), npm audit reported 0 vulnerabilities, 18 API tests passed on ephemeral PostgreSQL 17 (including a two-host 100-submit concurrency test), 6 worker tests passed with mocked Gemini, and API/worker images built for both architectures in run #158; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
 | Operations | **FAIL** | No staging, cost/SLO/RPO/RTO evidence, backup restore, alerts/runbooks, rollback or deploy workflow. The Northflank project has no service, database addon or secret group; backend credentials were not found in the inspected local app configuration. Northflank displays an incident notice for credentials created before Oct 30; the owner directed reuse without rotation, so exposure remains unverified. |
 
 ## Hosting decision

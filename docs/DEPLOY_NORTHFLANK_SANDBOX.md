@@ -2,8 +2,8 @@
 
 **Product:** Qizzone
 **Working branch:** `devolop/AIV3`
-**Reviewed revision:** `ef40422d62cc0e0ba6d80b2b8cc3fc10a1c7e445`
-**Status:** Not deployed; blocked before creating workloads
+**Reviewed revision:** `ef5a34067f0c27c0fbb3300fa62dd263b6cfcda6`
+**Status:** Not deployed; existing backend credentials are not available in the inspected project
 
 ## Current platform state
 
@@ -13,7 +13,7 @@ The dashboard warns that user-defined credentials created before October 30 are 
 
 ## Build configuration
 
-CI run [#155](https://github.com/BaoAnh109/Qizzone/actions/runs/44095085400) passed the frontend, backend, and container-build jobs. Buildx successfully built the API and worker for `linux/amd64` and `linux/arm64`. These images were build-validated only; they were not pushed to a registry.
+CI run [#158](https://github.com/BaoAnh109/Qizzone/actions/runs/44099953969) passed the frontend, backend, and container-build jobs. The backend suite includes a PostgreSQL 17 concurrency test submitting one attempt 100 times through two independent API hosts. Buildx successfully built the API and worker for `linux/amd64` and `linux/arm64`. These images were build-validated only; they were not pushed to a registry.
 
 When the existing credentials/database source is available, configure repository-backed services as follows:
 
