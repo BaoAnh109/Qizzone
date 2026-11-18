@@ -3,7 +3,7 @@
 **Ngày audit:** 2026-11-17
 **Nhánh:** `devolop/AIV3`
 
-Trạng thái dưới đây phân biệt code/API test với nghiệm thu production. GitHub Actions run [#152](https://github.com/BaoAnh109/Qizzone/actions/runs/44088444300) đã chạy 17 API tests trên PostgreSQL 17 ephemeral với schema riêng theo test; chưa có staging integration hoặc browser E2E.
+Trạng thái dưới đây phân biệt code/API test với nghiệm thu production. GitHub Actions run [#153](https://github.com/BaoAnh109/Qizzone/actions/runs/44089607708) đã chạy 17 API tests trên PostgreSQL 17 ephemeral với schema riêng theo test; chưa có staging integration hoặc browser E2E.
 
 | Feature | V1 hiện có | API mới trên nhánh hiện tại | Trạng thái / còn thiếu |
 |---|---|---|---|
@@ -26,9 +26,9 @@ Trạng thái dưới đây phân biệt code/API test với nghiệm thu produc
 
 ## Chứng cứ kiểm thử
 
-- Frontend CI: 165 passed, 24 skipped (33 files passed, 2 skipped); typecheck, lint and production build passed in run #152.
+- Frontend CI: 165 passed, 24 skipped (33 files passed, 2 skipped); typecheck, lint, production build and npm audit passed in run #153.
 - Backend CI: 17 WebApplicationFactory API tests passed against ephemeral PostgreSQL 17; 6 Gemini worker client tests passed with mocked HTTP.
-- Solution Release build/tests, EF model check and idempotent migration SQL generation passed (26,371 bytes). Run #152 applies migrations in isolated per-test PostgreSQL schemas. The 100-request submit test still uses an in-process attempt gate, not a PostgreSQL/multi-instance race test.
+- Solution Release build/tests, EF model check and idempotent migration SQL generation passed (26,371 bytes). Run #153 applies migrations in isolated per-test PostgreSQL schemas. The 100-request submit test still uses an in-process attempt gate, not a PostgreSQL/multi-instance race test.
 - NuGet advisory audit: không phát hiện package có lỗ hổng theo nguồn hiện tại.
-- npm 11 audit against the checked-in lockfile: 0 vulnerabilities reported; an `npm audit --audit-level=high` CI gate has been added and awaits its next run.
+- npm audit against the checked-in lockfile: 0 vulnerabilities reported in CI run #153.
 - Chưa có trạng thái `PASS` cho E2E, PostgreSQL multi-instance race/load, security review, target migration rehearsal, restore hoặc production deploy.

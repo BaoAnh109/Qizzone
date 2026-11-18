@@ -43,17 +43,17 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 - Reports/analytics cho giáo viên, lớp/phòng thi, exports và đầy đủ contract parity.
 - Browser E2E cho IndexedDB outbox/ACK/replay, Web Lock thực giữa các tab, conflict nhiều thiết bị, quota failure và mạng chập chờn; local tests đã kiểm tra fail-closed lock path nhưng chưa chạy browser/PostgreSQL thật.
 - Import dữ liệu Supabase/Storage/Firebase mapping, kiểm tra legacy localStorage và đối soát counts/checksums.
-- PostgreSQL migration/API integration: GitHub Actions run [#152](https://github.com/BaoAnh109/Qizzone/actions/runs/44088444300) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
+- PostgreSQL migration/API integration: GitHub Actions run [#153](https://github.com/BaoAnh109/Qizzone/actions/runs/44089607708) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
 - Docker/Compose execution, ARM64 build evidence, Northflank staging, Vercel Preview tích hợp API.
 - E2E, concurrency/load/chaos/security tests và SLO/cost evidence.
 
 ## Kiểm thử và kiểm tra
 
-- Frontend GitHub Actions run #152: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint and Vite build passed.
-- Backend GitHub Actions run #152: **17 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; local 100-submit test uses EF InMemory. This does not validate migration against the intended environment or a multi-instance race.
+- Frontend GitHub Actions run #153: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint, npm audit and Vite build passed.
+- Backend GitHub Actions run #153: **17 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; local 100-submit test uses EF InMemory. This does not validate migration against the intended environment or a multi-instance race.
 - API/worker Release build đạt; idempotent migration SQL 26,371 bytes đã sinh tại `%TEMP%`; EF migrations ran in ephemeral PostgreSQL in CI, but the generated deployment script has not been applied to a target database.
 - `tsc -b`, ESLint `src`, Vite production build: đạt.
-- NuGet vulnerability audit in CI: không phát hiện vulnerable packages theo nguồn advisory hiện tại. npm 11 audit against the checked-in lockfile reported 0 vulnerabilities; a CI audit step has been added and awaits its next run.
+- NuGet vulnerability audit in CI: không phát hiện vulnerable packages theo nguồn advisory hiện tại. npm audit in CI reported 0 vulnerabilities.
 - Test 100 submit song song chỉ xác nhận serialization trong một API process với EF InMemory; chưa chứng minh nhiều instance trên PostgreSQL. Các kết quả local không thay thế PostgreSQL integration, staging, E2E, tải, restore hay deploy evidence.
 
 ## Deploy hiện tại
