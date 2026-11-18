@@ -53,6 +53,7 @@ if (builder.Environment.IsProduction())
 }
 
 builder.Services.AddProblemDetails();
+builder.Services.AddSingleton<ExamAttemptGateStore>();
 builder.Services.AddDbContext<QizzoneDbContext>(options =>
     options.UseNpgsql(connectionString ?? "Host=localhost;Database=qizzone;Username=qizzone;Password=local-development-only"));
 builder.Services.AddCors(options => options.AddPolicy("QizzoneFrontend", policy =>

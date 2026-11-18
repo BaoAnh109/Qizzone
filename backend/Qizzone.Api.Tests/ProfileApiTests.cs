@@ -17,6 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Qizzone.Api.Authentication;
 using Qizzone.Api.Data;
+using Qizzone.Api.Features;
 
 namespace Qizzone.Api.Tests;
 
@@ -468,6 +469,83 @@ public sealed class ProfileApiTests
         Assert.Equal(HttpStatusCode.Conflict, exhaustedAttempt.StatusCode);
     }
 
+    [PostgresFact]
+    public async Task Exam_submission_is_idempotent_across_independent_api_hosts()
+    {
+        using var firstFactory = new QizzoneApiFactory();
+        using var secondFactory = new QizzoneApiFactory(
+            postgresSchema: firstFactory.PostgresSchema,
+            createPostgresSchema: false,
+            migratePostgres: false);
+
+        using var teacherClient = firstFactory.CreateClient();
+        Assert.NotSame(
+            firstFactory.Services.GetRequiredService<ExamAttemptGateStore>(),
+            secondFactory.Services.GetRequiredService<ExamAttemptGateStore>());
+
+        using (var scope = firstFactory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<QizzoneDbContext>();
+            db.Profiles.Add(new Profile
+            {
+                FirebaseUid = "teacher-1",
+                Email = "teacher@example.test",
+                FullName = "Test Teacher",
+                Role = "teacher",
+                ActiveRole = "teacher",
+                ApprovalStatus = "approved",
+                TeacherRequestStatus = "approved",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        teacherClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "teacher-test-token");
+        var createResponse = await teacherClient.PostAsJsonAsync("/api/v1/quizzes", CreateQuizPayload());
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var quizId = created.RootElement.GetProperty("id").GetString();
+
+        using var firstStudentClient = firstFactory.CreateClient();
+        using var secondStudentClient = secondFactory.CreateClient();
+        firstStudentClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "student-test-token");
+        secondStudentClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "student-test-token");
+        Assert.Equal(HttpStatusCode.OK, (await firstStudentClient.GetAsync("/api/v1/me")).StatusCode);
+
+        var startResponse = await firstStudentClient.PostAsync($"/api/v1/exam-attempts/quizzes/{quizId}", content: null);
+        Assert.Equal(HttpStatusCode.Created, startResponse.StatusCode);
+        using var started = JsonDocument.Parse(await startResponse.Content.ReadAsStringAsync());
+        var attemptId = started.RootElement.GetProperty("id").GetString()!;
+        Assert.Equal(HttpStatusCode.OK, (await secondStudentClient.GetAsync("/api/v1/me")).StatusCode);
+
+        var submitResponses = await Task.WhenAll(Enumerable.Range(0, 100)
+            .Select(index => (index % 2 == 0 ? firstStudentClient : secondStudentClient)
+                .PostAsync($"/api/v1/exam-attempts/{attemptId}/submit", content: null)));
+        var outcomes = await Task.WhenAll(submitResponses.Select(async response => new
+        {
+            response.StatusCode,
+            Body = await response.Content.ReadAsStringAsync(),
+        }));
+        Assert.All(outcomes, outcome => Assert.True(outcome.StatusCode == HttpStatusCode.OK, outcome.Body));
+
+        var resultIds = outcomes.Select(outcome =>
+        {
+            using var body = JsonDocument.Parse(outcome.Body);
+            return body.RootElement.GetProperty("id").GetString();
+        }).Distinct().ToArray();
+        Assert.Single(resultIds);
+
+        using var verificationScope = firstFactory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<QizzoneDbContext>();
+        var attemptGuid = Guid.Parse(attemptId);
+        Assert.Equal(1, await verificationDb.ExamResults.CountAsync(item => item.AttemptId == attemptGuid));
+        Assert.Equal(1, await verificationDb.AuditEvents.CountAsync(item => item.Action == "exam.submitted"));
+        var submittedAttempt = await verificationDb.ExamAttempts.SingleAsync(item => item.Id == attemptGuid);
+        Assert.Equal(1, submittedAttempt.Revision);
+        Assert.NotNull(submittedAttempt.SubmittedAt);
+    }
+
     [Fact]
     public async Task Practice_session_checks_answers_once_hides_question_keys_and_supports_wrong_answer_retry()
     {
@@ -706,11 +784,17 @@ public sealed class ProfileApiTests
     };
 }
 
-internal sealed class QizzoneApiFactory(bool configureBootstrapAdmin = false) : WebApplicationFactory<Program>
+internal sealed class QizzoneApiFactory(
+    bool configureBootstrapAdmin = false,
+    string? postgresSchema = null,
+    bool createPostgresSchema = true,
+    bool migratePostgres = true) : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"qizzone-tests-{Guid.NewGuid():N}";
     private readonly string? _postgresConnectionString = Environment.GetEnvironmentVariable("QIZZONE_TEST_POSTGRES");
-    private readonly string _postgresSchema = $"qizzone_test_{Guid.NewGuid():N}";
+    private readonly string _postgresSchema = postgresSchema ?? $"qizzone_test_{Guid.NewGuid():N}";
+
+    internal string PostgresSchema => _postgresSchema;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -729,10 +813,13 @@ internal sealed class QizzoneApiFactory(bool configureBootstrapAdmin = false) : 
             services.RemoveAll<IDbContextOptionsConfiguration<QizzoneDbContext>>();
             if (!string.IsNullOrWhiteSpace(_postgresConnectionString))
             {
-                using var connection = new NpgsqlConnection(_postgresConnectionString);
-                connection.Open();
-                using var createSchema = new NpgsqlCommand($"CREATE SCHEMA \"{_postgresSchema}\"", connection);
-                createSchema.ExecuteNonQuery();
+                if (createPostgresSchema)
+                {
+                    using var connection = new NpgsqlConnection(_postgresConnectionString);
+                    connection.Open();
+                    using var createSchema = new NpgsqlCommand($"CREATE SCHEMA \"{_postgresSchema}\"", connection);
+                    createSchema.ExecuteNonQuery();
+                }
 
                 var schemaConnectionString = new NpgsqlConnectionStringBuilder(_postgresConnectionString)
                 {
@@ -740,7 +827,7 @@ internal sealed class QizzoneApiFactory(bool configureBootstrapAdmin = false) : 
                     MaxPoolSize = 32,
                 }.ConnectionString;
                 services.AddDbContext<QizzoneDbContext>(options => options.UseNpgsql(schemaConnectionString));
-                services.AddHostedService<PostgresTestDatabaseMigrator>();
+                if (migratePostgres) services.AddHostedService<PostgresTestDatabaseMigrator>();
             }
             else
             {
@@ -749,6 +836,17 @@ internal sealed class QizzoneApiFactory(bool configureBootstrapAdmin = false) : 
             services.RemoveAll<IFirebaseTokenVerifier>();
             services.AddSingleton<IFirebaseTokenVerifier, TestFirebaseTokenVerifier>();
         });
+    }
+}
+
+internal sealed class PostgresFactAttribute : FactAttribute
+{
+    public PostgresFactAttribute()
+    {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("QIZZONE_TEST_POSTGRES")))
+        {
+            Skip = "This integration test requires QIZZONE_TEST_POSTGRES; CI runs it against PostgreSQL.";
+        }
     }
 }
 

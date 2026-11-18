@@ -8,11 +8,10 @@ using Qizzone.Api.Data;
 
 namespace Qizzone.Api.Features;
 
-public static class ExamEndpoints
+public sealed class ExamAttemptGateStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly object AttemptGateSync = new();
-    private static readonly Dictionary<Guid, AttemptGateEntry> AttemptGates = [];
+    private readonly object _sync = new();
+    private readonly Dictionary<Guid, AttemptGateEntry> _gates = [];
 
     private sealed class AttemptGateEntry
     {
@@ -20,26 +19,26 @@ public static class ExamEndpoints
         public int References;
     }
 
-    private sealed class AttemptGateLease(Guid attemptId, AttemptGateEntry entry) : IDisposable
+    private sealed class AttemptGateLease(ExamAttemptGateStore owner, Guid attemptId, AttemptGateEntry entry) : IDisposable
     {
         private AttemptGateEntry? _entry = entry;
 
         public void Dispose()
         {
             var heldEntry = Interlocked.Exchange(ref _entry, null);
-            if (heldEntry is not null) ReleaseAttemptGate(attemptId, heldEntry, acquired: true);
+            if (heldEntry is not null) owner.Release(attemptId, heldEntry, acquired: true);
         }
     }
 
-    private static async Task<IDisposable> AcquireAttemptGateAsync(Guid attemptId, CancellationToken cancellationToken)
+    internal async Task<IDisposable> AcquireAsync(Guid attemptId, CancellationToken cancellationToken)
     {
         AttemptGateEntry entry;
-        lock (AttemptGateSync)
+        lock (_sync)
         {
-            if (!AttemptGates.TryGetValue(attemptId, out entry!))
+            if (!_gates.TryGetValue(attemptId, out entry!))
             {
                 entry = new AttemptGateEntry();
-                AttemptGates.Add(attemptId, entry);
+                _gates.Add(attemptId, entry);
             }
             entry.References++;
         }
@@ -47,24 +46,29 @@ public static class ExamEndpoints
         try
         {
             await entry.Semaphore.WaitAsync(cancellationToken);
-            return new AttemptGateLease(attemptId, entry);
+            return new AttemptGateLease(this, attemptId, entry);
         }
         catch
         {
-            ReleaseAttemptGate(attemptId, entry, acquired: false);
+            Release(attemptId, entry, acquired: false);
             throw;
         }
     }
 
-    private static void ReleaseAttemptGate(Guid attemptId, AttemptGateEntry entry, bool acquired)
+    private void Release(Guid attemptId, AttemptGateEntry entry, bool acquired)
     {
         if (acquired) entry.Semaphore.Release();
-        lock (AttemptGateSync)
+        lock (_sync)
         {
             entry.References--;
-            if (entry.References == 0 && AttemptGates.Remove(attemptId)) entry.Semaphore.Dispose();
+            if (entry.References == 0 && _gates.Remove(attemptId)) entry.Semaphore.Dispose();
         }
     }
+}
+
+public static class ExamEndpoints
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static IEndpointRouteBuilder MapExamEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -440,9 +444,10 @@ public static class ExamEndpoints
         Guid id,
         ClaimsPrincipal principal,
         QizzoneDbContext db,
+        ExamAttemptGateStore gateStore,
         CancellationToken cancellationToken)
     {
-        using var attemptGate = await AcquireAttemptGateAsync(id, cancellationToken);
+        using var attemptGate = await gateStore.AcquireAsync(id, cancellationToken);
         return await SubmitLockedAsync(id, principal, db, cancellationToken);
     }
 
