@@ -17,6 +17,8 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
   const toast = useToast();
   const user = useAuthStore(state => state.user);
   const resetPassword = useAuthStore(state => state.resetPassword);
+  const resendEmailVerification = useAuthStore(state => state.resendEmailVerification);
+  const refreshEmailVerification = useAuthStore(state => state.refreshEmailVerification);
   const updateProfile = useAuthStore(state => state.updateProfile);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
@@ -25,6 +27,9 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
 
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
@@ -35,7 +40,7 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  const isBusy = isSavingProfile || isSendingResetLink;
+  const isBusy = isSavingProfile || isSendingResetLink || isSendingVerification;
   const avatarSrc = previewUrl || user?.avatarUrl;
   const avatarInitial = fullName.trim().charAt(0).toUpperCase() || 'Q';
 
@@ -105,6 +110,40 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
       toast.error(message, 'Không thể gửi email');
     } finally {
       setIsSendingResetLink(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setIsSendingVerification(true);
+    setVerificationError(null);
+    setVerificationStatus(null);
+    try {
+      await resendEmailVerification();
+      setVerificationStatus(`Liên kết xác minh đã được gửi đến ${user?.email}.`);
+      toast.success('Đã gửi lại liên kết xác minh.', 'Kiểm tra hộp thư');
+    } catch (error) {
+      const message = formatError(error, 'Không thể gửi liên kết xác minh. Vui lòng thử lại.');
+      setVerificationError(message);
+      toast.error(message, 'Không thể gửi email');
+    } finally {
+      setIsSendingVerification(false);
+    }
+  };
+
+  const handleRefreshVerification = async () => {
+    setVerificationError(null);
+    setVerificationStatus(null);
+    try {
+      if (await refreshEmailVerification()) {
+        setVerificationStatus('Email đã được xác minh.');
+        toast.success('Email đã được xác minh.');
+      } else {
+        setVerificationError('Firebase chưa ghi nhận xác minh. Hãy mở liên kết trong email rồi thử lại.');
+      }
+    } catch (error) {
+      const message = formatError(error, 'Không thể kiểm tra trạng thái email.');
+      setVerificationError(message);
+      toast.error(message, 'Không thể kiểm tra email');
     }
   };
 
@@ -194,6 +233,18 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
                   <input id="account-email" type="email" value={user?.email || ''} readOnly className="theme-control h-10 w-full rounded-md border pl-10 pr-3 text-sm opacity-75" />
                 </div>
                 <p className="text-xs theme-text-muted">Email này nhận liên kết đặt lại mật khẩu.</p>
+                {user?.emailVerified === false && (
+                  <div className="mt-3 space-y-3 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-3">
+                    <p className="text-sm text-[var(--status-warning-foreground)]">Email chưa được xác minh. Một số thao tác sẽ bị khóa đến khi bạn xác minh.</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" className="h-9 px-3" isLoading={isSendingVerification} onClick={() => void handleResendVerification()}>Gửi lại liên kết</Button>
+                      <Button type="button" className="h-9 px-3" onClick={() => void handleRefreshVerification()}>Tôi đã xác minh</Button>
+                    </div>
+                    {verificationStatus && <p role="status" className="text-sm text-[var(--status-success-foreground)]">{verificationStatus}</p>}
+                    {verificationError && <p role="alert" className="text-sm text-[var(--status-danger-foreground)]">{verificationError}</p>}
+                  </div>
+                )}
+                {user?.emailVerified === true && <p role="status" className="text-xs text-[var(--status-success-foreground)]">Email đã được xác minh.</p>}
               </div>
 
               {profileError && <p role="alert" className="rounded-lg border border-[var(--status-danger-border)] bg-[var(--status-danger-surface)] px-3 py-2.5 text-sm text-[var(--status-danger-foreground)]">{profileError}</p>}

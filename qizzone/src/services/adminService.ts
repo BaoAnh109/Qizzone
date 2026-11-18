@@ -1,4 +1,4 @@
-import { edge, supabase } from '@/lib/cloud';
+import { edge, isQizzoneApiConfigured, qizzoneApi, supabase } from '@/lib/cloud';
 
 interface TeacherApprovalRow {
   firebase_uid: string;
@@ -76,14 +76,67 @@ function mapAccount(row: AccountRow): UserAccount {
 
 export const adminService = {
   async listTeacherApprovals(): Promise<TeacherApprovalRequest[]> {
+    if (isQizzoneApiConfigured) {
+      const result = await qizzoneApi<{ requests: Array<{
+        firebaseUid: string;
+        email: string;
+        fullName: string;
+        role: 'student' | 'teacher';
+        approvalStatus: string;
+        teacherRequestStatus: string;
+        teacherRequestBlocked: boolean;
+        requestedAt: string | null;
+        createdAt: string;
+      }> }>('/api/v1/admin/teacher-requests');
+      return result.requests.map(row => ({
+        firebaseUid: row.firebaseUid,
+        email: row.email,
+        fullName: row.fullName,
+        status: row.role === 'student' && row.teacherRequestStatus !== 'pending' ? 'blocked' : 'pending',
+        requestedAt: row.requestedAt || row.createdAt,
+        blocked: row.teacherRequestBlocked,
+        requestKind: row.role === 'student' ? 'teacher_access' : 'legacy_teacher',
+      }));
+    }
     const result = await edge<{ requests: TeacherApprovalRow[] }>('manage-teacher-approvals', { action: 'list' }, 15_000);
     return result.requests.map(mapRequest);
   },
-  approveTeacher: (firebaseUid: string) => edge('manage-teacher-approvals', { action: 'approve', firebaseUid }, 15_000),
-  rejectTeacher: (firebaseUid: string) => edge('manage-teacher-approvals', { action: 'reject', firebaseUid }, 15_000),
-  setTeacherRequestBlocked: (firebaseUid: string, blocked: boolean) => edge('manage-teacher-approvals', { action: 'set_blocked', firebaseUid, blocked }, 15_000),
+  approveTeacher: (firebaseUid: string) => isQizzoneApiConfigured
+    ? qizzoneApi(`/api/v1/admin/teacher-requests/${firebaseUid}`, { method: 'PATCH', body: JSON.stringify({ action: 'approve' }) })
+    : edge('manage-teacher-approvals', { action: 'approve', firebaseUid }, 15_000),
+  rejectTeacher: (firebaseUid: string) => isQizzoneApiConfigured
+    ? qizzoneApi(`/api/v1/admin/teacher-requests/${firebaseUid}`, { method: 'PATCH', body: JSON.stringify({ action: 'reject' }) })
+    : edge('manage-teacher-approvals', { action: 'reject', firebaseUid }, 15_000),
+  setTeacherRequestBlocked: (firebaseUid: string, blocked: boolean) => isQizzoneApiConfigured
+    ? qizzoneApi(`/api/v1/admin/teacher-requests/${firebaseUid}`, { method: 'PATCH', body: JSON.stringify({ action: 'set_blocked', blocked }) })
+    : edge('manage-teacher-approvals', { action: 'set_blocked', firebaseUid, blocked }, 15_000),
 
   async listAccounts(role?: 'teacher' | 'student'): Promise<UserAccount[]> {
+    if (isQizzoneApiConfigured) {
+      const query = role ? `?role=${encodeURIComponent(role)}` : '';
+      const result = await qizzoneApi<{ accounts: Array<{
+        firebaseUid: string;
+        email: string;
+        fullName: string;
+        role: 'student' | 'teacher';
+        approvalStatus: string;
+        createdAt: string;
+        quizCount: number;
+        submissionCount: number;
+      }> }>(`/api/v1/admin/accounts${query}`);
+      return result.accounts.map(row => mapAccount({
+        id: row.firebaseUid,
+        firebase_uid: row.firebaseUid,
+        email: row.email,
+        full_name: row.fullName,
+        role: row.role,
+        approval_status: row.approvalStatus,
+        is_blocked: row.approvalStatus === 'rejected',
+        created_at: row.createdAt,
+        quiz_count: row.quizCount,
+        submission_count: row.submissionCount,
+      }));
+    }
     // 1. Try edge function manage-user-accounts if deployed or mocked in tests
     try {
       const result = await edge<{ accounts: AccountRow[] }>(
@@ -125,6 +178,13 @@ export const adminService = {
   },
 
   async toggleBlockUser(userId: string, isBlocked: boolean, role?: 'teacher' | 'student'): Promise<void> {
+    if (isQizzoneApiConfigured) {
+      await qizzoneApi(`/api/v1/admin/accounts/${userId}/access`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isBlocked }),
+      });
+      return;
+    }
     // 1. Try edge function manage-user-accounts first (tested & supported)
     try {
       await edge(

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Qizzone.Api.Tests/Qizzone.Api.Tests.csproj" />
+  <Project Path="Qizzone.Api/Qizzone.Api.csproj" />
+  <Project Path="Qizzone.Worker.Tests/Qizzone.Worker.Tests.csproj" />
+  <Project Path="Qizzone.Worker/Qizzone.Worker.csproj" />
+</Solution>

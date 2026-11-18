@@ -7,6 +7,7 @@ on:
       - master
       - develop
       - 'develop/**'
+      - 'devolop/**'
       - 'review/**'
   pull_request:
 
@@ -40,3 +41,44 @@ jobs:
 
       - name: TypeScript Compile & Vite Production Build
         run: npm run build
+
+  backend-validate:
+    name: Backend Restore, Security, Tests & Build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: qizzone_ci
+          POSTGRES_DB: qizzone_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qizzone_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      QIZZONE_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=qizzone_ci;Username=postgres;Password=qizzone_ci
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.404
+
+      - name: Restore Locked Dependencies
+        run: dotnet restore backend/Qizzone.slnx --locked-mode
+
+      - name: Audit NuGet Dependencies
+        run: dotnet list backend/Qizzone.slnx package --vulnerable --include-transitive
+
+      - name: Run Backend and Worker Tests
+        run: dotnet test backend/Qizzone.slnx --no-restore --configuration Release
+
+      - name: Build Backend API and Worker
+        run: dotnet build backend/Qizzone.slnx --no-restore --configuration Release

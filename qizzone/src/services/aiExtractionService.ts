@@ -1,7 +1,7 @@
 import type { ExtractionResult, ExtractedQuestion, DetectionStrategy } from '@/types/extractor';
 import type { OptionId } from '@/types/quiz';
 import { MAX_EXTRACTED_QUESTIONS } from '@/config/extractionLimits';
-import { edge, errorMessage } from '@/lib/cloud';
+import { edge, errorMessage, isQizzoneApiConfigured, qizzoneApi } from '@/lib/cloud';
 import { parseRawExamText, splitOptionsFromBlock } from '@/utils/parsers/ruleExtractor';
 import { AI_CONFIG } from '@/config/aiConfig';
 
@@ -183,13 +183,53 @@ export function parseGroundedAIResult(result: unknown, fileName: string, fileTyp
   };
 }
 
-async function requestAI(prompt: string, imageBase64?: string, maxAttempts = 1): Promise<unknown> {
+interface AIRequestOptions {
+  maxAttempts?: number;
+  sourceFileName?: string;
+  operation?: 'extract' | 'solve';
+}
+
+interface AIImportJobResponse {
+  jobId: string;
+  status: 'queued' | 'processing' | 'succeeded' | 'failed';
+  result?: unknown;
+  errorCode?: string | null;
+}
+
+async function requestQueuedAI(prompt: string, imageBase64: string | undefined, options: AIRequestOptions, idempotencyKey: string): Promise<unknown> {
+  const accepted = await qizzoneApi<AIImportJobResponse>('/api/v1/ai-import-jobs', {
+    method: 'POST',
+    body: JSON.stringify({
+      sourceFileName: options.sourceFileName || 'ai-import.txt',
+      prompt,
+      imageBase64,
+      operation: options.operation || 'extract',
+      idempotencyKey,
+    }),
+    signal: AbortSignal.timeout(90_000),
+  });
+  if (!accepted.jobId) throw new Error('Máy chủ không trả mã công việc AI.');
+
+  const deadline = Date.now() + 4 * 60_000;
+  while (Date.now() < deadline) {
+    const job = await qizzoneApi<AIImportJobResponse>(`/api/v1/ai-import-jobs/${encodeURIComponent(accepted.jobId)}`);
+    if (job.status === 'succeeded') return job.result;
+    if (job.status === 'failed') throw new Error(`Công việc AI thất bại (${job.errorCode || 'ai_job_failed'}).`);
+    await new Promise(resolve => setTimeout(resolve, 1_000));
+  }
+  throw new Error('Công việc AI vẫn đang xử lý. Hãy thử lại sau.');
+}
+
+async function requestAI(prompt: string, imageBase64?: string, options: AIRequestOptions = {}): Promise<unknown> {
+  const { maxAttempts = 1, sourceFileName, operation = 'extract' } = options;
+  const idempotencyKey = crypto.randomUUID();
   let lastErr: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const response = await edge<{ result: unknown }>('extract-quiz-with-gemini', {
-        prompt, imageBase64,
-      }, 90_000);
+      if (isQizzoneApiConfigured) {
+        return await requestQueuedAI(prompt, imageBase64, { sourceFileName, operation }, idempotencyKey);
+      }
+      const response = await edge<{ result: unknown }>('extract-quiz-with-gemini', { prompt, imageBase64 }, 90_000);
       return response.result;
     } catch (err) {
       lastErr = err;
@@ -236,12 +276,14 @@ export async function extractQuizWithAI(params: AIExtractParams): Promise<Extrac
   if (text?.trim() && text.length <= MAX_AI_FALLBACK_SOURCE_CHARS) {
     try {
       const prompt = [SYSTEM_PROMPT, source].filter(Boolean).join("\n");
-      const result = parseGroundedAIResult(await requestAI(prompt, imageBase64), fileName, fileType, file?.size || text?.length || 0, text || "");
+      const result = parseGroundedAIResult(await requestAI(prompt, imageBase64, { sourceFileName: fileName }), fileName, fileType, file?.size || text?.length || 0, text || "");
       if (result) {
         const native = text?.trim() ? parseRawExamText(text, { fileName, fileType }) : undefined;
         const nativeByOrder = new Map((native?.questions || []).map(question => [question.order, question]));
         const mergedByOrder = new Map(result.questions.map(question => {
-          const sourceQuestion = nativeByOrder.get(question.order);
+          const normalizedContent = normalizeSourceText(question.content);
+          const sourceQuestion = nativeByOrder.get(question.order) ||
+            native?.questions.find(candidate => normalizeSourceText(candidate.content) === normalizedContent);
           if (!sourceQuestion) return [question.order, question] as const;
           const optionIds = new Set(question.options.map(option => option.id));
           const canRetainAnswer = sourceQuestion.correctAnswers.every(answer => optionIds.has(answer));
@@ -254,29 +296,35 @@ export async function extractQuizWithAI(params: AIExtractParams): Promise<Extrac
             detectionStrategy: canRetainAnswer ? sourceQuestion.detectionStrategy : 'unknown',
           }] as const;
         }));
-        for (const sourceQuestion of nativeByOrder.values()) {
-          if (!mergedByOrder.has(sourceQuestion.order)) mergedByOrder.set(sourceQuestion.order, sourceQuestion);
-        }
         const questions = [...mergedByOrder.values()].sort((a, b) => a.order - b.order);
         const expectedQuestions = Math.max(native?.coverage?.expectedQuestions || 0, result.coverage?.expectedQuestions || 0);
+        // Only supplement the AI result with parser-only rows when its grounded
+        // output falls short. Native parsers can renumber source gaps (e.g. Q1,
+        // Q3 as 1, 2), which would otherwise duplicate a grounded AI row for Q3.
+        if (questions.length < expectedQuestions) {
+          for (const sourceQuestion of nativeByOrder.values()) {
+            if (!mergedByOrder.has(sourceQuestion.order)) mergedByOrder.set(sourceQuestion.order, sourceQuestion);
+          }
+        }
+        const mergedQuestions = [...mergedByOrder.values()].sort((a, b) => a.order - b.order);
         const qualityFlags = [...new Set([
           ...(native?.qualityFlags || []),
           'ai_fallback_requires_human_review',
-          ...(expectedQuestions > questions.length ? ['question_count_mismatch'] : []),
+          ...(expectedQuestions > mergedQuestions.length ? ['question_count_mismatch'] : []),
         ])];
         return {
           ...result,
           extractionMethod: native ? 'hybrid' : 'ai_fallback',
-          questions,
-          totalQuestionsDetected: questions.length,
+          questions: mergedQuestions,
+          totalQuestionsDetected: mergedQuestions.length,
           hasAnswerKeyTable: native?.hasAnswerKeyTable || false,
           qualityFlags,
           coverage: {
             expectedQuestions: expectedQuestions || questions.length,
-            extractedQuestions: questions.length,
-            sourceQuestionNumbers: native?.coverage?.sourceQuestionNumbers || questions.map(question => question.order),
+            extractedQuestions: mergedQuestions.length,
+            sourceQuestionNumbers: native?.coverage?.sourceQuestionNumbers || mergedQuestions.map(question => question.order),
           },
-          warningsCount: questions.reduce((total, question) => total + (question.warningFlags?.length || 0), 0) + qualityFlags.length,
+          warningsCount: mergedQuestions.reduce((total, question) => total + (question.warningFlags?.length || 0), 0) + qualityFlags.length,
         };
       }
     } catch {
@@ -328,7 +376,7 @@ export async function solveMissingAnswersWithAI(
     onProgress?.(offset, unanswered.length, progressText);
 
     try {
-      const result = await requestAI(solutionPrompt(batch));
+      const result = await requestAI(solutionPrompt(batch), undefined, { operation: 'solve', sourceFileName: 'answer-solutions.json' });
       const payload = typeof result === 'string' ? JSON.parse(cleanJson(result)) : result;
       const list = Array.isArray(payload) ? payload : (payload as { solutions?: RawSolutionItem[] })?.solutions || [];
       list.forEach((item: RawSolutionItem, index: number) => {

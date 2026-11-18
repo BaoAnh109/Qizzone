@@ -36,6 +36,9 @@ function removeTrailingAnswer(rawBlock: string): string {
   return rawBlock.replace(TRAILING_ANSWER_PATTERN, "$1").trim();
 }
 
+const ANSWER_KEY_SECTION_HEADER =
+  /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s*ÁN(?=\s*(?:<\/[^>]*>\s*)*(?:\r?\n|$))|ĐÁP\s+ÁN\s*[:-]|(?:ĐÁP\s+ÁN\s+(?:ĐỀ\s+THI|CHI\s+TIẾT|THAM\s+KHẢO)|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i;
+
 /**
  * Phân tích bảng đáp án ở cuối đề thi (Answer Key Table / Grid)
  * Chỉ kích hoạt khi có khu vực tiêu đề bảng đáp án rõ ràng (BẢNG ĐÁP ÁN, ĐÁP ÁN, HƯỚNG DẪN CHẤM,...)
@@ -50,9 +53,7 @@ export function extractAnswerKeyTable(rawText: string, conflictSink?: Record<num
   };
 
   // Tìm khu vực bảng đáp án ở cuối đề nếu có (phải là tiêu đề rõ ràng hoặc có dấu hai chấm)
-  const tableSectionMatch = rawText.match(
-    /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s*ÁN(?=\s*(?:<\/[^>]*>\s*)*(?:\r?\n|$))|ĐÁP\s+ÁN\s*[:-]|\b(?:ĐÁP\s+ÁN\s+ĐỀ\s+THI|ĐÁP\s+ÁN\s+CHI\s+TIẾT|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i
-  );
+  const tableSectionMatch = rawText.match(ANSWER_KEY_SECTION_HEADER);
 
   // Bắt buộc phải có phần tiêu đề bảng đáp án mới quét (tránh nhận diện nhầm số trong đề bài)
   if (!tableSectionMatch) {
@@ -207,6 +208,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
     letter: OptionId;
     marker?: string;
     headerLength: number;
+    isUppercaseLabel: boolean;
   }> = [];
 
   let match: RegExpExecArray | null;
@@ -243,15 +245,53 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
       letter,
       marker,
       headerLength: match[0].length,
+      isUppercaseLabel: match[2] === match[2].toUpperCase(),
     });
   }
 
+  const expectedOrder: OptionId[] = ["A", "B", "C", "D"];
+  const uppercaseOptionRegex =
+    /(?:^|[\r\n]|\s+)(?:<[^>]*>\s*)*([A-D])\s*([.:)/-])(?=\s|<|$)/g;
+  const uppercaseMatches: typeof matches = [];
+  let uppercaseMatch: RegExpExecArray | null;
+  while ((uppercaseMatch = uppercaseOptionRegex.exec(questionBlockText)) !== null) {
+    const candidateStart = uppercaseMatch.index;
+    const originalMatch = matches.find(candidate =>
+      candidate.letter === uppercaseMatch![1] && candidate.index === candidateStart,
+    );
+    uppercaseMatches.push(originalMatch || {
+      // Keep any formatting tags before the option label inside that option's
+      // slice. Starting at the letter would attach <u>/<mark>/<strong> to the
+      // preceding option and shift the detected answer by one.
+      index: candidateStart,
+      letter: uppercaseMatch[1] as OptionId,
+      headerLength: uppercaseMatch[0].length,
+      isUppercaseLabel: true,
+    });
+  }
+
+  let uppercaseExpectedIndex = 0;
+  let currentUppercaseSequence: typeof matches = [];
+  let bestUppercaseSequence: typeof matches = [];
+  for (const candidate of uppercaseMatches) {
+    if (candidate.letter === "A") {
+      currentUppercaseSequence = [candidate];
+      uppercaseExpectedIndex = 1;
+    } else if (currentUppercaseSequence.length && candidate.letter === expectedOrder[uppercaseExpectedIndex]) {
+      currentUppercaseSequence.push(candidate);
+      uppercaseExpectedIndex++;
+      if (currentUppercaseSequence.length >= 3) bestUppercaseSequence = [...currentUppercaseSequence];
+    }
+  }
+  const candidateMatches = bestUppercaseSequence.length >= 3
+    ? bestUppercaseSequence
+    : matches;
+
   // Lọc chỉ giữ lại A, B, C, D theo thứ tự hợp lệ (A -> B -> C -> D)
   const orderedMatches: typeof matches = [];
-  const expectedOrder: OptionId[] = ["A", "B", "C", "D"];
   let expectedIndex = 0;
 
-  for (const m of matches) {
+  for (const m of candidateMatches) {
     if (expectedIndex < expectedOrder.length && m.letter === expectedOrder[expectedIndex]) {
       orderedMatches.push(m);
       expectedIndex++;
@@ -265,7 +305,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
   if (orderedMatches.length < 2) {
     orderedMatches.length = 0;
     const seenLetters = new Set<string>();
-    for (const m of matches) {
+    for (const m of candidateMatches) {
       if (!seenLetters.has(m.letter)) {
         seenLetters.add(m.letter);
         orderedMatches.push(m);
@@ -331,7 +371,7 @@ export function splitOptionsFromBlock(questionBlockText: string, allowCompactOpt
     if (i === orderedMatches.length - 1) {
       cleanContent = cleanContent
         .replace(
-          /(?:^|[\n\r])\s*(?:Ghi\s*chú|Chú\s*ý|Lưu\s*ý|Hết|---+\s*HẾT\s*---+|Cán\s*bộ\s*coi\s*thi|Thí\s*sinh)[\s.:\-_]+[\s\S]*$/i,
+          /(?:^|[\n\r])\s*(?:Ghi\s*chú|Chú\s*ý|Lưu\s*ý|Hết|---+\s*(?:THE\s+END|HẾT)\s*---+|Cán\s*bộ\s*coi\s*thi|Thí\s*sinh)[\s.:\-_]+[\s\S]*$/i,
           ""
         )
         .trim();
@@ -563,9 +603,7 @@ export function parseRawExamText(
   // Cắt bỏ phần bảng đáp án khỏi nội dung bóc tách câu hỏi CHỈ KHI thực sự quét được bảng đáp án (>= 2 câu)
   let contentToScan = rawContent;
   if (Object.keys(scannedAnswerKey).length > 0 || Object.keys(answerKeyConflicts).length > 0) {
-    const tableSectionMatch = rawContent.match(
-      /(?:^|[\n\r]|<p[^>]*>|<div[^>]*>|<h\d[^>]*>)\s*(?:<[^>]*>)*\s*(?:BẢNG\s+ĐÁP\s+ÁN|ĐÁP\s*ÁN(?=\s*(?:<\/[^>]*>\s*)*(?:\r?\n|$))|ĐÁP\s+ÁN\s*[:-]|\b(?:ĐÁP\s+ÁN\s+ĐỀ\s+THI|ĐÁP\s+ÁN\s+CHI\s+TIẾT|HƯỚNG\s+DẪN\s+CHẤM|PHIẾU\s+TRẢ\s+LỜI|ANSWER\s+KEY|KEY\s+ĐÁP\s+ÁN|BẢNG\s+CHỌN\s+ĐÁP\s+ÁN)\b)[\s\S]*$/i
-    );
+    const tableSectionMatch = rawContent.match(ANSWER_KEY_SECTION_HEADER);
     if (tableSectionMatch && tableSectionMatch.index !== undefined) {
       contentToScan = rawContent.substring(0, tableSectionMatch.index);
     }
@@ -604,6 +642,7 @@ export function parseRawExamText(
   }
 
   const extractedQuestions: ExtractedQuestion[] = [];
+  let activeSharedContext = "";
 
   if (boundaries.length > 0) {
     // Sắp xếp các mốc câu hỏi theo vị trí tăng dần
@@ -618,12 +657,24 @@ export function parseRawExamText(
 
       const blockBody = contentToScan.substring(blockStart, blockEnd).trim();
       if (blockBody.length >= 2) {
+        const sharedContextMatch = blockBody.match(
+          /(?:^|[\n\r])\s*(?:<[^>]*>\s*)*(?:Read\s+(?:the\s+following|this|the)\s+(?:passage|text|flyer|leaflet)\b[\s\S]*)$/i,
+        );
+        const questionBody = sharedContextMatch?.index !== undefined
+          ? blockBody.slice(0, sharedContextMatch.index).trim()
+          : blockBody;
+        const nextSharedContext = sharedContextMatch?.index !== undefined
+          ? blockBody.slice(sharedContextMatch.index).trim()
+          : "";
+        const blockForQuestion = activeSharedContext
+          ? activeSharedContext + "\n\n" + questionBody
+          : questionBody;
         // Số hiển thị luôn theo vị trí xuất hiện. Điều này giữ lại toàn bộ
         // câu hỏi khi file lặp header (ví dụ Câu 51 đến Câu 150 lần hai),
         // đồng thời đổi chúng thành Câu 151 đến Câu 250.
         const normalizedOrder = i + 1;
         const parsed = parseSingleQuestionBlock(
-          blockBody,
+          blockForQuestion,
           normalizedOrder,
           globalAnswerKey[current.sourceOrder],
           allowCompactOptionLabels,
@@ -643,6 +694,7 @@ export function parseRawExamText(
           }
           extractedQuestions.push(parsed);
         }
+        if (nextSharedContext) activeSharedContext = nextSharedContext;
       }
     }
   }

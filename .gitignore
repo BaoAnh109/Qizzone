@@ -10,6 +10,8 @@ pnpm-debug.log*
 # Dependencies & Build Output
 node_modules/
 **/node_modules/
+**/bin/
+**/obj/
 dist/
 **/dist/
 dist-ssr/
@@ -44,3 +46,5 @@ documents/
 docs/*
 !docs/tasks/
 !docs/tasks/**
+!docs/audit/
+!docs/audit/**

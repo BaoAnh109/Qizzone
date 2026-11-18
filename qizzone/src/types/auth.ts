@@ -6,6 +6,7 @@ export type TeacherRequestStatus = "none" | "pending" | "approved" | "rejected";
 export interface User {
   id: string;
   email: string;
+  emailVerified?: boolean;
   fullName: string;
   name?: string;
   role: UserRole;

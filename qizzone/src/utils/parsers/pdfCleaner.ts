@@ -13,6 +13,20 @@ export function cleanPdfExtractedText(rawPages: string[]): string {
       const plainLine = line.replace(/<[^>]*>/g, "");
       const trimmed = plainLine.trim();
 
+      // Exam PDFs often place the publisher, page count, and exam code on one
+      // footer line. Keep it out of question text even when PDF.js combines
+      // the whole footer into a single text row (for example, "Trang 1/4 - Ma
+      // de thi 1116" beside the publisher and copyright).
+      const hasPageNumber = /\b(?:trang|page)\s+\d+(?:\s*\/\s*\d+|\s+of\s+\d+)?\b/i.test(trimmed);
+      const hasExamCode = /\bmã\s*đề(?:\s*thi)?\s*[:#-]?\s*[\p{L}\p{N}-]+/iu.test(trimmed);
+      const hasExamPublisher = /\b(?:tailieudieuky|vietnamairlines\.com)\b/i.test(trimmed);
+      const hasCopyrightYear = /©\s*20\d{2}/u.test(trimmed);
+
+      if ((hasPageNumber && hasExamCode) ||
+        (hasExamPublisher && (hasPageNumber || hasExamCode || hasCopyrightYear))) {
+        continue;
+      }
+
       // Bỏ qua các dòng watermark Studocu / tài liệu tải về
       if (
         /^messages\./i.test(trimmed) ||

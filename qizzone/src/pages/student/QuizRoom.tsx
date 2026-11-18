@@ -56,6 +56,7 @@ export function QuizRoom() {
   const isSubmitting = useExamSessionStore((state) => state.isSubmitting);
   const getResultById = useExamSessionStore((state) => state.getResultById);
   const saveStatus = useExamSessionStore((state) => quizId ? state.saveStatus[quizId] || 'idle' : 'idle');
+  const saveError = useExamSessionStore((state) => quizId ? state.saveErrors[quizId] : undefined);
 
   const toast = useToast();
 
@@ -143,7 +144,9 @@ export function QuizRoom() {
         studentClass: session.studentClass,
       });
 
-      toast.success("Nộp bài thi thành công!");
+      const submissionWarning = useExamSessionStore.getState().submissionWarning;
+      if (submissionWarning) toast.warning(submissionWarning, "Bài đã được nộp");
+      else toast.success("Nộp bài thi thành công!");
       setIsSubmitModalOpen(false);
       navigate(`/student/result/${result.id}`, { replace: true });
     } catch {
@@ -239,23 +242,37 @@ export function QuizRoom() {
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Auto-Save Buffer Cloud Icon */}
             <div
-              title={saveStatus === 'error' ? 'Chưa thể lưu. Hệ thống sẽ thử lại khi có mạng.' : 'Đáp án được lưu tự động'}
-              className={`items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border hidden md:flex ${
-                saveStatus === 'error'
+                title={saveStatus === 'local-error'
+                  ? saveError || 'Không thể lưu bản nháp trên thiết bị. Hãy kiểm tra dung lượng hoặc quyền lưu trữ.'
+                  : saveStatus === 'error'
+                    ? 'Chưa đồng bộ. Bản nháp còn trên thiết bị này; hãy kết nối mạng hoặc giải quyết xung đột.'
+                    : saveStatus === 'pending'
+                      ? 'Đang ghi bản nháp trên thiết bị này; máy chủ chưa xác nhận.'
+                      : 'Đáp án được lưu tự động'}
+                className={`items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border hidden md:flex ${
+                  saveStatus === 'error' || saveStatus === 'local-error'
                   ? 'text-rose-700 bg-rose-50 border-rose-200'
-                  : saveStatus === 'saving'
+                    : saveStatus === 'pending' || saveStatus === 'saving'
                     ? 'text-amber-700 bg-amber-50 border-amber-200'
                     : 'text-emerald-600 bg-emerald-50 border-emerald-100'
               }`}
             >
-              {saveStatus === 'error' ? (
+                {saveStatus === 'error' || saveStatus === 'local-error' ? (
                 <CloudOff className="h-4 w-4" />
-              ) : saveStatus === 'saving' ? (
+                ) : saveStatus === 'saving' || saveStatus === 'pending' ? (
                 <Cloud className="h-4 w-4 animate-pulse" />
               ) : (
                 <CloudCheck className="h-4 w-4" />
               )}
-              <span>{saveStatus === 'error' ? 'Lỗi lưu' : saveStatus === 'saving' ? 'Đang lưu...' : 'Đã lưu'}</span>
+                <span>{saveStatus === 'local-error'
+                  ? 'Lỗi lưu thiết bị'
+                  : saveStatus === 'error'
+                    ? 'Chưa đồng bộ'
+                    : saveStatus === 'pending'
+                      ? 'Đang lưu trên máy'
+                      : saveStatus === 'saving'
+                        ? 'Đang đồng bộ...'
+                        : 'Đã lưu máy chủ'}</span>
             </div>
 
             {/* Countdown Timer Badge */}

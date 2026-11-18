@@ -92,8 +92,8 @@ export function Register() {
       const newUser = await registerUser(data);
       preloadDashboardForRole(newUser.role);
       toast.success(
-        `Chúc mừng ${newUser.fullName} đã đăng ký tài khoản thành công!`,
-        "Đăng ký thành công"
+        `Tài khoản ${newUser.fullName} đã được tạo. Mở email để xác minh địa chỉ trước khi sử dụng các nghiệp vụ yêu cầu xác minh.`,
+        "Đã gửi liên kết xác minh"
       );
       navigate(getPostLoginRedirect(newUser.role, redirect), {
         replace: true,

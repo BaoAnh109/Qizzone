@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { indexedDB as fakeIndexedDB } from 'fake-indexeddb';
 
 vi.mock('@/services/examSessionService', () => ({
   examSessionService: {
@@ -12,6 +13,7 @@ vi.mock('@/services/examSessionService', () => ({
 }));
 
 import { examSessionService } from '@/services/examSessionService';
+import { clearExamAutosave, readExamAutosave } from '@/store/examAutosavePersistence';
 import { useExamSessionStore } from '@/store/examSessionStore';
 import type { Quiz } from '@/types/quiz';
 
@@ -43,20 +45,24 @@ const localStorageMock = {
 const draftKey = 'qizzone:exam-draft:student-1:attempt-1';
 
 describe('cloud exam session store', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
+  beforeEach(async () => {
+    vi.useRealTimers();
     vi.clearAllMocks();
     localDrafts.clear();
+    vi.stubGlobal('indexedDB', fakeIndexedDB);
     vi.stubGlobal('window', { localStorage: localStorageMock });
+    await clearExamAutosave(session.id);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     useExamSessionStore.getState().reset();
     useExamSessionStore.setState({ activeSessions: { [quiz.id]: { ...session } } });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     useExamSessionStore.getState().reset();
+    vi.useRealTimers();
+    await clearExamAutosave(session.id);
     vi.unstubAllGlobals();
     localDrafts.clear();
-    vi.useRealTimers();
   });
 
   it('debounces answer changes and persists only the newest selection', async () => {
@@ -67,14 +73,17 @@ describe('cloud exam session store', () => {
     const store = useExamSessionStore.getState();
     store.selectAnswer({ quizId: quiz.id, questionId: 'question-1', optionId: 'A' });
     store.selectAnswer({ quizId: quiz.id, questionId: 'question-1', optionId: 'B' });
-    expect(useExamSessionStore.getState().saveStatus[quiz.id]).toBe('saving');
-    await vi.advanceTimersByTimeAsync(449);
+    expect(useExamSessionStore.getState().saveStatus[quiz.id]).toBe('pending');
+    await vi.advanceTimersByTimeAsync(249);
     expect(examSessionService.saveAttempt).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     await vi.waitFor(() => expect(examSessionService.saveAttempt).toHaveBeenCalledOnce());
     expect(examSessionService.saveAttempt).toHaveBeenCalledWith(expect.objectContaining({
       revision: 0,
       answers: { 'question-1': ['B'] },
+      mutationId: expect.any(String),
+      clientSequence: expect.any(Number),
+      writerSessionId: expect.any(String),
     }));
     expect(useExamSessionStore.getState().saveStatus[quiz.id]).toBe('saved');
   });
@@ -90,17 +99,46 @@ describe('cloud exam session store', () => {
     vi.mocked(examSessionService.listResults).mockResolvedValue([]);
 
     useExamSessionStore.getState().selectAnswer({ quizId: quiz.id, questionId: 'question-1', optionId: 'B' });
-    await vi.advanceTimersByTimeAsync(450);
-    expect(saveAttempts).toBe(1);
-    expect(localDrafts.has(draftKey)).toBe(true);
+    await vi.advanceTimersByTimeAsync(250);
+    await vi.waitFor(() => expect(saveAttempts).toBe(1));
+    expect((await readExamAutosave(session.id))?.mutations).toHaveLength(1);
 
     useExamSessionStore.getState().reset();
     await useExamSessionStore.getState().load();
     expect(useExamSessionStore.getState().activeSessions[quiz.id].answers).toEqual({ 'question-1': ['B'] });
 
-    await vi.advanceTimersByTimeAsync(450);
+    await vi.advanceTimersByTimeAsync(0);
     await vi.waitFor(() => expect(saveAttempts).toBe(2));
-    expect(localDrafts.has(draftKey)).toBe(false);
+    expect((await readExamAutosave(session.id))?.mutations).toHaveLength(0);
+    expect((await readExamAutosave(session.id))?.draft).toBeUndefined();
+  });
+
+  it('migrates a legacy localStorage draft into IndexedDB and removes the old copy after durable persistence', async () => {
+    localDrafts.set(draftKey, JSON.stringify({
+      attemptId: session.id,
+      studentId: session.studentId,
+      revision: 0,
+      answers: { 'question-1': ['B'] },
+      flaggedQuestionIds: [],
+      currentQuestionIndex: 0,
+      updatedAt: Date.now(),
+    }));
+    vi.mocked(examSessionService.listSessions).mockResolvedValue([{ ...session, answers: {}, revision: 0 }]);
+    vi.mocked(examSessionService.listResults).mockResolvedValue([]);
+    vi.mocked(examSessionService.saveAttempt).mockImplementation(async params => ({
+      ...session,
+      answers: params.answers,
+      revision: 1,
+      mutationId: params.mutationId,
+    } as never));
+
+    await useExamSessionStore.getState().load();
+    expect(useExamSessionStore.getState().activeSessions[quiz.id].answers).toEqual({ 'question-1': ['B'] });
+    await vi.waitFor(() => expect(localDrafts.has(draftKey)).toBe(false));
+    await vi.advanceTimersByTimeAsync(250);
+    await vi.waitFor(() => expect(examSessionService.saveAttempt).toHaveBeenCalledOnce());
+    expect((await readExamAutosave(session.id))?.mutations).toHaveLength(0);
+    expect((await readExamAutosave(session.id))?.draft).toBeUndefined();
   });
 
   it('keeps a stale local draft without overwriting a newer server revision', async () => {
@@ -128,6 +166,14 @@ describe('cloud exam session store', () => {
     expect(localDrafts.has(draftKey)).toBe(true);
   });
 
+  it('does not autosave when only navigating between questions', async () => {
+    useExamSessionStore.getState().setQuestionIndex(quiz.id, 1);
+    await Promise.resolve();
+
+    expect(examSessionService.saveAttempt).not.toHaveBeenCalled();
+    expect(await readExamAutosave(session.id)).toBeUndefined();
+  });
+
   it('still finalizes server-saved answers when autosave is rejected at the deadline', async () => {
     vi.mocked(examSessionService.saveAttempt).mockRejectedValue(
       new Error('Hết giờ: nộp các đáp án đã lưu'),
@@ -136,6 +182,8 @@ describe('cloud exam session store', () => {
       id: 'result-1', quizId: quiz.id, score: 5,
     } as never);
 
+    useExamSessionStore.getState().selectAnswer({ quizId: quiz.id, questionId: 'question-1', optionId: 'B' });
+
     const result = await useExamSessionStore.getState().submitExam({
       quiz, studentId: 'student-1', studentName: 'Student',
     });
@@ -143,5 +191,6 @@ describe('cloud exam session store', () => {
     expect(examSessionService.saveAttempt).toHaveBeenCalledOnce();
     expect(examSessionService.submitAttempt).toHaveBeenCalledWith(session.id);
     expect(useExamSessionStore.getState().activeSessions[quiz.id].isSubmitted).toBe(true);
+    expect(useExamSessionStore.getState().submissionWarning).toMatch(/kết quả sử dụng bản đã lưu trên máy chủ/i);
   });
 });

@@ -8,11 +8,30 @@ const config = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+const supabaseConfig = {
+  url: import.meta.env.VITE_SUPABASE_URL,
+  key: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+};
+const apiBaseUrl = import.meta.env.VITE_QIZZONE_API_BASE_URL?.trim().replace(/\/+$/, '');
+export const isAllowedQizzoneApiBaseUrl = (value?: string) => {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    const secure = url.protocol === 'https:';
+    const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname.toLowerCase());
+    return (secure || localHttp) && !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+};
+export const isQizzoneApiConfigured = isAllowedQizzoneApiBaseUrl(apiBaseUrl);
 export const missingConfiguration = Object.entries({
   VITE_FIREBASE_API_KEY: config.apiKey, VITE_FIREBASE_AUTH_DOMAIN: config.authDomain,
   VITE_FIREBASE_PROJECT_ID: config.projectId, VITE_FIREBASE_APP_ID: config.appId,
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
-  VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+  ...(!isQizzoneApiConfigured ? {
+    VITE_SUPABASE_URL: supabaseConfig.url,
+    VITE_SUPABASE_PUBLISHABLE_KEY: supabaseConfig.key,
+  } : {}),
 }).filter(([, value]) => !value || /YOUR_|your_|placeholder/.test(value)).map(([key]) => key);
 
 export function firebaseAuth() {
@@ -23,10 +42,54 @@ export function firebaseAuth() {
 }
 let client: ReturnType<typeof createClient> | undefined;
 export function supabase() {
-  client ??= createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
+  if (!supabaseConfig.url || !supabaseConfig.key) {
+    throw new Error('Thiếu cấu hình Supabase cho tính năng chưa chuyển sang API mới.');
+  }
+  client ??= createClient(supabaseConfig.url, supabaseConfig.key, {
     accessToken: async () => (await firebaseAuth().currentUser?.getIdToken()) ?? null,
   });
   return client;
+}
+export async function qizzoneApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (!isQizzoneApiConfigured || !apiBaseUrl) {
+    throw new Error('Thiếu VITE_QIZZONE_API_BASE_URL.');
+  }
+  const token = await firebaseAuth().currentUser?.getIdToken();
+  if (!token) throw new Error('Vui lòng đăng nhập.');
+
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token}`);
+  headers.set('Accept', 'application/json');
+  if (init.body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`, {
+      ...init,
+      headers,
+      signal: init.signal ?? AbortSignal.timeout(30_000),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'TimeoutError') throw error;
+    throw new Error('Không thể kết nối Qizzone API. Vui lòng thử lại khi mạng ổn định.', { cause: error });
+  }
+
+  if (response.status === 204) return undefined as T;
+  const result = await response.json().catch(() => ({})) as {
+    error?: string;
+    detail?: string;
+    title?: string;
+    errors?: Record<string, string[]>;
+  };
+  if (!response.ok) {
+    const validationMessage = result.errors
+      ? Object.values(result.errors).flat().join(' ')
+      : undefined;
+    throw new Error(result.error || validationMessage || result.detail || result.title || `Qizzone API trả về lỗi ${response.status}.`);
+  }
+  return result as T;
 }
 export async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> {
   const client = supabase() as unknown as {

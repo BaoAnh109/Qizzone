@@ -295,36 +295,17 @@ export function DocumentViewer() {
     scrollFrameRef.current = window.requestAnimationFrame(() => {
       scrollFrameRef.current = null;
       const root = documentContentRef.current;
-      if (!root) return;
+      if (!root || document?.fileType !== "pdf") return;
       const rootRect = root.getBoundingClientRect();
-      const centerX = rootRect.left + root.clientWidth / 2;
       const centerY = rootRect.top + root.clientHeight / 2;
-      const candidates = Array.from(root.querySelectorAll<HTMLElement>("[data-source-id]"))
+      const pages = Array.from(root.querySelectorAll<HTMLElement>("[data-pdf-page]"));
+      const nearest = pages
         .map((node) => {
           const bounds = node.getBoundingClientRect();
-          const sourceId = node.dataset.sourceId || "";
-          const questionId = questionByVisualSourceId.get(sourceId);
-          if (!questionId || bounds.bottom < rootRect.top || bounds.top > rootRect.bottom || bounds.right < rootRect.left || bounds.left > rootRect.right) return undefined;
-          const x = Math.max(bounds.left, Math.min(centerX, bounds.right));
-          const y = Math.max(bounds.top, Math.min(centerY, bounds.bottom));
-          return { questionId, distance: Math.hypot(centerX - x, centerY - y) };
+          return { page: Number(node.dataset.pdfPage), distance: Math.abs((bounds.top + bounds.bottom) / 2 - centerY) };
         })
-        .filter((candidate): candidate is { questionId: string; distance: number } => !!candidate);
-      const closest = candidates.sort((a, b) => a.distance - b.distance)[0];
-      if (closest && closest.distance < root.clientHeight * 0.45 && closest.questionId !== selectedQuestionId) {
-        setSelectedQuestionId(closest.questionId);
-      }
-
-      if (document?.fileType === "pdf") {
-        const pages = Array.from(root.querySelectorAll<HTMLElement>("[data-pdf-page]"));
-        const nearest = pages
-          .map((node) => {
-            const bounds = node.getBoundingClientRect();
-            return { page: Number(node.dataset.pdfPage), distance: Math.abs((bounds.top + bounds.bottom) / 2 - centerY) };
-          })
-          .sort((a, b) => a.distance - b.distance)[0];
-        if (nearest?.page && nearest.page !== currentPage) setCurrentPage(nearest.page);
-      }
+        .sort((a, b) => a.distance - b.distance)[0];
+      if (nearest?.page && nearest.page !== currentPage) setCurrentPage(nearest.page);
     });
   };
 
@@ -392,7 +373,7 @@ export function DocumentViewer() {
             <div className="mb-4 rounded-xl bg-teal-50 p-3 border border-teal-200 text-xs text-teal-950 flex items-center justify-between gap-2 shadow-2xs">
               <span className="flex items-center gap-1.5 font-bold">
                 <Sparkles className="h-4 w-4 text-teal-700" />
-                <span>Đang đồng bộ xem câu {selectedQuestion.order}:</span>
+                <span>Đang chọn câu {selectedQuestion.order}:</span>
               </span>
               <span className="font-mono text-[11px] text-teal-700 theme-surface px-2 py-0.5 rounded-md border border-teal-100">
                 Đáp án: {selectedQuestion.correctAnswers.length ? selectedQuestion.correctAnswers.join(", ") : "Chưa xác định"} ({selectedQuestion.answerStatus || "chờ duyệt"})

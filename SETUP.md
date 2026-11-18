@@ -1,10 +1,12 @@
 # Cài đặt và vận hành Qizzone
 
-Tài liệu này được đối chiếu với cấu hình trong repository ngày **2026-10-26**. Tên biến và thứ tự migration được lấy từ các tệp hiện có; giá trị project, secrets, backup và quyền deploy cần chủ hệ thống điền hoặc xác nhận.
+Tài liệu này được đối chiếu với source trong repository ngày **2026-11-17**. Backend Qizzone API đã có một số luồng nghiệp vụ và frontend có thể chuyển từng service sang API qua `VITE_QIZZONE_API_BASE_URL`. Đây vẫn là giai đoạn tích hợp: Supabase còn là fallback/bộ lưu trữ cho những tính năng chưa chuyển, và chưa có dữ liệu nào được cutover.
 
 ## Yêu cầu
 
 - Node.js **20.19+** hoặc **22.12+** và npm. Vite 8 yêu cầu các phiên bản này.
+- .NET SDK **10.0.404** cho API và test backend.
+- PostgreSQL tương thích Npgsql cho API local; Docker Desktop nếu muốn tự chạy PostgreSQL local.
 - Supabase CLI và Docker Desktop nếu cần chạy database/Edge Functions local.
 - Tài khoản Firebase, Supabase và Vercel của môi trường tương ứng.
 
@@ -18,14 +20,24 @@ Xem hướng dẫn chính thức về [yêu cầu Node.js của Vite](https://vi
 | `VITE_FIREBASE_AUTH_DOMAIN` | Trình duyệt | `qizzone/.env.local`; Vercel Development/Preview/Production |
 | `VITE_FIREBASE_PROJECT_ID` | Trình duyệt | `qizzone/.env.local`; Vercel Development/Preview/Production |
 | `VITE_FIREBASE_APP_ID` | Trình duyệt | `qizzone/.env.local`; Vercel Development/Preview/Production |
+| `VITE_QIZZONE_API_BASE_URL` | Trình duyệt | Local hoặc Vercel Preview; dùng HTTPS ngoài loopback |
 | `VITE_SUPABASE_URL` | Trình duyệt | `qizzone/.env.local`; Vercel Development/Preview/Production |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Trình duyệt | `qizzone/.env.local`; Vercel Development/Preview/Production |
+| `ConnectionStrings__Qizzone` | API | Local environment hoặc runtime secret store |
+| `Firebase__ProjectId` | API | Local environment hoặc runtime config |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` hoặc `GOOGLE_APPLICATION_CREDENTIALS` | API | Runtime secret store/ADC; không đưa JSON key vào Git |
+| `Cors__AllowedOrigins__0` | API | Frontend origin chính xác cho từng environment |
+| `AllowedHosts` | API | Hostname API; không dùng `*` ở Production |
+| `Admin__BootstrapUids__0` | API | Firebase UID đã xác minh, nạp qua secret/config store khi khởi tạo admin |
+| `AiImport__DailyRequestLimit` | API | Quota job Gemini mỗi người dùng trong 24 giờ, mặc định 10 (giới hạn cấu hình tối đa 100) |
+| `Gemini__ApiKey` | Worker | Secret store của worker; không dùng tiền tố `VITE_` hoặc để API key trong frontend |
+| `Gemini__Model` | Worker | Model ID do môi trường chọn; không phải URL |
 | `FIREBASE_SERVICE_ACCOUNT` | Supabase Edge Functions | `supabase/functions/.env` khi chạy local; Supabase Function Secrets trên remote |
 | `GEMINI_API_KEY` | Supabase Edge Functions | `supabase/functions/.env` khi chạy local; Supabase Function Secrets trên remote |
 | `GEMINI_MODEL` | Supabase Edge Functions | Có thể cấu hình trong cùng nơi với các secrets nếu cần chọn model |
 | `ALLOWED_ORIGINS` | Supabase Edge Functions | `supabase/functions/.env` khi chạy local; Supabase Function Secrets trên remote |
 
-Mẫu browser config nằm ở [`qizzone/.env.example`](qizzone/.env.example); mẫu Edge Function nằm ở [`supabase/functions/.env.example`](supabase/functions/.env.example). Chỉ thay placeholder trong bản local hoặc dashboard. Không commit `.env.local`, `.env` hay giá trị secret. Các biến `VITE_*` được nhúng vào bundle trình duyệt nên chỉ chứa cấu hình public; tuyệt đối không đặt Gemini key, Firebase service account hay Supabase secret/service-role key vào các biến này. Edge Functions xác minh Firebase ID token; Supabase cấp các biến hệ thống riêng cho runtime function.
+Mẫu browser config nằm ở [`qizzone/.env.example`](qizzone/.env.example), backend ở [`backend/.env.example`](backend/.env.example), Edge Function ở [`supabase/functions/.env.example`](supabase/functions/.env.example). `VITE_QIZZONE_API_BASE_URL` chuyển các service đã có adapter, gồm Gemini jobs, sang API mới; các chức năng chưa migrate vẫn gọi Supabase nên giữ cấu hình Supabase cho tới khi parity và cutover được nghiệm thu. Chỉ thay placeholder trong bản local/dashboard. Không commit `.env.local`, `.env` hay giá trị secret. Các biến `VITE_*` được nhúng vào bundle trình duyệt nên chỉ chứa cấu hình public; tuyệt đối không đặt Gemini key, Firebase service account hay Supabase secret/service-role key vào các biến này.
 
 `ALLOWED_ORIGINS` là danh sách origin, phân tách bằng dấu phẩy và phải khớp chính xác scheme + hostname, ví dụ `http://localhost:5173,https://preview.example.com,https://app.example.com`. Không thêm đường dẫn URL vào danh sách.
 
@@ -43,7 +55,29 @@ npm ci
 npm run dev
 ```
 
-Mở URL local do Vite in ra. Khi thiếu một trong sáu biến `VITE_*`, ứng dụng báo tên biến cần cấu hình. Dùng project dev/staging và tài khoản kiểm thử, không dùng tài khoản học sinh thật để phát triển.
+Mở URL local do Vite in ra. Dùng project dev/staging và tài khoản kiểm thử, không dùng tài khoản học sinh thật để phát triển. Khi dùng API local, đặt `VITE_QIZZONE_API_BASE_URL=http://localhost:8080`; ứng dụng chỉ cho phép HTTP với loopback local, còn URL môi trường khác phải dùng HTTPS.
+
+## Chạy Qizzone API local
+
+API dùng PostgreSQL; project không tự áp dụng migration khi khởi động. Trỏ `ConnectionStrings__Qizzone` tới database local/dev rỗng, nạp cấu hình Firebase dev và CORS, rồi chạy tại repository root:
+
+```powershell
+Set-Location .\backend
+dotnet tool restore
+dotnet restore Qizzone.slnx --locked-mode
+dotnet tool run dotnet-ef -- database update --project Qizzone.Api --startup-project Qizzone.Api
+dotnet run --project Qizzone.Api
+```
+
+`/health/live` chỉ xác nhận process chạy; `/health/ready` kiểm tra kết nối database. OpenAPI chỉ bật ở Development. `backend/README.md` ghi rõ biến cấu hình và test commands. Không kết nối database production để phát triển hoặc chạy migration thử.
+
+Để kiểm tra AI local, chạy API và worker thành hai tiến trình riêng với cùng `ConnectionStrings__Qizzone`. Chỉ cung cấp `Gemini__ApiKey` và `Gemini__Model` cho worker qua local secret/environment; không đưa chúng vào `.env` frontend:
+
+```powershell
+dotnet run --project .\Qizzone.Worker
+```
+
+**Giới hạn tích hợp hiện tại:** auth/profile, teacher/admin, quiz, exam, practice và Gemini jobs có API adapter; Gemini worker chưa được chạy trên PostgreSQL thật hoặc gọi provider thật. Upload/avatar, teacher reports/analytics, một số account settings và legacy import còn phụ thuộc Supabase. Không đặt API base URL production hoặc quảng bá bản chuyển tiếp này như cutover hoàn chỉnh.
 
 ## Chạy Supabase local (tùy chọn)
 

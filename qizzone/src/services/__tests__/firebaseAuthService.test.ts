@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 const mocks = vi.hoisted(() => ({
+  apiConfigured: false,
   edge: vi.fn(),
+  qizzoneApi: vi.fn(),
   supabaseSelect: vi.fn(),
   supabaseEq: vi.fn(),
   supabaseMaybeSingle: vi.fn(),
@@ -10,6 +12,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/cloud', () => ({
   edge: mocks.edge,
+  get isQizzoneApiConfigured() { return mocks.apiConfigured; },
+  qizzoneApi: mocks.qizzoneApi,
   firebaseAuth: vi.fn(),
   rpc: vi.fn(),
   supabase: vi.fn(() => ({
@@ -27,6 +31,7 @@ import { clearInFlightSync, mapProfile, syncProfile } from '@/services/firebaseA
 
 describe('firebaseAuthService', () => {
   beforeEach(() => {
+    mocks.apiConfigured = false;
     vi.clearAllMocks();
     clearInFlightSync();
   });
@@ -74,6 +79,7 @@ describe('firebaseAuthService', () => {
   describe('syncProfile optimizations', () => {
     const mockUser = {
       uid: 'user-123',
+      emailVerified: true,
       displayName: 'Vinh Nguyen',
       photoURL: null,
       providerData: [],
@@ -104,6 +110,32 @@ describe('firebaseAuthService', () => {
       expect(mocks.supabaseMaybeSingle).toHaveBeenCalledOnce();
       expect(mocks.edge).not.toHaveBeenCalled();
       expect(mockUser.getIdToken).not.toHaveBeenCalled();
+    });
+
+    it('bootstraps profile through Qizzone API when the API adapter is enabled', async () => {
+      mocks.apiConfigured = true;
+      mocks.qizzoneApi.mockResolvedValue({
+        firebaseUid: 'user-123',
+        email: 'student@example.test',
+        fullName: 'API Student',
+        role: 'student',
+        baseRole: 'student',
+        activeRole: 'student',
+        approvalStatus: 'approved',
+        teacherRequestStatus: 'none',
+        teacherRequestBlocked: false,
+        teacherRequestedAt: null,
+        avatarUrl: null,
+        createdAt: '2026-11-17T10:00:00.000Z',
+      });
+
+      await expect(syncProfile(mockUser)).resolves.toMatchObject({
+        id: 'user-123', fullName: 'API Student', role: 'student', emailVerified: true,
+      });
+      expect(mocks.qizzoneApi).toHaveBeenCalledOnce();
+      expect(mocks.qizzoneApi).toHaveBeenCalledWith('/api/v1/me');
+      expect(mocks.supabaseMaybeSingle).not.toHaveBeenCalled();
+      expect(mocks.edge).not.toHaveBeenCalled();
     });
 
     it('deduplicates concurrent in-flight syncProfile calls for the same user', async () => {

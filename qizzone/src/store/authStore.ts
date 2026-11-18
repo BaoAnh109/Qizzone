@@ -19,6 +19,8 @@ interface AuthStoreState {
   switchRole: (role: Extract<UserRole, 'student' | 'teacher'>) => Promise<User>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  resendEmailVerification: () => Promise<void>;
+  refreshEmailVerification: () => Promise<boolean>;
   updateProfile: (data: Partial<User>) => Promise<User>;
   clearAuth: () => void;
 }
@@ -228,6 +230,17 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     } catch (error) {
       throw new Error(errorMessage(error), { cause: error });
     }
+  },
+
+  resendEmailVerification: async () => {
+    await firebaseAuthService.resendEmailVerification();
+  },
+
+  refreshEmailVerification: async () => {
+    const emailVerified = await firebaseAuthService.refreshEmailVerification();
+    const current = get().user;
+    if (emailVerified && current) set({ user: { ...current, emailVerified: true } });
+    return emailVerified;
   },
 
   updateProfile: async data => {

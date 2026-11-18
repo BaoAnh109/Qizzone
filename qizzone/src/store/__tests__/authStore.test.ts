@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   switchRole: vi.fn(),
   logout: vi.fn(),
   resetPassword: vi.fn(),
+  resendEmailVerification: vi.fn(),
+  refreshEmailVerification: vi.fn(),
   updateProfile: vi.fn(),
 }));
 
@@ -32,6 +34,8 @@ vi.mock('@/services/firebaseAuthService', () => ({
     switchRole: mocks.switchRole,
     logout: mocks.logout,
     resetPassword: mocks.resetPassword,
+    resendEmailVerification: mocks.resendEmailVerification,
+    refreshEmailVerification: mocks.refreshEmailVerification,
     updateProfile: mocks.updateProfile,
   },
 }));
@@ -59,6 +63,8 @@ describe('Firebase auth store', () => {
     mocks.syncProfile.mockResolvedValue(profile);
     mocks.logout.mockResolvedValue(undefined);
     mocks.resetPassword.mockResolvedValue(undefined);
+    mocks.resendEmailVerification.mockResolvedValue(undefined);
+    mocks.refreshEmailVerification.mockResolvedValue(true);
     useAuthStore.setState({
       user: null, isAuthenticated: false, isLoading: true,
       isInitialized: false, configurationError: null,
@@ -219,5 +225,19 @@ describe('Firebase auth store', () => {
   it('delegates password reset without storing credentials', async () => {
     await useAuthStore.getState().resetPassword('student@example.test');
     expect(mocks.resetPassword).toHaveBeenCalledWith('student@example.test');
+  });
+
+  it('resends the Firebase email verification link', async () => {
+    await useAuthStore.getState().resendEmailVerification();
+    expect(mocks.resendEmailVerification).toHaveBeenCalledOnce();
+  });
+
+  it('refreshes Firebase verification state in the signed-in profile', async () => {
+    useAuthStore.setState({ user: { ...profile, emailVerified: false }, isAuthenticated: true, isLoading: false });
+
+    await expect(useAuthStore.getState().refreshEmailVerification()).resolves.toBe(true);
+
+    expect(useAuthStore.getState().user?.emailVerified).toBe(true);
+    expect(mocks.refreshEmailVerification).toHaveBeenCalledOnce();
   });
 });
