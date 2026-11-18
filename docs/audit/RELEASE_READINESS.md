@@ -13,24 +13,25 @@
 - Added email verification status/resend UX and tests, plus API URL validation for HTTPS or local loopback HTTP.
 - Added a PostgreSQL-backed Gemini worker for extraction and answer solving, bounded retries/lease recovery, teacher ownership, source-image validation, per-user quotas, request idempotency and prompt/image retention cleanup.
 - Added IndexedDB exam snapshots/outbox, coalescing for unsent edits, stable mutation IDs, ordered retry/ack, revision conflict preservation and deadline warning UX; the API deduplicates committed mutations and the worker expires dedupe rows after 30 days.
-- Added worker/API contract tests and migration/audit documentation. Generated migration SQL was reviewed locally but has not been applied to PostgreSQL.
+- Added worker/API contract tests and migration/audit documentation. CI applied EF migrations to isolated PostgreSQL 17 schemas; the generated idempotent deployment script has not been run against the intended target database.
 
-## Reproducible local results
+## CI and local validation
 
 | Check | Result | Scope/limit |
 |---|---|---|
-| Frontend Vitest: `vitest run --dir src` | 181 passed, 24 skipped; 36 files passed, 2 skipped | Source app only; nested user copy excluded |
-| TypeScript `tsc -b` | Passed | Typecheck, no browser E2E |
-| ESLint `eslint src` | Passed | Source app |
-| Vite production build | Passed | Static bundle, no production env values |
-| .NET Release tests | 17 API + 6 worker tests passed locally | Includes 100 concurrent submit and duplicate autosave tests; this local run used EF InMemory and worker tests mock Gemini HTTP |
-| PostgreSQL CI path | Configured, not yet executed remotely | CI starts PostgreSQL 17 to match the source project; API test factories use isolated schemas and apply EF migrations before requests |
-| .NET solution Release build | Passed | API and worker compile; no Docker image build |
-| EF migration review | Idempotent SQL script generated (26,371 bytes); no pending model changes | No PostgreSQL execution or rollback rehearsal |
+| Frontend Vitest | 165 passed, 24 skipped; 33 files passed, 2 skipped | GitHub Actions run #152, source app only; nested user copy excluded |
+| TypeScript `tsc -b` | Passed | GitHub Actions run #152; no browser E2E |
+| ESLint `eslint src` | Passed | GitHub Actions run #152 |
+| Vite production build | Passed | GitHub Actions run #152; static bundle, no production env values |
+| .NET API integration tests | 17 passed against PostgreSQL 17 | GitHub Actions run #152; ephemeral service and isolated per-test schemas, not the intended staging/production database |
+| .NET worker tests | 6 passed | GitHub Actions run #152; Gemini HTTP is mocked |
+| .NET solution Release build | Passed | GitHub Actions run #152; API and worker compile; no Docker image build |
+| PostgreSQL CI path | Passed remotely | Run #152 starts PostgreSQL 17 and applies EF migrations in isolated schemas; no target-environment migration or rollback rehearsal |
+| EF migration review | Idempotent SQL script generated (26,371 bytes); no pending model changes | CI migration execution passed on ephemeral PostgreSQL; deployment script has not run against a target database and no rollback rehearsal exists |
 | NuGet vulnerable package audit | No vulnerable packages reported | Current configured NuGet advisory sources |
-| npm dependency audit | Not run | npm CLI is not installed/on PATH in this environment; must be run in CI or a Node/npm-enabled release environment |
+| npm dependency audit | Passed; 0 vulnerabilities reported | Local npm 11 audit against the checked-in lockfile; CI audit gate added and will be confirmed by the next workflow run |
 
-No GitHub Actions run from the current revision was verified. No deployed URL or runtime smoke test exists.
+GitHub Actions run [#152](https://github.com/BaoAnh109/Qizzone/actions/runs/44088444300) passed on implementation revision `7d208740fdd0c8ea11951e520185f74dc28b8ab0`. The new frontend audit gate awaits its first CI run. No deployed URL or runtime smoke test exists.
 
 ## Live source data evidence
 
@@ -47,7 +48,7 @@ Security metadata review found RLS enabled across the business tables, with no d
 | Feature | **FAIL** | Autosave local outbox and API idempotency are implemented and unit/API-tested; uploads/storage, teacher reports/classes, full API parity and Supabase runtime migration remain |
 | Data | **FAIL** | Production inventory/export/import, UID mapping, reconciliation, PostgreSQL rehearsal and restore |
 | Security | **PARTIAL** | API enforces teacher ownership, image signature/size, quota and idempotency; no malware scanning, PostgreSQL IDOR/concurrency suite, external review or complete secret-rotation evidence |
-| Quality | **FAIL** | Local tests/build pass; the 100-request submit race ran against EF InMemory with an in-process gate; PostgreSQL CI is configured but has no verified remote run; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
+| Quality | **FAIL** | Frontend CI passed (165 tests, 24 skipped), and 17 API tests passed on ephemeral PostgreSQL 17 plus 6 worker tests with mocked Gemini in run #152; the 100-request submit race still ran against EF InMemory with an in-process gate; no E2E, k6, fault/restart, real browser multi-tab/device autosave, IndexedDB quota test or production-like test report |
 | Operations | **FAIL** | No staging, cost/SLO/RPO/RTO evidence, backup restore, alerts/runbooks, rollback, release workflow or production-capable hosting. The owner has authorized self-review/deployment, but no production resources or secrets exist to execute a release. |
 
 ## Hosting decision

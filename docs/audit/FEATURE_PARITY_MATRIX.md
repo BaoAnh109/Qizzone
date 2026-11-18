@@ -3,7 +3,7 @@
 **Ngày audit:** 2026-11-17
 **Nhánh:** `devolop/AIV3`
 
-Trạng thái dưới đây phân biệt code/API test với nghiệm thu production. API tests hiện dùng EF InMemory; chưa có PostgreSQL integration hoặc E2E ở staging.
+Trạng thái dưới đây phân biệt code/API test với nghiệm thu production. GitHub Actions run [#152](https://github.com/BaoAnh109/Qizzone/actions/runs/44088444300) đã chạy 17 API tests trên PostgreSQL 17 ephemeral với schema riêng theo test; chưa có staging integration hoặc browser E2E.
 
 | Feature | V1 hiện có | API mới trên nhánh hiện tại | Trạng thái / còn thiếu |
 |---|---|---|---|
@@ -24,10 +24,11 @@ Trạng thái dưới đây phân biệt code/API test với nghiệm thu produc
 | Legacy browser data | `legacyMigrationService` vào Supabase | Có bảng checkpoint schema | Chưa có importer destination PostgreSQL, migration CLI/job hoặc đối soát |
 | Deploy & operations | Vercel frontend/Supabase backend | API Dockerfile và CI validation | Không có staging deployment, deploy workflow, observability/SLO/backup/restore/cutover |
 
-## Chứng cứ kiểm thử local
+## Chứng cứ kiểm thử
 
-- Frontend source tests: 181 passed, 24 skipped (36 files passed, 2 skipped); typecheck, lint và build đạt.
-- Backend: 17 WebApplicationFactory API tests passed with EF InMemory; 6 Gemini worker client tests passed with mocked HTTP.
-- Solution Release build/tests, EF model check and idempotent migration SQL generation passed (26,371 bytes). The local API suite uses EF InMemory; CI is now configured to start PostgreSQL 17, apply migrations in isolated per-test schemas and run the API suite, but no remote run has verified that path yet. The 100-request local submit test uses an in-process attempt gate, not a PostgreSQL/multi-instance race test.
+- Frontend CI: 165 passed, 24 skipped (33 files passed, 2 skipped); typecheck, lint and production build passed in run #152.
+- Backend CI: 17 WebApplicationFactory API tests passed against ephemeral PostgreSQL 17; 6 Gemini worker client tests passed with mocked HTTP.
+- Solution Release build/tests, EF model check and idempotent migration SQL generation passed (26,371 bytes). Run #152 applies migrations in isolated per-test PostgreSQL schemas. The 100-request submit test still uses an in-process attempt gate, not a PostgreSQL/multi-instance race test.
 - NuGet advisory audit: không phát hiện package có lỗ hổng theo nguồn hiện tại.
-- Chưa có trạng thái `PASS` cho E2E, PostgreSQL, security review, load/race, migration rehearsal, restore hoặc production deploy.
+- npm 11 audit against the checked-in lockfile: 0 vulnerabilities reported; an `npm audit --audit-level=high` CI gate has been added and awaits its next run.
+- Chưa có trạng thái `PASS` cho E2E, PostgreSQL multi-instance race/load, security review, target migration rehearsal, restore hoặc production deploy.

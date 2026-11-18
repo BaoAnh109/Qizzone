@@ -18,7 +18,7 @@ Frontend vẫn là React + TypeScript + Vite, Firebase Authentication và Supaba
 | Web | React 19, TypeScript, Vite, Tailwind; UI student/teacher/admin và bộ parser tài liệu phía trình duyệt |
 | Đăng nhập | Firebase Auth phía client; API mới xác minh Firebase ID token qua Firebase Admin và yêu cầu email đã xác minh cho endpoint nghiệp vụ |
 | Backend mới | ASP.NET Core 10 API, minimal endpoints, policy authorization, ProblemDetails, health live/ready, OpenAPI Development-only |
-| PostgreSQL mới | EF Core/Npgsql entity model và migrations cho profile, quiz, answer keys, exam, practice, audit, AI jobs/outbox; chưa apply/rehearse trên PostgreSQL thật |
+| PostgreSQL mới | EF Core/Npgsql entity model và migrations cho profile, quiz, answer keys, exam, practice, audit, AI jobs/outbox; migrations đã chạy trên PostgreSQL 17 ephemeral trong CI, chưa rehearsal với staging/production target |
 | Endpoint API | Profile/role/admin, quiz CRUD/assignment/status, exam start/autosave/submit/student and owned-quiz results, practice start/check/finish/retry/history, durable AI import jobs |
 | Frontend migration | `firebaseAuthService`, `adminService`, `quizService`, `examSessionService`, `practiceService` có API branch và Supabase fallback |
 | Dịch vụ chưa chuyển | Upload/avatar/media, teacher reports/analytics, một số account settings và legacy migration vẫn phụ thuộc Supabase Edge/Storage/RPC; Gemini API branch có worker nhưng chưa cutover |
@@ -43,17 +43,17 @@ Không được coi việc bật API base URL là cutover hoàn chỉnh: một p
 - Reports/analytics cho giáo viên, lớp/phòng thi, exports và đầy đủ contract parity.
 - Browser E2E cho IndexedDB outbox/ACK/replay, Web Lock thực giữa các tab, conflict nhiều thiết bị, quota failure và mạng chập chờn; local tests đã kiểm tra fail-closed lock path nhưng chưa chạy browser/PostgreSQL thật.
 - Import dữ liệu Supabase/Storage/Firebase mapping, kiểm tra legacy localStorage và đối soát counts/checksums.
-- PostgreSQL migration/API integration: CI đã cấu hình PostgreSQL 17 service (khớp major version Supabase source) và schema riêng theo test factory, nhưng chưa có remote workflow run để xác nhận; vẫn thiếu backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
+- PostgreSQL migration/API integration: GitHub Actions run [#152](https://github.com/BaoAnh109/Qizzone/actions/runs/44088444300) đã pass trên PostgreSQL 17 ephemeral (khớp major version Supabase source) với schema riêng theo test factory; vẫn thiếu target staging/production migration, backup ngoài môi trường, restore drill, RPO/RTO và rollback test.
 - Docker/Compose execution, ARM64 build evidence, Northflank staging, Vercel Preview tích hợp API.
 - E2E, concurrency/load/chaos/security tests và SLO/cost evidence.
 
-## Kiểm tra local
+## Kiểm thử và kiểm tra
 
-- Frontend source `src`: **181 passed**, **24 skipped**, 0 failed; 36 test files passed, 2 skipped.
-- Backend `dotnet test --configuration Release`: **17 API + 6 worker tests** passed local, gồm test 100 submit đồng thời trên EF InMemory; Gemini HTTP được mock. Workflow CI đã cấu hình PostgreSQL 17 + per-factory schema migration, chưa có remote run.
-- API/worker Release build đạt; idempotent migration SQL 26,371 bytes đã sinh tại `%TEMP%`, chưa áp dụng PostgreSQL.
+- Frontend GitHub Actions run #152: **165 passed**, **24 skipped**, 0 failed; 33 test files passed, 2 skipped; typecheck, lint and Vite build passed.
+- Backend GitHub Actions run #152: **17 API tests passed on PostgreSQL 17 ephemeral + 6 worker tests** with mocked Gemini HTTP; local 100-submit test uses EF InMemory. This does not validate migration against the intended environment or a multi-instance race.
+- API/worker Release build đạt; idempotent migration SQL 26,371 bytes đã sinh tại `%TEMP%`; EF migrations ran in ephemeral PostgreSQL in CI, but the generated deployment script has not been applied to a target database.
 - `tsc -b`, ESLint `src`, Vite production build: đạt.
-- NuGet vulnerability audit: không phát hiện vulnerable packages theo nguồn advisory hiện tại.
+- NuGet vulnerability audit in CI: không phát hiện vulnerable packages theo nguồn advisory hiện tại. npm 11 audit against the checked-in lockfile reported 0 vulnerabilities; a CI audit step has been added and awaits its next run.
 - Test 100 submit song song chỉ xác nhận serialization trong một API process với EF InMemory; chưa chứng minh nhiều instance trên PostgreSQL. Các kết quả local không thay thế PostgreSQL integration, staging, E2E, tải, restore hay deploy evidence.
 
 ## Deploy hiện tại
