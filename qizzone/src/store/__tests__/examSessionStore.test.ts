@@ -51,6 +51,15 @@ describe('cloud exam session store', () => {
     localDrafts.clear();
     vi.stubGlobal('indexedDB', fakeIndexedDB);
     vi.stubGlobal('window', { localStorage: localStorageMock });
+    vi.stubGlobal('navigator', {
+      locks: {
+        request: async (
+          _name: string,
+          _options: unknown,
+          callback: (lock: { name: string }) => Promise<unknown> | unknown,
+        ) => callback({ name: 'qizzone-test-lock' }),
+      },
+    });
     await clearExamAutosave(session.id);
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     useExamSessionStore.getState().reset();
