@@ -244,9 +244,10 @@ public static class ExamEndpoints
         AutosaveRequest request,
         ClaimsPrincipal principal,
         QizzoneDbContext db,
+        ExamAttemptGateStore gateStore,
         CancellationToken cancellationToken)
     {
-        using var attemptGate = await AcquireAttemptGateAsync(id, cancellationToken);
+        using var attemptGate = await gateStore.AcquireAsync(id, cancellationToken);
         return await AutosaveLockedAsync(id, httpRequest, request, principal, db, cancellationToken);
     }
 
@@ -610,6 +611,7 @@ public static class ExamEndpoints
     private static async Task<IResult> FinalizeExpiredAsync(
         ClaimsPrincipal principal,
         QizzoneDbContext db,
+        ExamAttemptGateStore gateStore,
         CancellationToken cancellationToken)
     {
         var uid = principal.FindFirst("firebase:uid")!.Value;
@@ -620,7 +622,7 @@ public static class ExamEndpoints
             .ToListAsync(cancellationToken);
         foreach (var attemptId in expiredIds)
         {
-            await SubmitAsync(attemptId, principal, db, cancellationToken);
+            await SubmitAsync(attemptId, principal, db, gateStore, cancellationToken);
         }
 
         return Results.Ok(new { finalized = expiredIds.Count });
