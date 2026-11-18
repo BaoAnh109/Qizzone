@@ -737,6 +737,7 @@ internal sealed class QizzoneApiFactory(bool configureBootstrapAdmin = false) : 
                 var schemaConnectionString = new NpgsqlConnectionStringBuilder(_postgresConnectionString)
                 {
                     SearchPath = _postgresSchema,
+                    MaxPoolSize = 32,
                 }.ConnectionString;
                 services.AddDbContext<QizzoneDbContext>(options => options.UseNpgsql(schemaConnectionString));
                 services.AddHostedService<PostgresTestDatabaseMigrator>();
