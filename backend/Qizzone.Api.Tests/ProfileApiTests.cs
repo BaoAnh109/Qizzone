@@ -571,7 +571,7 @@ public sealed class ProfileApiTests
         }
 
         using var otherStudentClient = factory.CreateClient();
-        otherStudentClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "valid-test-token");
+        otherStudentClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "other-student-test-token");
         Assert.Equal(HttpStatusCode.OK, (await otherStudentClient.GetAsync("/api/v1/me")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
             (await otherStudentClient.GetAsync($"/api/v1/practice-sessions/{sessionId}")).StatusCode);
@@ -823,6 +823,15 @@ internal sealed class TestFirebaseTokenVerifier : IFirebaseTokenVerifier
                 "student-1",
                 "student@example.test",
                 "Test Student",
+                EmailVerified: true));
+        }
+
+        if (idToken == "other-student-test-token")
+        {
+            return Task.FromResult(new FirebaseIdentity(
+                "other-student-1",
+                "other-student@example.test",
+                "Other Test Student",
                 EmailVerified: true));
         }
 
