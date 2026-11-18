@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using Qizzone.Api.Data;
 using Qizzone.Api.Features;
 
 namespace Qizzone.Worker;
@@ -24,7 +25,7 @@ public sealed class AiImportWorker(
             throw new InvalidOperationException("ConnectionStrings:Qizzone is required for the AI worker.");
         }
 
-        await using var dataSource = NpgsqlDataSource.Create(_connectionString);
+        await using var dataSource = NpgsqlDataSource.Create(PostgresConnectionStringNormalizer.Normalize(_connectionString));
         var nextMutationCleanup = DateTimeOffset.MinValue;
         while (!stoppingToken.IsCancellationRequested)
         {

@@ -15,7 +15,7 @@ public sealed class QizzoneDbContextFactory : IDesignTimeDbContextFactory<Qizzon
         var options = new DbContextOptionsBuilder<QizzoneDbContext>()
             .UseNpgsql(string.IsNullOrWhiteSpace(connectionString)
                 ? "Host=localhost;Database=qizzone;Username=qizzone;Password=design-time-only"
-                : connectionString)
+                : PostgresConnectionStringNormalizer.Normalize(connectionString))
             .Options;
 
         return new QizzoneDbContext(options);

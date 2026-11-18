@@ -10,6 +10,10 @@ var connectionStringFile = builder.Configuration["ConnectionStrings:QizzoneFile"
 var connectionString = !string.IsNullOrWhiteSpace(connectionStringFile)
     ? File.ReadAllText(connectionStringFile).Trim()
     : builder.Configuration.GetConnectionString("Qizzone");
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = PostgresConnectionStringNormalizer.Normalize(connectionString);
+}
 var firebaseProjectId = builder.Configuration["Firebase:ProjectId"] ?? builder.Configuration["GOOGLE_CLOUD_PROJECT"];
 var firebaseCredential = builder.Configuration["Firebase:ServiceAccountJson"] ??
     Environment.GetEnvironmentVariable("FIREBASE_SERVICE_ACCOUNT_JSON") ??
