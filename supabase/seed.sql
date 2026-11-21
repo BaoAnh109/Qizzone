@@ -1,23 +1,22 @@
--- Local/dev sample only. These Firebase UIDs are placeholders and must never be
--- treated as production identities. Replace them with local emulator users if needed.
-insert into public.profiles(firebase_uid,email,full_name,role) values
-  ('dev-firebase-teacher','teacher.dev@example.test','Giáo viên Dev','teacher'),
-  ('dev-firebase-student','student.dev@example.test','Học sinh Dev','student'),
-  ('dev-firebase-admin','admin.dev@example.test','Quản trị Dev','admin'),
-  ('dev-firebase-pending-teacher','pending.teacher.dev@example.test','Giáo viên chờ duyệt','teacher')
+-- Local/staging sample data only. Never apply to production.
+insert into public.profiles(id,firebase_uid,email,full_name,role) values
+  ('11111111-1111-4111-8111-111111111111','11111111-1111-4111-8111-111111111111','teacher.dev@example.test','Giáo viên Dev','teacher'),
+  ('22222222-2222-4222-8222-222222222222','22222222-2222-4222-8222-222222222222','student.dev@example.test','Học sinh Dev','student'),
+  ('33333333-3333-4333-8333-333333333333','33333333-3333-4333-8333-333333333333','admin.dev@example.test','Quản trị Dev','admin'),
+  ('44444444-4444-4444-8444-444444444444','44444444-4444-4444-8444-444444444444','pending.teacher.dev@example.test','Giáo viên chờ duyệt','teacher')
 on conflict do nothing;
 
 update public.profiles
 set approval_status = 'pending', approval_requested_at = now()
-where firebase_uid = 'dev-firebase-pending-teacher';
+where firebase_uid = '44444444-4444-4444-8444-444444444444';
 
 insert into public.quizzes(id,teacher_uid,title,subject,description,code,status,settings,legacy_id)
 values (
   '10000000-0000-4000-8000-000000000001',
-  'dev-firebase-teacher',
-  'Đề mẫu Supabase',
+  '11111111-1111-4111-8111-111111111111',
+  'Đề mẫu Supabase V3',
   'Toán học',
-  'Dữ liệu mẫu chỉ dành cho môi trường local/dev.',
+  'Dữ liệu mẫu chỉ dành cho môi trường local/staging.',
   'DEV001',
   'published',
   '{"durationMinutes":15,"shuffleQuestions":true,"shuffleOptions":true,"allowReview":true,"maxAttempts":2,"passPercentage":50}'::jsonb,

@@ -1,0 +1,547 @@
+import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  UploadCloud,
+  FileText,
+  FileCode,
+  Image as ImageIcon,
+  Sparkles,
+  ClipboardPaste,
+  ArrowRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useToast } from "@/hooks/useToast";
+import { parseDocxFile } from "@/utils/parsers/docxParser";
+import { attachPdfVisualMediaToQuestions, parsePdfFile } from "@/utils/parsers/pdfParser";
+import { attachDocxImagesToQuestions, attachOcrImageMediaToQuestions } from "@/utils/parsers/questionMedia";
+import { recognizeOcrPages } from "@/utils/parsers/ocrService";
+import { parseRawExamText } from "@/utils/parsers/ruleExtractor";
+import { attachQuestionSourceReferences } from "@/utils/parsers/sourceReference";
+import {
+  extractQuizWithAI,
+  MAX_AI_FALLBACK_SOURCE_CHARS,
+  mergeExtractionResults,
+  shouldUseAIExtractionFallback,
+} from "@/services/aiExtractionService";
+import { uploadMaterialToR2 } from "@/services/materialUploadService";
+import { useExtractionStore } from "@/store/extractionStore";
+import type { DocumentIR, ExtractionResult } from "@/types/extractor";
+import {
+  MAX_DOCUMENT_IMPORT_BYTES,
+  validateImportFile,
+  validateImportFileSignature,
+  validatePastedTextSize,
+  validateR2MaterialUpload,
+} from "@/utils/fileImportValidation";
+
+interface FileDropzoneProps {
+  onSuccess?: () => void;
+}
+
+export function FileDropzone({ onSuccess }: FileDropzoneProps) {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
+  const {
+    setDocument,
+    setExtractionResult,
+    isProcessing,
+    processProgress,
+    setIsProcessing,
+  } = useExtractionStore();
+
+  const [activeTab, setActiveTab] = useState<"file" | "paste">("file");
+  const [pastedText, setPastedText] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const maybeUseAiFallback = async (
+    file: File,
+    sourceText: string,
+    nativeResult: ExtractionResult,
+    imageBase64?: string,
+  ) => {
+    if (!shouldUseAIExtractionFallback(nativeResult) || !sourceText.trim()) return nativeResult;
+    if (sourceText.length > MAX_AI_FALLBACK_SOURCE_CHARS) {
+      return {
+        ...nativeResult,
+        qualityFlags: [...new Set([...(nativeResult.qualityFlags || []), "ai_fallback_skipped_large_document"])],
+        warningsCount: nativeResult.warningsCount + 1,
+      };
+    }
+    try {
+      const fallback = await extractQuizWithAI({ file, text: sourceText, imageBase64 });
+      return mergeExtractionResults(nativeResult, fallback);
+    } catch {
+      return nativeResult;
+    }
+  };
+
+  const readDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        typeof reader.result === "string"
+          ? resolve(reader.result)
+          : reject(new Error("Không đọc được tệp ảnh."));
+      reader.onerror = () => reject(new Error("Không đọc được tệp ảnh."));
+      reader.readAsDataURL(file);
+    });
+
+  const handleFinishExtraction = () => {
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      navigate("/teacher/extract-quiz");
+    }
+  };
+
+  const processFile = async (file: File) => {
+    const normalizedName = file.name.toLowerCase();
+    const isDocx = normalizedName.endsWith(".docx");
+    const isPdf = normalizedName.endsWith(".pdf");
+    const isImage = /\.(png|jpe?g|webp)$/.test(normalizedName);
+
+    const isLargeDocument = (isDocx || isPdf) && file.size > MAX_DOCUMENT_IMPORT_BYTES;
+    const validationError = isLargeDocument ? validateR2MaterialUpload(file) : validateImportFile(file);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    const signatureError = await validateImportFileSignature(file);
+    if (signatureError) {
+      toast.error(signatureError);
+      return;
+    }
+
+    setIsProcessing(true, 20);
+
+    try {
+      if (isLargeDocument) {
+        setIsProcessing(true, 35);
+        const uploaded = await uploadMaterialToR2(file, {
+          onProgress: (p) => setIsProcessing(true, 35 + Math.round(p.percent * 0.35)),
+        });
+        if (isDocx) {
+          const { rawHtml, rawText, result: nativeResult, documentIR, extractedImages } = await parseDocxFile(file);
+          const referencedResult = attachQuestionSourceReferences(
+            await maybeUseAiFallback(file, rawText, nativeResult),
+            documentIR,
+          );
+          const result = await attachDocxImagesToQuestions(referencedResult, extractedImages || {});
+          setDocument({
+            id: `doc-${Date.now().toString(36)}`,
+            file,
+            fileName: file.name,
+            fileType: "docx",
+            fileSize: file.size,
+            rawHtml,
+            rawText,
+            documentIR,
+            uploadedAt: new Date().toISOString(),
+          });
+          setIsProcessing(true, 100);
+          setExtractionResult(result);
+          toast.success(`Đã tải tệp lớn lên R2 và bóc tách ${result.totalQuestionsDetected} câu từ file Word!`);
+          handleFinishExtraction();
+          return;
+        }
+        const { rawText, totalPages, result: nativeResult, pdfDoc, documentIR, ocrPageCount } = await parsePdfFile(
+          file,
+          (percent) => setIsProcessing(true, 70 + Math.round(percent * 0.2)),
+        );
+        const result = nativeResult.questions.length
+          ? await attachPdfVisualMediaToQuestions(
+              attachQuestionSourceReferences(await maybeUseAiFallback(file, rawText, nativeResult), documentIR),
+              pdfDoc,
+              documentIR,
+            )
+          : await extractQuizWithAI({ file, materialId: uploaded.materialId, text: rawText });
+        setDocument({
+          id: `doc-${Date.now().toString(36)}`,
+          file,
+          fileName: file.name,
+          fileType: "pdf",
+          fileSize: file.size,
+          rawText,
+          totalPages,
+          pdfDoc,
+          documentIR,
+          uploadedAt: new Date().toISOString(),
+        });
+        setIsProcessing(true, 100);
+        setExtractionResult(result);
+        toast.success(
+          `Đã tải tệp lớn lên R2 và bóc tách ${result.totalQuestionsDetected} câu từ PDF (${totalPages} trang${ocrPageCount ? `, OCR ${ocrPageCount} trang` : ""}).`,
+        );
+        handleFinishExtraction();
+        return;
+      }
+
+      if (isDocx) {
+        setIsProcessing(true, 50);
+        const { rawHtml, rawText, result: nativeResult, documentIR, extractedImages } = await parseDocxFile(file);
+        const referencedResult = attachQuestionSourceReferences(
+          await maybeUseAiFallback(file, rawText, nativeResult),
+          documentIR,
+        );
+        const result = await attachDocxImagesToQuestions(referencedResult, extractedImages || {});
+        setDocument({
+          id: `doc-${Date.now().toString(36)}`,
+          file,
+          fileName: file.name,
+          fileType: "docx",
+          fileSize: file.size,
+          rawHtml,
+          rawText,
+          documentIR,
+          uploadedAt: new Date().toISOString(),
+        });
+        setIsProcessing(true, 100);
+        setExtractionResult(result);
+        toast.success(
+          `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ file Word!`
+        );
+        handleFinishExtraction();
+      } else if (isPdf) {
+        setIsProcessing(true, 50);
+        const { rawText, totalPages, result: nativeResult, pdfDoc, documentIR, ocrPageCount } = await parsePdfFile(
+          file,
+          (percent) => setIsProcessing(true, 50 + Math.round(percent * 0.35)),
+        );
+        const referencedResult = attachQuestionSourceReferences(
+          await maybeUseAiFallback(file, rawText, nativeResult),
+          documentIR,
+        );
+        const result = await attachPdfVisualMediaToQuestions(referencedResult, pdfDoc, documentIR);
+        setDocument({
+          id: `doc-${Date.now().toString(36)}`,
+          file,
+          fileName: file.name,
+          fileType: "pdf",
+          fileSize: file.size,
+          rawText,
+          totalPages,
+          pdfDoc,
+          documentIR,
+          uploadedAt: new Date().toISOString(),
+        });
+        setIsProcessing(true, 100);
+        setExtractionResult(result);
+        toast.success(
+          `Đã bóc tách ${result.totalQuestionsDetected} câu từ PDF (${totalPages} trang${ocrPageCount ? `, OCR ${ocrPageCount} trang` : ""}). Kiểm tra kết quả trước khi lưu.`
+        );
+        handleFinishExtraction();
+      } else if (isImage) {
+        setIsProcessing(true, 40);
+        const imageBase64 = await readDataUrl(file);
+        const [ocr] = await recognizeOcrPages([{ pageNumber: 1, image: file }], (percent) => {
+          setIsProcessing(true, 40 + Math.round(percent * 0.4));
+        });
+        const nativeResult = parseRawExamText(ocr?.text || "", { fileName: file.name, fileType: "image" });
+        nativeResult.fileSize = file.size;
+        nativeResult.extractionMethod = "ocr";
+        nativeResult.qualityFlags = [
+          ...new Set([
+            ...(nativeResult.qualityFlags || []),
+            ...(ocr && ocr.confidence < 0.72 ? ["ocr_low_confidence"] : []),
+          ]),
+        ];
+        const result = await maybeUseAiFallback(file, ocr?.text || "", nativeResult, imageBase64);
+        let imageWidth: number | undefined;
+        let imageHeight: number | undefined;
+        try {
+          const bitmap = await createImageBitmap(file);
+          imageWidth = bitmap.width;
+          imageHeight = bitmap.height;
+          bitmap.close();
+        } catch {
+          // OCR blocks remain usable for review even when image dimensions are unavailable.
+        }
+        const documentIR: DocumentIR = {
+          schemaVersion: "2.0",
+          sourceFormat: "image",
+          parserVersion: "tesseract-browser-v1",
+          pages: [
+            {
+              pageNumber: 1,
+              width: imageWidth,
+              height: imageHeight,
+              blocks: (ocr?.regions || []).map((region, index) => ({
+                id: "image_ocr_" + index,
+                type: "text_span",
+                text: region.text,
+                normalizedText: region.text.normalize("NFKC"),
+                bbox: region.bbox,
+                readingOrder: index,
+                sourceRef: { page: 1 },
+              })),
+            },
+          ],
+          warnings: ocr && ocr.confidence < 0.72 ? ["ocr_low_confidence"] : [],
+        };
+        const linkedResult = await attachOcrImageMediaToQuestions(
+          attachQuestionSourceReferences(result, documentIR),
+          imageBase64,
+          documentIR,
+        );
+        setDocument({
+          id: `doc-${Date.now().toString(36)}`,
+          file,
+          fileName: file.name,
+          fileType: "image",
+          fileSize: file.size,
+          previewUrl: imageBase64,
+          imageBase64,
+          rawText: ocr?.text || "",
+          documentIR,
+          uploadedAt: new Date().toISOString(),
+        });
+        setIsProcessing(true, 100);
+        setExtractionResult(linkedResult);
+        toast.success(`Đã OCR ảnh và nhận diện ${linkedResult.totalQuestionsDetected} câu. Kiểm tra nội dung và đáp án trước khi lưu.`);
+        handleFinishExtraction();
+      } else {
+        const text = await file.text();
+        const result = await extractQuizWithAI({
+          file,
+          text,
+        });
+        setDocument({
+          id: `doc-${Date.now().toString(36)}`,
+          file,
+          fileName: file.name,
+          fileType: "text",
+          fileSize: file.size,
+          rawText: text,
+          uploadedAt: new Date().toISOString(),
+        });
+        setIsProcessing(true, 100);
+        setExtractionResult(result);
+        toast.success(
+          `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ tệp văn bản!`
+        );
+        handleFinishExtraction();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể phân tích tệp đề thi. Vui lòng kiểm tra lại cấu trúc file!");
+    } finally {
+      setIsProcessing(false, 0);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handlePasteProcess = async () => {
+    if (!pastedText.trim()) {
+      toast.error("Vui lòng dán nội dung văn bản đề thi!");
+      return;
+    }
+
+    const validationError = validatePastedTextSize(pastedText);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    setIsProcessing(true, 30);
+    try {
+      const result = await extractQuizWithAI({
+        text: pastedText,
+      });
+
+      setDocument({
+        id: `doc-${Date.now().toString(36)}`,
+        file: new File([pastedText], "de-thi-nhap-van-ban.txt", { type: "text/plain" }),
+        fileName: "Đề thi nhập văn bản trực tiếp",
+        fileType: "text",
+        fileSize: new Blob([pastedText]).size,
+        rawText: pastedText,
+        uploadedAt: new Date().toISOString(),
+      });
+
+      setIsProcessing(true, 100);
+      setExtractionResult(result);
+      toast.success(
+        `Đã bóc tách thành công ${result.totalQuestionsDetected} câu hỏi từ văn bản!`
+      );
+      handleFinishExtraction();
+    } catch {
+      toast.error("Không thể bóc tách nội dung văn bản. Vui lòng thử lại!");
+    } finally {
+      setIsProcessing(false, 0);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full space-y-3">
+      {/* 2 Tabs Switcher: Thả file & Nhập text */}
+      <div className="flex items-center gap-1 rounded-xl theme-surface-muted p-1 border theme-border">
+        <button
+          type="button"
+          onClick={() => setActiveTab("file")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeTab === "file"
+              ? "theme-surface text-teal-700 shadow-2xs"
+              : "theme-text-muted theme-hover-text-primary"
+          }`}
+        >
+          <UploadCloud className="h-3.5 w-3.5" />
+          <span>Tải tệp đề thi (Word / PDF / Ảnh)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("paste")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeTab === "paste"
+              ? "theme-surface text-teal-700 shadow-2xs"
+              : "theme-text-muted theme-hover-text-primary"
+          }`}
+        >
+          <ClipboardPaste className="h-3.5 w-3.5" />
+          <span>Dán văn bản thô / TXT</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Kéo thả tệp file (Chiều cao tối ưu, chừa chỗ cho loading) */}
+      {activeTab === "file" ? (
+        <Card
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+          className={`flex-1 flex flex-col justify-center items-center border-2 border-dashed p-5 sm:p-6 text-center transition cursor-pointer min-h-[295px] ${
+            isDragOver
+              ? "border-teal-600 bg-teal-50/50 scale-[1.01]"
+              : "theme-border-strong hover:border-teal-400 theme-surface-muted"
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".docx,.pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+              }
+            }}
+          />
+
+          <div className="max-w-md mx-auto space-y-3">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-700 shadow-xs">
+              <UploadCloud className="h-7 w-7 animate-pulse" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base sm:text-lg font-extrabold theme-text-primary tracking-tight">
+                Kéo thả file đề thi hoặc Nhấn để tải lên
+              </h3>
+              <p className="text-xs theme-text-muted">
+                Hỗ trợ Word (<strong className="theme-text-secondary">.docx</strong>), PDF (<strong className="theme-text-secondary">.pdf</strong>), ảnh và văn bản. Tối đa 25 MB cho Word/PDF, 5 MB cho ảnh/TXT/MD.
+              </p>
+            </div>
+
+            {/* Formats Pills */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-[11px] font-semibold theme-text-secondary">
+              <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-blue-700 border border-blue-200/60">
+                <FileText className="h-3 w-3" /> Word .docx
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-rose-700 border border-rose-200/60">
+                <FileCode className="h-3 w-3" /> PDF thật
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200/60">
+                <ImageIcon className="h-3 w-3" /> Ảnh chụp (AI Vision)
+              </span>
+            </div>
+
+            <div className="pt-1.5">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+                className="shadow-sm font-bold pointer-events-none"
+              >
+                Chọn tệp từ máy tính
+              </Button>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        /* Tab 2: Dán văn bản thô / TXT */
+        <Card className="flex-1 flex flex-col justify-between p-4 sm:p-5 theme-surface theme-border shadow-xs min-h-[295px] space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 theme-text-primary font-bold">
+              <ClipboardPaste className="h-4 w-4 text-teal-700" />
+              <span>Dán toàn bộ nội dung đề thi vào khung:</span>
+            </div>
+            <span className="text-[11px] theme-text-muted">Hỗ trợ KaTeX $...$ · Tối đa 5 MB</span>
+          </div>
+
+          <textarea
+            value={pastedText}
+            onChange={(e) => setPastedText(e.target.value)}
+            placeholder={`Câu 1: Giá trị của \\lim_{x \\to 1} (2x^2 - 3x + 1) bằng:
+A. 0
+B. 1
+C. -1
+D. 2
+Lời giải: Thay x = 1 vào biểu thức ta được 2(1) - 3(1) + 1 = 0. Chọn A.
+
+BẢNG ĐÁP ÁN:
+1.A  2.B`}
+            className="w-full flex-1 min-h-[155px] rounded-xl border theme-border-strong p-3 text-xs font-mono leading-relaxed theme-text-primary focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-hidden resize-none"
+          />
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] theme-text-muted">
+              Độ dài: <strong>{pastedText.length} ký tự</strong>
+            </span>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePasteProcess}
+              disabled={!pastedText.trim() || isProcessing}
+              leftIcon={<Sparkles className="h-3.5 w-3.5" />}
+              rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
+              className="font-bold bg-teal-700 hover:bg-teal-800 shadow-sm"
+            >
+              Bóc tách đề thi ngay
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Progress Loading Bar (Hiển thị ngay dưới card, bố cục vừa vặn gọn gàng) */}
+      {isProcessing && (
+        <Card className="p-3 bg-teal-50 border-teal-200 space-y-1.5 animate-pulse">
+          <div className="flex items-center justify-between text-xs font-bold text-teal-900">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-teal-700 animate-spin" />
+              <span>Hệ thống đang bóc tách câu hỏi, công thức Toán LaTeX và nhận diện đáp án...</span>
+            </span>
+            <span>{processProgress}%</span>
+          </div>
+          <div className="w-full bg-teal-200 rounded-full h-1.5 overflow-hidden">
+            <div
+              className="bg-teal-600 h-1.5 rounded-full transition-all duration-300"
+              style={{ width: `${processProgress}%` }}
+            />
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+export default FileDropzone;

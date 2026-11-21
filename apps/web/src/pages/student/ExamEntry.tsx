@@ -1,0 +1,311 @@
+import { useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  BookOpen,
+  Clock,
+  Award,
+  ArrowLeft,
+  Play,
+  ShieldCheck,
+  AlertCircle,
+  UserCheck,
+  RotateCcw,
+  Eye,
+} from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { useQuizStore } from "@/store/quizStore";
+import { useExamSessionStore } from "@/store/examSessionStore";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { useToast } from "@/hooks/useToast";
+
+function cleanStudentName(rawName?: string): string {
+  if (!rawName) return "Học sinh";
+  return rawName.replace(/^(Em|Học sinh|Thầy|Cô)\s+/i, "").trim() || rawName;
+}
+
+export function ExamEntry() {
+  const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
+  const retryMode = searchParams.get("mode");
+  const sourceResultId = searchParams.get("sourceResultId");
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
+  const getQuizById = useQuizStore((state) => state.getQuizById);
+  const { initSession, getResultsByStudent } = useExamSessionStore();
+  const toast = useToast();
+
+  const quiz = quizId ? getQuizById(quizId) : undefined;
+
+  const [studentName, setStudentName] = useState(() =>
+    cleanStudentName(user?.fullName || user?.name)
+  );
+
+  const studentResults = user ? getResultsByStudent(user.id) : [];
+  const pastSubmissions = quiz ? studentResults.filter((r) => r.quizId === quiz.id) : [];
+  const attemptsMade = pastSubmissions.length;
+  const maxAttempts = quiz?.settings.maxAttempts || 0; // 0 = unlimited
+  const isAttemptsExceeded = maxAttempts > 0 && attemptsMade >= maxAttempts;
+
+  if (!quiz) {
+    return (
+      <div className="max-w-md mx-auto my-12 text-center space-y-4">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+          <AlertCircle className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold theme-text-primary">
+          Không tìm thấy phòng thi
+        </h2>
+        <p className="text-xs theme-text-muted">
+          Mã phòng thi không tồn tại hoặc đã bị gỡ bỏ bởi giáo viên.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/student")}>
+          Quay lại sảnh chính
+        </Button>
+      </div>
+    );
+  }
+
+  if (quiz.status !== "published") {
+    return (
+      <div className="max-w-md mx-auto my-12 text-center space-y-4">
+        <div className="inline-flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+          <AlertCircle className="h-8 w-8" />
+        </div>
+        <h2 className="text-xl font-bold theme-text-primary">
+          Phòng thi chưa mở
+        </h2>
+        <p className="text-xs theme-text-muted">
+          Đề thi này đang ở trạng thái Bản nháp hoặc Đã đóng bởi Giáo viên.
+        </p>
+        <Button variant="outline" onClick={() => navigate("/student")}>
+          Quay lại sảnh chính
+        </Button>
+      </div>
+    );
+  }
+
+  const handleStartExam = async () => {
+    if (isAttemptsExceeded) {
+      toast.error(`Bạn đã hoàn thành đủ ${maxAttempts} lượt làm bài quy định`);
+      return;
+    }
+
+    if (!studentName.trim()) {
+      toast.error("Vui lòng nhập Họ và tên thí sinh");
+      return;
+    }
+
+    // Initialize or resume session
+    const studentClassVal = user?.studentClass || (user ? localStorage.getItem(`qizzone_student_class_${user.id}`) || "" : "");
+    try {
+      await initSession({
+        quiz,
+        studentId: user?.id || "guest-student",
+        studentName: studentName.trim(),
+        studentClass: studentClassVal || undefined,
+      });
+      toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
+      const targetUrl =
+        retryMode === "retry_incorrect" && sourceResultId
+          ? `/student/quiz/${quiz.id}?mode=retry_incorrect&sourceResultId=${sourceResultId}`
+          : `/student/quiz/${quiz.id}`;
+      navigate(targetUrl);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể bắt đầu bài thi.");
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 pb-16">
+      {/* Top Back Navigation */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => navigate("/student")}
+        leftIcon={<ArrowLeft className="h-4 w-4" />}
+      >
+        Quay lại Sảnh thi
+      </Button>
+
+      <Card className="overflow-hidden">
+        {/* Banner Header */}
+        <CardHeader className="theme-surface p-6 sm:p-8">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" size="sm">
+                {quiz.subject}
+              </Badge>
+              <Badge variant="success" size="sm" dot>
+                Phòng thi đang mở
+              </Badge>
+              {retryMode === "retry_incorrect" && (
+                <Badge variant="warning" size="sm">
+                  Chế độ làm lại câu sai
+                </Badge>
+              )}
+            </div>
+            <CardTitle className="text-2xl font-semibold sm:text-3xl">
+              {quiz.title}
+            </CardTitle>
+            <p className="text-xs theme-text-muted sm:text-sm">
+              Giáo viên tạo đề: {quiz.teacherName || "Thầy Cô"} · Mã phòng:{" "}
+              <strong className="font-mono font-semibold theme-text-primary">{quiz.code}</strong>
+            </p>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6 sm:p-8 space-y-6">
+          {/* Metadata Highlights */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <Clock className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Thời gian</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
+                {quiz.settings.durationMinutes === 0
+                  ? "Vô thời hạn"
+                  : `${quiz.settings.durationMinutes} phút`}
+              </p>
+            </div>
+
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <BookOpen className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Số lượng câu</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
+                {quiz.totalQuestions} câu hỏi
+              </p>
+            </div>
+
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <RotateCcw className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Số lần làm</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
+                {maxAttempts === 0 ? "Vô hạn (∞)" : `${maxAttempts} lần`}
+              </p>
+            </div>
+
+            <div className="rounded-xl theme-surface-muted p-3 border theme-border">
+              <Award className="h-4 w-4 text-teal-700 mx-auto mb-1" />
+              <p className="text-xs theme-text-muted font-medium">Điểm đạt</p>
+              <p className="text-sm font-bold theme-text-primary font-mono mt-0.5">
+                {quiz.settings.passPercentage}%
+              </p>
+            </div>
+          </div>
+
+          {/* Attempts Exceeded Warning */}
+          {isAttemptsExceeded && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="font-bold text-sm text-amber-950">
+                  Đã hết lượt làm bài quy định
+                </h4>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Bạn đã thực hiện {attemptsMade}/{maxAttempts} lần làm bài cho đề thi này. Bạn không thể bắt đầu thêm lượt mới.
+                </p>
+                {pastSubmissions[0] && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 text-xs theme-surface"
+                    onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
+                    leftIcon={<Eye className="h-3.5 w-3.5" />}
+                  >
+                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(2)}đ)
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Rules & Regulations */}
+          <div className="space-y-2.5 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-xs text-blue-950">
+            <div className="flex items-center gap-1.5 font-bold text-teal-900">
+              <ShieldCheck className="h-4 w-4 text-blue-600" />
+              <span>Quy chế và hướng dẫn làm bài:</span>
+            </div>
+
+            <ol className="space-y-1.5 text-teal-900/90 pl-5 list-decimal font-normal leading-relaxed">
+              <li>
+                Hệ thống tự động lưu đáp án sau mỗi lần chọn, chống mất bài khi mất kết nối.
+              </li>
+              <li>
+                {quiz.settings.shuffleQuestions
+                  ? "Đề thi có bật tính năng đảo thứ tự câu hỏi ngẫu nhiên."
+                  : "Đề thi không bật tính năng đảo thứ tự câu hỏi ngẫu nhiên."}
+              </li>
+              <li>
+                {quiz.settings.durationMinutes === 0
+                  ? "Bài thi không giới hạn thời gian làm bài."
+                  : "Bài thi sẽ tự động nộp sau khi hết giờ."}
+              </li>
+              {quiz.description?.trim() && (
+                <li className="pt-0.5">
+                  <span className="font-semibold text-teal-950">Ghi chú từ giáo viên:</span>{" "}
+                  {quiz.description}
+                </li>
+              )}
+            </ol>
+          </div>
+
+          {/* Student Confirmation Form */}
+          {!isAttemptsExceeded && (
+            <div className="space-y-3 pt-2 border-t theme-border">
+              <h3 className="text-sm font-bold theme-text-primary flex items-center gap-1.5">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <span>Xác nhận thông tin thí sinh</span>
+              </h3>
+
+              <Input
+                label="Họ và tên thí sinh *"
+                placeholder="Nhập họ và tên thí sinh..."
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* Start Exam CTA */}
+          <div className="space-y-2 pt-4">
+            {isAttemptsExceeded ? (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate("/student")}
+                className="w-full h-12 text-base font-bold"
+              >
+                Quay lại danh sách đề thi
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleStartExam}
+                className="w-full h-12 text-base font-bold shadow-md shadow-teal-600/20"
+                leftIcon={<Play className="h-5 w-5 fill-current" />}
+              >
+                Bắt đầu làm bài thi ngay
+              </Button>
+            )}
+            {user?.role === "student" && quiz.settings.practiceEnabled !== false && (
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate(`/student/practice/${quiz.id}`)}
+                className="w-full h-12 border-emerald-200 font-bold text-emerald-800 hover:bg-emerald-50"
+                leftIcon={<BookOpen className="h-5 w-5" />}
+              >
+                Luyện tập
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default ExamEntry;
