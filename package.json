@@ -1,10 +1,15 @@
 {
-  "name": "qizzone-root",
+  "name": "qizzone-v3",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npm --prefix qizzone run dev",
-    "build": "npm --prefix qizzone run build",
-    "lint": "npm --prefix qizzone run lint",
-    "test": "npm --prefix qizzone run test"
+    "dev": "npm --workspace=@qizzone/web run dev",
+    "build": "npm --workspace=@qizzone/domain run typecheck && npm --workspace=@qizzone/document-parser run typecheck && npm --workspace=@qizzone/web run build",
+    "typecheck": "npm --workspace=@qizzone/domain run typecheck && npm --workspace=@qizzone/document-parser run typecheck && npm --workspace=@qizzone/web run typecheck",
+    "lint": "npm --workspace=@qizzone/web run lint",
+    "test": "npm --workspace=@qizzone/domain run test && npm --workspace=@qizzone/document-parser run test && npm --workspace=@qizzone/web run test"
   }
 }

@@ -1,49 +1,43 @@
-import { bodyJson, cors, databaseAdmin, failure, firebaseAdmin, identity, respond } from '../_shared/server.ts';
+import {
+  bodyJson,
+  cors,
+  databaseAdmin,
+  failure,
+  identity,
+  requireProfileAndRole,
+  respond,
+  structuredLog,
+} from '../_shared/server.ts';
 
-const REQUEST_COLUMNS = 'firebase_uid,email,full_name,role,approval_status,approval_requested_at,teacher_request_status,teacher_request_blocked,teacher_requested_at,created_at';
+const REQUEST_COLUMNS =
+  'id,firebase_uid,email,full_name,role,approval_status,approval_requested_at,teacher_request_status,teacher_request_blocked,teacher_requested_at,created_at';
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors(req) });
   if (req.method !== 'POST') return respond(req, { error: 'Method not allowed' }, 405);
+  const requestId = req.headers.get('x-correlation-id') || crypto.randomUUID();
 
   try {
-    const token = await identity(req);
-    const admin = firebaseAdmin();
-    const actor = await admin.getUser(token.uid);
+    const auth = await identity(req);
     const db = databaseAdmin();
-    const { data: actorProfile, error: actorError } = await db
-      .from('profiles')
-      .select('firebase_uid,role,approval_status')
-      .eq('firebase_uid', token.uid)
-      .maybeSingle();
-    if (
-      actorError ||
-      !actorProfile ||
-      actorProfile.role !== 'admin' ||
-      actorProfile.approval_status !== 'approved' ||
-      token.app_role !== 'admin' ||
-      actor.customClaims?.app_role !== 'admin'
-    ) throw new Error('FORBIDDEN');
+    await requireProfileAndRole(db, auth, ['admin']);
 
-    const body = await bodyJson(req, 4096);
+    const body = (await bodyJson(req, 4096)) as {
+      action?: unknown;
+      firebaseUid?: unknown;
+      targetUid?: unknown;
+      blocked?: unknown;
+    };
+
     if (body.action === 'list') {
-      const [studentResult, blockedStudentResult, legacyResult] = await Promise.all([
-        db.from('profiles')
-          .select(REQUEST_COLUMNS)
-          .eq('role', 'student')
-          .eq('teacher_request_status', 'pending'),
-        db.from('profiles')
-          .select(REQUEST_COLUMNS)
-          .eq('role', 'student')
-          .eq('teacher_request_blocked', true),
-        db.from('profiles')
-          .select(REQUEST_COLUMNS)
-          .eq('role', 'teacher')
-          .eq('approval_status', 'pending'),
-      ]);
-      if (studentResult.error) throw studentResult.error;
-      if (blockedStudentResult.error) throw blockedStudentResult.error;
-      if (legacyResult.error) throw legacyResult.error;
+      const { data: matchedRows, error: listError } = await db
+        .from('profiles')
+        .select(REQUEST_COLUMNS)
+        .or(
+          'and(role.eq.student,teacher_request_status.eq.pending),and(role.eq.student,teacher_request_blocked.eq.true),and(role.eq.teacher,approval_status.eq.pending)',
+        );
+      if (listError) throw listError;
+
       type RequestRow = {
         firebase_uid: string;
         teacher_requested_at: string | null;
@@ -52,40 +46,72 @@ Deno.serve(async req => {
         [key: string]: unknown;
       };
       const rows = new Map<string, RequestRow>();
-      for (const row of [...(studentResult.data || []), ...(blockedStudentResult.data || []), ...(legacyResult.data || [])]) rows.set(row.firebase_uid, row);
+      for (const row of matchedRows || []) {
+        rows.set(row.firebase_uid, row);
+      }
       const requests = [...rows.values()].sort((left, right) => {
         const leftDate = left.teacher_requested_at || left.approval_requested_at || left.created_at;
         const rightDate = right.teacher_requested_at || right.approval_requested_at || right.created_at;
         return new Date(leftDate).getTime() - new Date(rightDate).getTime();
       });
-      return respond(req, { requests });
+      return respond(req, { requests }, 200, requestId);
     }
 
-    if (typeof body.firebaseUid !== 'string' || !body.firebaseUid) throw new Error('INVALID_INPUT');
+    const targetUid =
+      typeof body.targetUid === 'string' && body.targetUid
+        ? body.targetUid
+        : typeof body.firebaseUid === 'string' && body.firebaseUid
+          ? body.firebaseUid
+          : '';
+    if (!targetUid) throw new Error('INVALID_INPUT');
 
     if (body.action === 'set_blocked') {
       if (typeof body.blocked !== 'boolean') throw new Error('INVALID_INPUT');
       const { data: target, error: targetError } = await db
         .from('profiles')
         .select('firebase_uid,role')
-        .eq('firebase_uid', body.firebaseUid)
+        .eq('firebase_uid', targetUid)
         .maybeSingle();
       if (targetError) throw targetError;
       if (!target || target.role !== 'student') throw new Error('INVALID_INPUT');
-      const { data, error } = await db.from('profiles').update({
-        teacher_request_blocked: body.blocked,
-        updated_at: new Date().toISOString(),
-      }).eq('firebase_uid', target.firebase_uid).select().single();
+
+      const now = new Date().toISOString();
+      const { data, error } = await db
+        .from('profiles')
+        .update({ teacher_request_blocked: body.blocked, updated_at: now })
+        .eq('firebase_uid', target.firebase_uid)
+        .select()
+        .single();
       if (error) throw error;
-      console.info(JSON.stringify({ action: 'set_teacher_request_blocked', adminUid: token.uid, targetUid: target.firebase_uid, blocked: body.blocked }));
-      return respond(req, { profile: data });
+
+      await Promise.all([
+        db.from('teacher_requests').upsert(
+          { user_uid: target.firebase_uid, blocked: body.blocked, updated_at: now },
+          { onConflict: 'user_uid' },
+        ),
+        db.from('role_audit_logs').insert({
+          actor_uid: auth.uid,
+          target_uid: target.firebase_uid,
+          action: body.blocked ? 'block_teacher_request' : 'unblock_teacher_request',
+        }),
+      ]);
+
+      structuredLog('info', {
+        requestId,
+        action: 'set_teacher_request_blocked',
+        adminUid: auth.uid,
+        targetUid: target.firebase_uid,
+        blocked: body.blocked,
+      });
+      return respond(req, { profile: data }, 200, requestId);
     }
 
-    if (!['approve', 'reject'].includes(body.action)) throw new Error('INVALID_INPUT');
+    if (body.action !== 'approve' && body.action !== 'reject') throw new Error('INVALID_INPUT');
+
     const { data: target, error: targetError } = await db
       .from('profiles')
       .select('*')
-      .eq('firebase_uid', body.firebaseUid)
+      .eq('firebase_uid', targetUid)
       .maybeSingle();
     if (targetError) throw targetError;
     if (!target) throw new Error('INVALID_INPUT');
@@ -94,71 +120,131 @@ Deno.serve(async req => {
     const isLegacyTeacherRequest = target.role === 'teacher' && target.approval_status === 'pending';
     if (!isStudentRequest && !isLegacyTeacherRequest) throw new Error('INVALID_INPUT');
 
-    const targetUser = await admin.getUser(target.firebase_uid);
-    const nextClaims = { ...(targetUser.customClaims || {}) };
+    const { data: targetAuthUser } = await db.auth.admin.getUserById(target.firebase_uid);
+    const nextAppMeta = { ...((targetAuthUser?.user?.app_metadata || {}) as Record<string, unknown>) };
     const now = new Date().toISOString();
 
     if (isStudentRequest) {
       const nextStatus = body.action === 'approve' ? 'approved' : 'rejected';
-      const { data, error } = await db.from('profiles').update({
-        teacher_request_status: nextStatus,
-        teacher_reviewed_at: now,
-        teacher_reviewed_by: token.uid,
-        updated_at: now,
-      }).eq('firebase_uid', target.firebase_uid).select().single();
+      const { data, error } = await db
+        .from('profiles')
+        .update({
+          teacher_request_status: nextStatus,
+          teacher_reviewed_at: now,
+          teacher_reviewed_by: auth.uid,
+          updated_at: now,
+        })
+        .eq('firebase_uid', target.firebase_uid)
+        .select()
+        .single();
       if (error) throw error;
 
-      // A student remains a student after either decision. Approval grants the
-      // ability to switch; it does not silently move the active session.
-      nextClaims.role = 'authenticated';
-      nextClaims.app_role = 'student';
-      nextClaims.account_status = 'approved';
-      delete nextClaims.requested_role;
-      await admin.setCustomUserClaims(target.firebase_uid, nextClaims);
-      console.info(JSON.stringify({ action: `${body.action}_teacher_access`, adminUid: token.uid, targetUid: target.firebase_uid }));
-      return respond(req, { profile: data });
+      nextAppMeta.role = 'authenticated';
+      nextAppMeta.app_role = 'student';
+      nextAppMeta.account_status = 'approved';
+      delete nextAppMeta.requested_role;
+
+      await Promise.all([
+        db.auth.admin.updateUserById(target.firebase_uid, { app_metadata: nextAppMeta }),
+        db.from('teacher_requests').upsert(
+          {
+            user_uid: target.firebase_uid,
+            status: nextStatus,
+            reviewed_at: now,
+            reviewed_by: auth.uid,
+            updated_at: now,
+          },
+          { onConflict: 'user_uid' },
+        ),
+        db.from('role_audit_logs').insert({
+          actor_uid: auth.uid,
+          target_uid: target.firebase_uid,
+          action: `${body.action}_teacher_access`,
+          previous_role: 'student',
+          new_role: 'student',
+        }),
+        db.rpc('enqueue_notification', {
+          p_recipient_uid: target.firebase_uid,
+          p_event_type: 'teacher_approval',
+          p_template_code: 'teacher_approval',
+          p_payload: {
+            fullName: target.full_name,
+            decision: body.action === 'approve' ? 'Đã phê duyệt quyền giáo viên' : 'Đã bị từ chối',
+          },
+          p_idempotency_key: `teacher-approval-${target.firebase_uid}-${now.slice(0, 16)}`,
+        }),
+      ]);
+
+      return respond(req, { profile: data }, 200, requestId);
     }
 
     if (body.action === 'approve') {
-      const { data, error } = await db.from('profiles').update({
-        approval_status: 'approved',
-        teacher_request_status: 'approved',
-        reviewed_at: now,
-        reviewed_by: token.uid,
-        teacher_reviewed_at: now,
-        teacher_reviewed_by: token.uid,
-        updated_at: now,
-      }).eq('firebase_uid', target.firebase_uid).select().single();
+      const { data, error } = await db
+        .from('profiles')
+        .update({
+          approval_status: 'approved',
+          teacher_request_status: 'approved',
+          reviewed_at: now,
+          reviewed_by: auth.uid,
+          teacher_reviewed_at: now,
+          teacher_reviewed_by: auth.uid,
+          updated_at: now,
+        })
+        .eq('firebase_uid', target.firebase_uid)
+        .select()
+        .single();
       if (error) throw error;
-      nextClaims.role = 'authenticated';
-      nextClaims.app_role = 'teacher';
-      nextClaims.account_status = 'approved';
-      delete nextClaims.requested_role;
-      await admin.setCustomUserClaims(target.firebase_uid, nextClaims);
-      await admin.revokeRefreshTokens(target.firebase_uid);
-      console.info(JSON.stringify({ action: 'approve_teacher', adminUid: token.uid, targetUid: target.firebase_uid }));
-      return respond(req, { profile: data });
+
+      nextAppMeta.role = 'authenticated';
+      nextAppMeta.app_role = 'teacher';
+      nextAppMeta.account_status = 'approved';
+      delete nextAppMeta.requested_role;
+      await Promise.all([
+        db.auth.admin.updateUserById(target.firebase_uid, { app_metadata: nextAppMeta }),
+        db.from('role_audit_logs').insert({
+          actor_uid: auth.uid,
+          target_uid: target.firebase_uid,
+          action: 'approve_teacher',
+          previous_role: 'teacher',
+          new_role: 'teacher',
+        }),
+      ]);
+      return respond(req, { profile: data }, 200, requestId);
     }
 
-    delete nextClaims.role;
-    delete nextClaims.app_role;
-    nextClaims.account_status = 'rejected';
-    nextClaims.requested_role = 'teacher';
-    await admin.setCustomUserClaims(target.firebase_uid, nextClaims);
-    await admin.revokeRefreshTokens(target.firebase_uid);
-    const { data, error } = await db.from('profiles').update({
-      approval_status: 'rejected',
-      teacher_request_status: 'rejected',
-      reviewed_at: now,
-      reviewed_by: token.uid,
-      teacher_reviewed_at: now,
-      teacher_reviewed_by: token.uid,
-      updated_at: now,
-    }).eq('firebase_uid', target.firebase_uid).select().single();
+    delete nextAppMeta.role;
+    delete nextAppMeta.app_role;
+    nextAppMeta.account_status = 'rejected';
+    nextAppMeta.requested_role = 'teacher';
+    const { data, error } = await db
+      .from('profiles')
+      .update({
+        approval_status: 'rejected',
+        teacher_request_status: 'rejected',
+        reviewed_at: now,
+        reviewed_by: auth.uid,
+        teacher_reviewed_at: now,
+        teacher_reviewed_by: auth.uid,
+        updated_at: now,
+      })
+      .eq('firebase_uid', target.firebase_uid)
+      .select()
+      .single();
     if (error) throw error;
-    console.info(JSON.stringify({ action: 'reject_teacher', adminUid: token.uid, targetUid: target.firebase_uid }));
-    return respond(req, { profile: data });
+
+    await Promise.all([
+      db.auth.admin.updateUserById(target.firebase_uid, { app_metadata: nextAppMeta }),
+      db.from('role_audit_logs').insert({
+        actor_uid: auth.uid,
+        target_uid: target.firebase_uid,
+        action: 'reject_teacher',
+        previous_role: 'teacher',
+        new_role: 'rejected',
+      }),
+    ]);
+
+    return respond(req, { profile: data }, 200, requestId);
   } catch (error) {
-    return failure(req, error);
+    return failure(req, error, requestId);
   }
 });

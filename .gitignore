@@ -43,3 +43,4 @@ documents/
 docs/*
 !docs/tasks/
 !docs/tasks/**
+!docs/*.md

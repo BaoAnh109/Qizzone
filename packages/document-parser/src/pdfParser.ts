@@ -1,0 +1,1204 @@
+import * as pdfjsLib from "pdfjs-dist";
+import type * as PdfJsTypes from "pdfjs-dist";
+import { parseRawExamText } from "./ruleExtractor";
+import { cleanPdfExtractedText } from "./pdfCleaner";
+import { MAX_OCR_PAGES_PER_IMPORT, recognizeOcrPages, type OcrPageResult } from "./ocrService";
+import type { ExtractionResult } from "@qizzone/domain";
+import type { DocumentIR, DocumentIRBlock, DocumentIRPage, DocumentIRStyle } from "@qizzone/domain";
+import { attachQuestionSourceReferences } from "./sourceReference";
+
+if (typeof window !== "undefined") {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/" + pdfjsLib.version + "/pdf.worker.min.mjs";
+}
+
+export interface ParsedPdfDocument {
+  rawText: string;
+  totalPages: number;
+  pagesText: string[];
+  result: ExtractionResult;
+  pdfDoc?: PdfJsTypes.PDFDocumentProxy;
+  documentIR: DocumentIR;
+  ocrPageCount: number;
+  qualityFlags: string[];
+}
+
+interface PdfTextRecord {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  bbox: [number, number, number, number];
+  fontName: string;
+  highlighted: boolean;
+  underlined: boolean;
+  redText: boolean;
+}
+
+interface PdfAnnotationLike {
+  annotationType?: number;
+  rect?: number[];
+  quadPoints?: number[];
+  contents?: string;
+  id?: string;
+}
+
+interface PdfMarkArea {
+  bbox: number[];
+  kind: "highlight" | "underline";
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function intersects(a: number[], b: number[]): boolean {
+  return a.length >= 4 && b.length >= 4 && a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+}
+
+function annotationBounds(annotation: PdfAnnotationLike): number[] | undefined {
+  if (annotation.quadPoints && annotation.quadPoints.length >= 8) {
+    const xs = annotation.quadPoints.filter((_value, index) => index % 2 === 0);
+    const ys = annotation.quadPoints.filter((_value, index) => index % 2 === 1);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  }
+  return annotation.rect && annotation.rect.length >= 4 ? annotation.rect : undefined;
+}
+
+function isHighlightAnnotation(annotation: PdfAnnotationLike): boolean {
+  const annotationTypes = (pdfjsLib as unknown as { AnnotationType?: { HIGHLIGHT?: number } }).AnnotationType;
+  return annotation.annotationType === (annotationTypes?.HIGHLIGHT ?? 9);
+}
+
+function isUnderlineAnnotation(annotation: PdfAnnotationLike): boolean {
+  const annotationTypes = (pdfjsLib as unknown as { AnnotationType?: { UNDERLINE?: number } }).AnnotationType;
+  return annotation.annotationType === (annotationTypes?.UNDERLINE ?? 10);
+}
+
+function isYellowPdfColor(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const normalized = value.toLowerCase().replace(/\s/g, "");
+  return normalized === "#ffff00" || normalized === "#ff0" || normalized === "rgb(255,255,0)";
+}
+
+function isRedPdfColor(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const hex = value.toLowerCase().replace(/\s/g, "");
+  const match = hex.match(/^#([\da-f]{6})$/);
+  if (!match) return hex === "#f00";
+  const red = parseInt(match[1].slice(0, 2), 16);
+  const green = parseInt(match[1].slice(2, 4), 16);
+  const blue = parseInt(match[1].slice(4, 6), 16);
+  return red >= 150 && green <= 110 && blue <= 110 && red > green * 1.4 && red > blue * 1.4;
+}
+
+function normalizePdfText(value: string): string {
+  return value.normalize("NFKC").replace(/\s+/gu, "");
+}
+
+const PDF_SYMBOL_PRIVATE_GLYPHS: Record<string, string> = {
+  "\uF061": "α", "\uF062": "β", "\uF063": "χ", "\uF064": "δ", "\uF065": "ε", "\uF066": "φ",
+  "\uF067": "γ", "\uF068": "η", "\uF069": "ι", "\uF06A": "ϕ", "\uF06B": "κ", "\uF06C": "λ",
+  "\uF06D": "μ", "\uF06E": "ν", "\uF06F": "ο", "\uF070": "π", "\uF071": "θ", "\uF072": "ρ",
+  "\uF073": "σ", "\uF074": "τ", "\uF075": "υ", "\uF076": "ς", "\uF077": "ω", "\uF078": "ξ",
+  "\uF079": "ψ", "\uF07A": "ζ",
+  "\uF041": "Α", "\uF042": "Β", "\uF043": "Χ", "\uF044": "Δ", "\uF045": "Ε", "\uF046": "Φ",
+  "\uF047": "Γ", "\uF048": "Η", "\uF049": "Ι", "\uF04A": "ϑ", "\uF04B": "Κ", "\uF04C": "Λ",
+  "\uF04D": "Μ", "\uF04E": "Ν", "\uF04F": "Ο", "\uF050": "Π", "\uF051": "Θ", "\uF052": "Ρ",
+  "\uF053": "Σ", "\uF054": "Τ", "\uF055": "Υ", "\uF056": "ς", "\uF057": "Ω", "\uF058": "Ξ",
+  "\uF059": "Ψ", "\uF05A": "Ζ",
+};
+
+export function normalizePdfGlyphText(value: string): string {
+  return [...value].map(character => PDF_SYMBOL_PRIVATE_GLYPHS[character] || character).join("");
+}
+
+function mapRedTextRunsToItems(textItems: string[], redRuns: string[]): Set<number> {
+  const flatText = textItems.map(normalizePdfText).join("");
+  const itemByCharacter: number[] = [];
+  textItems.forEach((item, itemIndex) => {
+    const length = normalizePdfText(item).length;
+    for (let characterIndex = 0; characterIndex < length; characterIndex += 1) itemByCharacter.push(itemIndex);
+  });
+
+  const redItems = new Set<number>();
+  let searchOffset = 0;
+  for (const rawRun of redRuns) {
+    const run = normalizePdfText(rawRun);
+    if (run.length < 2) continue;
+    const start = flatText.indexOf(run, searchOffset);
+    if (start < 0) continue;
+    for (let index = start; index < start + run.length; index += 1) {
+      const itemIndex = itemByCharacter[index];
+      if (itemIndex !== undefined) redItems.add(itemIndex);
+    }
+    searchOffset = start + run.length;
+  }
+  return redItems;
+}
+
+export interface PdfPagePaintMarks {
+  vectorHighlights: number[][];
+  redTextItems: Set<number>;
+  visualRegions: Array<{ bbox: [number, number, number, number]; type: "image" | "shape" }>;
+}
+
+type PdfMatrix = [number, number, number, number, number, number];
+type PdfBounds = [number, number, number, number];
+
+function isLikelyChartLabel(text: string): boolean {
+  const value = text.trim();
+  if (!value || value.length > 8 || /^[A-E][.)]$/iu.test(value)) return false;
+  const allowedPunctuation = "°◦%.,:+-−×÷=()[]_/";
+  return [...value].every(character => /[\p{N}\p{L}\p{M}]/u.test(character) || allowedPunctuation.includes(character));
+}
+
+function pointWithinBounds(x: number, y: number, bounds: PdfBounds): boolean {
+  return x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3];
+}
+
+function expandPdfShapeRegionsWithLabels(
+  regions: PdfPagePaintMarks["visualRegions"],
+  records: PdfTextRecord[],
+): PdfPagePaintMarks["visualRegions"] {
+  return regions.map(region => {
+    if (region.type !== "shape") return region;
+    const labels = records.filter(record => isLikelyChartLabel(record.text) && boundsDistance(region.bbox, record.bbox) <= 40);
+    if (!labels.length) return region;
+    return {
+      ...region,
+      bbox: [
+        Math.min(region.bbox[0], ...labels.map(label => label.bbox[0])),
+        Math.min(region.bbox[1], ...labels.map(label => label.bbox[1])),
+        Math.max(region.bbox[2], ...labels.map(label => label.bbox[2])),
+        Math.max(region.bbox[3], ...labels.map(label => label.bbox[3])),
+      ] as PdfBounds,
+    };
+  });
+}
+
+const PDF_PROMPT_VISUAL_CUE = /(?:^|[^\p{L}\p{N}])(?:biểu\s*đồ|đồ\s*thị|bản\s*đồ|lược\s*đồ|sơ\s*đồ|bảng\s+biến\s+thiên|atlat|graph|chart|diagram|figure|map|plot)(?=$|[^\p{L}\p{N}])|(?:^|[^\p{L}\p{N}])hình\s+(?:(?:ở|như)\s+)?(?:\d+|bên|vẽ|dưới|trên|sau|kèm\s+theo)(?:\s+(?:đây|này))?(?=$|[^\p{L}\p{N}])/iu;
+
+/** @internal Used by the PDF visual association regression tests. */
+export function isPdfPromptVisualCue(promptText: string): boolean {
+  return PDF_PROMPT_VISUAL_CUE.test(promptText);
+}
+
+function hasNearbyPromptVisualCue(region: PdfPagePaintMarks["visualRegions"][number], records: PdfTextRecord[]): boolean {
+  return records.some(record => record.text.trim().length >= 8
+    && isPdfPromptVisualCue(record.text)
+    && boundsDistance(region.bbox, record.bbox) <= 90);
+}
+
+function questionReferencesPromptVisual(content: string): boolean {
+  return isPdfPromptVisualCue(content);
+}
+
+/** @internal Used by the PDF association regression tests. */
+export function isPdfPromptVisualCueDistinctive(promptText: string): boolean {
+  const genericCueTerms = new Set([
+    "va", "co", "nhu", "hinh", "ve", "ben", "duoi", "tren", "phia", "sau", "day", "do", "thi",
+    "bieu", "ban", "luoc", "ham", "so", "as", "the", "below", "above", "shown", "following", "graph", "chart", "map", "diagram", "plot",
+  ]);
+  const normalized = promptText.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/đ/giu, "d").toLowerCase();
+  const meaningfulTerms = (normalized.match(/[\p{L}\p{N}]{3,}/gu) || []).filter(term => !genericCueTerms.has(term));
+  return meaningfulTerms.length >= 2;
+}
+
+/** @internal Used by the PDF association regression tests. */
+export function isPdfVisualSourcePageEligible(
+  referencedPageCount: number,
+  hasPageLocalCue: boolean,
+  promptCuePageCount = 0,
+  hasDistinctivePageLocalCue = false,
+): boolean {
+  return referencedPageCount <= 2
+    || (hasPageLocalCue && (promptCuePageCount === 1 || hasDistinctivePageLocalCue));
+}
+
+/** @internal Used by the PDF association regression tests. */
+export function isPdfVisualPositionConsistentWithPromptCue(
+  visualBounds: PdfBounds,
+  promptBounds: PdfBounds,
+  promptText: string,
+): boolean {
+  const visualCenterY = (visualBounds[1] + visualBounds[3]) / 2;
+  const promptCenterY = (promptBounds[1] + promptBounds[3]) / 2;
+  const visualCue = "(?:^|[^\\p{L}\\p{N}])(?:biểu\\s*đồ|đồ\\s*thị|bản\\s*đồ|lược\\s*đồ|sơ\\s*đồ|bảng|graph|chart|map|diagram|figure|plot|hình\\s+(?:\\d+|bên|vẽ|dưới|trên|sau))";
+  const pointsBelow = new RegExp(visualCue + "[^.!?]{0,55}(?:dưới|below|beneath|under)(?=$|[^\\p{L}\\p{N}])", "iu").test(promptText);
+  const pointsAbove = new RegExp(visualCue + "[^.!?]{0,55}(?:phía trên|ở trên|above)(?=$|[^\\p{L}\\p{N}])", "iu").test(promptText);
+
+  if (pointsBelow) return visualCenterY < promptCenterY - 6;
+  if (pointsAbove) return visualCenterY > promptCenterY + 6;
+  return true;
+}
+
+function isTextEmbeddedInVisualLabel(
+  record: PdfTextRecord,
+  regions: PdfPagePaintMarks["visualRegions"],
+): boolean {
+  if (!isLikelyChartLabel(record.text)) return false;
+  const centerX = (record.bbox[0] + record.bbox[2]) / 2;
+  const centerY = (record.bbox[1] + record.bbox[3]) / 2;
+  return regions.some(region => region.type === "shape" && pointWithinBounds(centerX, centerY, region.bbox));
+}
+
+function multiplyPdfMatrix(left: PdfMatrix, right: number[]): PdfMatrix {
+  return [
+    left[0] * right[0] + left[2] * right[1],
+    left[1] * right[0] + left[3] * right[1],
+    left[0] * right[2] + left[2] * right[3],
+    left[1] * right[2] + left[3] * right[3],
+    left[0] * right[4] + left[2] * right[5] + left[4],
+    left[1] * right[4] + left[3] * right[5] + left[5],
+  ];
+}
+
+function transformedBounds(points: Array<[number, number]>, matrix: PdfMatrix): PdfBounds | undefined {
+  if (!points.length) return undefined;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of points) {
+    const transformedX = matrix[0] * x + matrix[2] * y + matrix[4];
+    const transformedY = matrix[1] * x + matrix[3] * y + matrix[5];
+    minX = Math.min(minX, transformedX);
+    minY = Math.min(minY, transformedY);
+    maxX = Math.max(maxX, transformedX);
+    maxY = Math.max(maxY, transformedY);
+  }
+  return [minX, minY, maxX, maxY];
+}
+
+function mergeVisualRegions(
+  imageBounds: PdfBounds[],
+  pathBounds: PdfBounds[],
+  pageArea: number,
+): PdfPagePaintMarks["visualRegions"] {
+  const regions: PdfPagePaintMarks["visualRegions"] = [];
+  for (const bbox of imageBounds) {
+    const width = bbox[2] - bbox[0];
+    const height = bbox[3] - bbox[1];
+    if (width >= 24 && height >= 24) regions.push({ bbox, type: "image" });
+  }
+
+  const paths = pathBounds.slice(0, 5000).filter(bbox => {
+    const width = bbox[2] - bbox[0];
+    const height = bbox[3] - bbox[1];
+    return width >= 2 && height >= 2 && width * height <= pageArea * 0.35;
+  });
+  const cellSize = 64;
+  const cells = new Map<string, { bbox: PdfBounds; hasStructuralPath: boolean }>();
+  for (const path of paths) {
+    const cellX = Math.floor((path[0] + path[2]) / 2 / cellSize);
+    const cellY = Math.floor((path[1] + path[3]) / 2 / cellSize);
+    const key = cellX + ":" + cellY;
+    const existing = cells.get(key);
+    const hasStructuralPath = path[2] - path[0] > 18 || path[3] - path[1] > 18;
+    cells.set(key, existing ? {
+      bbox: [Math.min(path[0], existing.bbox[0]), Math.min(path[1], existing.bbox[1]), Math.max(path[2], existing.bbox[2]), Math.max(path[3], existing.bbox[3])],
+      hasStructuralPath: existing.hasStructuralPath || hasStructuralPath,
+    } : { bbox: path, hasStructuralPath });
+  }
+  const clusters = [...cells.values()].sort((first, second) => first.bbox[0] - second.bbox[0] || first.bbox[1] - second.bbox[1]);
+  for (let index = 0; index < clusters.length; index += 1) {
+    const current = clusters[index];
+    let mergedAgain = true;
+    while (mergedAgain) {
+      mergedAgain = false;
+      for (let otherIndex = index + 1; otherIndex < clusters.length;) {
+        const other = clusters[otherIndex];
+        const gapX = Math.max(0, other.bbox[0] - current.bbox[2], current.bbox[0] - other.bbox[2]);
+        const gapY = Math.max(0, other.bbox[1] - current.bbox[3], current.bbox[1] - other.bbox[3]);
+        if (gapX > 38 || gapY > 28) { otherIndex += 1; continue; }
+        current.bbox = [Math.min(current.bbox[0], other.bbox[0]), Math.min(current.bbox[1], other.bbox[1]), Math.max(current.bbox[2], other.bbox[2]), Math.max(current.bbox[3], other.bbox[3])];
+        current.hasStructuralPath ||= other.hasStructuralPath;
+        clusters.splice(otherIndex, 1);
+        mergedAgain = true;
+      }
+    }
+  }
+  for (const cluster of clusters) {
+    const { bbox } = cluster;
+    const width = bbox[2] - bbox[0];
+    const height = bbox[3] - bbox[1];
+    if (!cluster.hasStructuralPath || width < 34 || height < 26 || width * height < 1100 || width * height > pageArea * 0.45) continue;
+    if (regions.some(region => intersects(region.bbox, bbox) && region.type === "image")) continue;
+    regions.push({ bbox, type: "shape" });
+  }
+  return regions;
+}
+
+export async function getPdfPagePaintMarks(page: PdfJsTypes.PDFPageProxy, textItems: string[]): Promise<PdfPagePaintMarks> {
+  const operators = (pdfjsLib as unknown as { OPS?: Record<string, number> }).OPS;
+  if (!operators) return { vectorHighlights: [], redTextItems: new Set(), visualRegions: [] };
+  const allowedPaintOps = new Set([operators.fill, operators.eoFill, operators.fillStroke, operators.eoFillStroke]);
+  const operatorList = await page.getOperatorList();
+  const vectorHighlights: number[][] = [];
+  const imageBounds: PdfBounds[] = [];
+  const pathBounds: PdfBounds[] = [];
+  const redRuns: string[] = [];
+  let isYellowFill = false;
+  let fillColor: unknown;
+  let redTextRun = "";
+  let transform: PdfMatrix = [1, 0, 0, 1, 0, 0];
+  const fillStateStack: Array<{ isYellowFill: boolean; fillColor: unknown; transform: PdfMatrix }> = [];
+  const flushRedTextRun = () => {
+    if (redTextRun.trim()) redRuns.push(redTextRun);
+    redTextRun = "";
+  };
+
+  for (let index = 0; index < operatorList.fnArray.length; index += 1) {
+    const operator = operatorList.fnArray[index];
+    const args = operatorList.argsArray[index] as unknown[] | null;
+    if (operator === operators.save) {
+      fillStateStack.push({ isYellowFill, fillColor, transform: [...transform] as PdfMatrix });
+      continue;
+    }
+    if (operator === operators.restore) {
+      const previous = fillStateStack.pop();
+      if (previous && previous.fillColor !== fillColor) flushRedTextRun();
+      isYellowFill = previous?.isYellowFill || false;
+      fillColor = previous?.fillColor;
+      if (previous) transform = previous.transform;
+      continue;
+    }
+    if (operator === operators.transform && args?.length === 6 && args.every(value => typeof value === "number")) {
+      transform = multiplyPdfMatrix(transform, args as number[]);
+      continue;
+    }
+    if (operator === operators.setTransform && args?.length === 6 && args.every(value => typeof value === "number")) {
+      transform = args as PdfMatrix;
+      continue;
+    }
+    if ([operators.paintImageXObject, operators.paintInlineImageXObject, operators.paintImageMaskXObject].includes(operator)) {
+      const imageBoundsForOperator = transformedBounds([[0, 0], [1, 1]], transform);
+      if (imageBoundsForOperator) imageBounds.push(imageBoundsForOperator);
+      continue;
+    }
+    if (operator === operators.setFillRGBColor) {
+      if (args?.[0] !== fillColor) flushRedTextRun();
+      fillColor = args?.[0];
+      isYellowFill = isYellowPdfColor(args?.[0]);
+      continue;
+    }
+    if ([operators.setFillColor, operators.setFillColorN, operators.setFillGray, operators.setFillCMYKColor].includes(operator)) {
+      flushRedTextRun();
+      fillColor = undefined;
+      isYellowFill = false;
+      continue;
+    }
+    if (operator === operators.showText || operator === operators.showSpacedText) {
+      const glyphs = args?.[0];
+      const glyphText = Array.isArray(glyphs)
+        ? glyphs.map(glyph => glyph && typeof glyph === "object" && "unicode" in glyph && typeof glyph.unicode === "string" ? glyph.unicode : "").join("")
+        : "";
+      if (isRedPdfColor(fillColor)) redTextRun += glyphText;
+      else flushRedTextRun();
+      continue;
+    }
+    if (operator !== operators.constructPath || !args) continue;
+
+    const pathSegments = args[1];
+    if (!Array.isArray(pathSegments)) continue;
+    for (const rawSegment of pathSegments) {
+      if (!ArrayBuffer.isView(rawSegment) && !Array.isArray(rawSegment)) continue;
+      const segment = Array.from(rawSegment as ArrayLike<number>);
+      const coordinates: Array<[number, number]> = [];
+      for (let cursor = 0; cursor < segment.length;) {
+        const pathOperation = segment[cursor++];
+        if (pathOperation === 0 || pathOperation === 1) { // moveTo / lineTo
+          if (cursor + 1 >= segment.length) break;
+          coordinates.push([segment[cursor], segment[cursor + 1]]);
+          cursor += 2;
+        } else if (pathOperation === 2) { // curveTo: two control points and endpoint
+          if (cursor + 5 >= segment.length) break;
+          coordinates.push([segment[cursor], segment[cursor + 1]], [segment[cursor + 2], segment[cursor + 3]], [segment[cursor + 4], segment[cursor + 5]]);
+          cursor += 6;
+        } else if (pathOperation === 3) { // quadraticCurveTo: control point and endpoint
+          if (cursor + 3 >= segment.length) break;
+          coordinates.push([segment[cursor], segment[cursor + 1]], [segment[cursor + 2], segment[cursor + 3]]);
+          cursor += 4;
+        }
+      }
+      if (coordinates.length >= 2) {
+        const visualBounds = transformedBounds(coordinates, transform);
+        // Highlight rectangles are answer marks, not chart/diagram geometry.
+        // Including them in shape clustering can create a large false figure
+        // region that hides nearby question text when labels are filtered.
+        if (visualBounds && args[0] !== undefined && !isYellowFill) pathBounds.push(visualBounds);
+        if (!isYellowFill || !allowedPaintOps.has(args[0] as number)) continue;
+        if (visualBounds) vectorHighlights.push(visualBounds);
+      }
+    }
+  }
+  flushRedTextRun();
+  const pageWidth = Math.abs(page.view[2] - page.view[0]);
+  const pageHeight = Math.abs(page.view[3] - page.view[1]);
+  return {
+    vectorHighlights,
+    redTextItems: mapRedTextRunsToItems(textItems, redRuns),
+    visualRegions: mergeVisualRegions(imageBounds, pathBounds, pageWidth * pageHeight),
+  };
+}
+
+function inlineMathLineMatch(first: PdfTextRecord, second: PdfTextRecord): boolean {
+  const baselineGap = Math.abs(first.y - second.y);
+  const smallerHeight = Math.min(first.height, second.height);
+  if (baselineGap <= Math.max(3, smallerHeight * 0.55)) return true;
+
+  // PDF.js reports tall glyphs such as √ at a different baseline from the
+  // digits beside them. Keep those glyphs with the adjacent expression.
+  const firstIsRadical = /^[√∛∜]$/u.test(first.text.trim());
+  const secondIsRadical = /^[√∛∜]$/u.test(second.text.trim());
+  if (!firstIsRadical && !secondIsRadical) return false;
+  const left = first.x <= second.x ? first : second;
+  const right = left === first ? second : first;
+  const horizontalGap = right.x - (left.x + left.width);
+  return horizontalGap >= -2 && horizontalGap <= Math.max(3, smallerHeight * 0.35)
+    && baselineGap <= Math.max(first.height, second.height) * 1.1;
+}
+
+function groupTextRows(records: PdfTextRecord[]): PdfTextRecord[][] {
+  const rows: PdfTextRecord[][] = [];
+  for (const record of [...records].sort((a, b) => b.y - a.y || a.x - b.x)) {
+    let matchingRow: PdfTextRecord[] | undefined;
+    let bestBaselineGap = Infinity;
+    // Superscript records can be a few points above their base. Check recent
+    // rows so that a radical or exponent does not become a separate paragraph.
+    for (const candidate of rows.slice(-4)) {
+      const matchingRecord = candidate.find(existing => inlineMathLineMatch(existing, record));
+      if (!matchingRecord) continue;
+      const baselineGap = Math.abs(matchingRecord.y - record.y);
+      if (baselineGap < bestBaselineGap) {
+        matchingRow = candidate;
+        bestBaselineGap = baselineGap;
+      }
+    }
+    if (matchingRow) matchingRow.push(record);
+    else rows.push([record]);
+  }
+  rows.forEach(row => row.sort((a, b) => a.x - b.x));
+  return rows;
+}
+
+const SUPER_SCRIPT_CHARACTERS: Record<string, string> = {
+  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵",
+  "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "−": "⁻", "-": "⁻",
+  "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ",
+};
+const SUB_SCRIPT_CHARACTERS: Record<string, string> = {
+  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅",
+  "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "−": "₋", "-": "₋",
+  "=": "₌", "(": "₍", ")": "₎", "a": "ₐ", "e": "ₑ", "i": "ᵢ", "o": "ₒ",
+  "r": "ᵣ", "u": "ᵤ", "v": "ᵥ", "x": "ₓ",
+};
+
+function scriptText(previous: PdfTextRecord | undefined, current: PdfTextRecord): string | undefined {
+  if (!previous) return undefined;
+  const verticalOffset = current.y - previous.y;
+  if (Math.abs(verticalOffset) < 2.2 || current.height > previous.height * 0.84) return undefined;
+  const horizontalGap = current.x - (previous.x + previous.width);
+  if (horizontalGap < -2 || horizontalGap > Math.max(4, previous.height * 0.45)) return undefined;
+  const text = current.text.trim();
+  if (!/^[0-9+\-=()ni aeoruvx]+$/u.test(text) || !/[0-9]/u.test(text)) return undefined;
+  const mapping = verticalOffset > 0 ? SUPER_SCRIPT_CHARACTERS : SUB_SCRIPT_CHARACTERS;
+  const mapped = [...text].map(character => mapping[character]);
+  return mapped.every(Boolean) ? mapped.join("") : undefined;
+}
+
+function lineGroups(records: PdfTextRecord[], pageWidth: number): PdfTextRecord[][] {
+  const rows = groupTextRows(records);
+
+  const xPositions = records.map(record => record.x).sort((a, b) => a - b);
+  let splitAt: number | undefined;
+  let largestGap = pageWidth * 0.16;
+  for (let index = 1; index < xPositions.length; index += 1) {
+    const gap = xPositions[index] - xPositions[index - 1];
+    if (gap > largestGap && xPositions[index - 1] < pageWidth * 0.44 && xPositions[index] > pageWidth * 0.56) {
+      largestGap = gap;
+      splitAt = (xPositions[index - 1] + xPositions[index]) / 2;
+    }
+  }
+  if (splitAt === undefined) return rows;
+
+  const left = records.filter(record => record.x < splitAt);
+  const right = records.filter(record => record.x >= splitAt);
+  if (left.length < 5 || right.length < 5) return rows;
+  return [...groupTextRows(left), ...groupTextRows(right)];
+}
+
+function joinRecords(records: PdfTextRecord[], html: boolean): string {
+  let result = "";
+  let previous: PdfTextRecord | undefined;
+  for (const record of records) {
+    const gap = previous ? record.x - (previous.x + previous.width) : 0;
+    const mathScript = scriptText(previous, record);
+    const separator = previous && !mathScript && gap > Math.max(1.5, previous.height * 0.12) &&
+      !result.endsWith(" ") && !record.text.startsWith(" ") ? " " : "";
+    let value = html ? escapeHtml(mathScript || record.text) : (mathScript || record.text);
+    if (html && record.highlighted) value = "<mark class=\"is-highlighted\">" + value + "</mark>";
+    else if (html && record.underlined) value = "<u>" + value + "</u>";
+    if (html && record.redText) value = "<span class=\"text-color-red\">" + value + "</span>";
+    else if (html && /bold|demi|semibold/i.test(record.fontName)) value = "<strong class=\"is-bold\">" + value + "</strong>";
+    result += separator + value;
+    previous = record;
+  }
+  return result.trim();
+}
+
+function plainTextPageRecords(records: PdfTextRecord[], pageWidth: number): {
+  plain: string;
+  styled: string;
+  lines: Array<{ text: string; bbox: [number, number, number, number]; bold: boolean; highlighted: boolean; underlined: boolean }>;
+} {
+  const rows = lineGroups(records, pageWidth);
+  const meaningfulRows = rows.filter(row => {
+    const text = joinRecords(row, false).trim();
+    if (!text) return false;
+    const nonWhitespace = text.replace(/\s/gu, "");
+    return nonWhitespace.length < 24 || !/^[.·…•]+$/u.test(nonWhitespace);
+  });
+  return {
+    plain: meaningfulRows.map(row => joinRecords(row, false)).filter(Boolean).join("\n"),
+    styled: meaningfulRows.map(row => joinRecords(row, true)).filter(Boolean).join("\n"),
+    lines: meaningfulRows.map(row => ({
+      text: joinRecords(row, false),
+      bbox: [Math.min(...row.map(record => record.bbox[0])), Math.min(...row.map(record => record.bbox[1])), Math.max(...row.map(record => record.bbox[2])), Math.max(...row.map(record => record.bbox[3]))] as [number, number, number, number],
+      bold: row.some(record => /bold|demi|semibold/i.test(record.fontName)),
+      highlighted: row.some(record => record.highlighted),
+      underlined: row.some(record => record.underlined),
+    })).filter(line => line.text.trim()),
+  };
+}
+
+function isLikelyScan(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 40) return true;
+  const nullCharacter = String.fromCharCode(0);
+  const suspicious = [...trimmed].filter(character => character === "\uFFFD" || character === nullCharacter).length;
+  return suspicious / trimmed.length > 0.04;
+}
+
+async function sha256(data: ArrayBuffer): Promise<string | undefined> {
+  try {
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+  } catch {
+    return undefined;
+  }
+}
+
+export async function parsePdfFile(
+  file: File,
+  onProgress?: (percent: number, message: string) => void,
+): Promise<ParsedPdfDocument> {
+  const arrayBuffer = await file.arrayBuffer();
+  if (!new Uint8Array(arrayBuffer).subarray(0, 5).every((byte, index) => byte === [37, 80, 68, 70, 45][index])) {
+    throw new Error("Tệp không có chữ ký PDF hợp lệ.");
+  }
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, useSystemFonts: true });
+  const pdf = await loadingTask.promise;
+  if (pdf.numPages > 100) {
+    await loadingTask.destroy();
+    throw new Error("PDF vượt quá giới hạn 100 trang.");
+  }
+
+  const pagesText: string[] = [];
+  const styledPages: string[] = [];
+  const irPages: DocumentIRPage[] = [];
+  const scanPageNumbers: number[] = [];
+  const qualityFlags: string[] = [];
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+    const page = await pdf.getPage(pageNum);
+    const pageWidth = page.view[2] - page.view[0];
+    const pageHeight = page.view[3] - page.view[1];
+    const content = await page.getTextContent();
+    const annotations = await page.getAnnotations({ intent: "display" }) as PdfAnnotationLike[];
+    const markAreas: PdfMarkArea[] = annotations.flatMap(annotation => {
+      const bbox = annotationBounds(annotation);
+      if (!bbox || (!isHighlightAnnotation(annotation) && !isUnderlineAnnotation(annotation))) return [];
+      return [{ kind: isHighlightAnnotation(annotation) ? "highlight" as const : "underline" as const, bbox }];
+    });
+    const pageArea = Math.abs(pageWidth * pageHeight);
+    const pagePaintMarks = await getPdfPagePaintMarks(page, content.items.flatMap(item => "str" in item && item.str.trim() ? [item.str] : []));
+    const vectorHighlights = pagePaintMarks.vectorHighlights;
+    markAreas.push(...vectorHighlights
+      .filter(bbox => Math.abs((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])) > 0 &&
+        Math.abs((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])) < pageArea * 0.1)
+      .map(bbox => ({ bbox, kind: "highlight" as const })));
+
+    const records: PdfTextRecord[] = [];
+    const blocks: DocumentIRBlock[] = [];
+    let readingOrder = 0;
+    let textRecordIndex = 0;
+    for (const item of content.items) {
+      if (!("str" in item) || !item.str.trim()) continue;
+      const textItem = item as { str: string; transform: number[]; width: number; height: number; fontName: string };
+      const text = normalizePdfGlyphText(textItem.str);
+      const x = textItem.transform[4] || 0;
+      const y = textItem.transform[5] || 0;
+      const width = Math.max(0, textItem.width || 0);
+      const height = Math.max(1, textItem.height || Math.abs(textItem.transform[3]) || 1);
+      // PDF text matrices use the text baseline as origin and glyphs rise above
+      // it; extending the box below the baseline shifts highlight matching to
+      // the adjacent option line in many PDFs.
+      const bbox: [number, number, number, number] = [x, y - height * 0.2, x + width, y + height * 0.9];
+      const matchedAreas = markAreas.filter(record => intersects(bbox, record.bbox));
+      const highlighted = matchedAreas.some(record => record.kind === "highlight");
+      const underlined = matchedAreas.some(record => record.kind === "underline");
+      records.push({
+        text,
+        x,
+        y,
+        width,
+        height,
+        bbox,
+        fontName: textItem.fontName || "",
+        highlighted,
+        underlined,
+        redText: pagePaintMarks.redTextItems.has(textRecordIndex),
+      });
+      textRecordIndex += 1;
+      const style: DocumentIRStyle = {};
+      if (/bold|demi|semibold/i.test(textItem.fontName || "")) style.bold = true;
+      if (highlighted) style.highlight = "pdf_annotation";
+      if (underlined) style.underline = true;
+      blocks.push({
+        id: "p" + pageNum + "_b" + readingOrder,
+        type: "text_span",
+        text,
+        normalizedText: text.normalize("NFKC"),
+        bbox,
+        readingOrder,
+        style,
+        sourceRef: { page: pageNum, run: readingOrder },
+      });
+      readingOrder += 1;
+    }
+    const visualRegions = expandPdfShapeRegionsWithLabels(pagePaintMarks.visualRegions, records);
+    const nearbyFigureRegions = visualRegions.filter(region => region.type === "shape" && hasNearbyPromptVisualCue(region, records));
+    const visualLabelRuns = new Set(records.flatMap((record, index) =>
+      isTextEmbeddedInVisualLabel(record, nearbyFigureRegions) ? [index] : [],
+    ));
+    const questionTextRecords = records.filter((_record, index) => !visualLabelRuns.has(index));
+    if (visualLabelRuns.size) {
+      for (let index = blocks.length - 1; index >= 0; index -= 1) {
+        const block = blocks[index];
+        if (block.type === "text_span" && visualLabelRuns.has(block.sourceRef.run ?? -1)) blocks.splice(index, 1);
+      }
+    }
+    for (const record of markAreas) {
+      blocks.push({
+        id: "p" + pageNum + "_annotation_" + blocks.length,
+        type: "annotation",
+        bbox: record.bbox as [number, number, number, number],
+        readingOrder: readingOrder++,
+        style: record.kind === "highlight" ? { highlight: "pdf_annotation" } : { underline: true },
+        sourceRef: { page: pageNum },
+      });
+    }
+    for (const [visualIndex, visual] of visualRegions.entries()) {
+      blocks.push({
+        id: "p" + pageNum + "_visual_" + visualIndex,
+        type: visual.type,
+        bbox: visual.bbox,
+        readingOrder: readingOrder++,
+        sourceRef: { page: pageNum },
+      });
+    }
+
+    const pageData = plainTextPageRecords(questionTextRecords, pageWidth);
+    const rawPageData = visualLabelRuns.size ? plainTextPageRecords(records, pageWidth) : pageData;
+    blocks.push(...pageData.lines.map((line, index) => ({
+      id: "p" + pageNum + "_line" + index,
+      type: "paragraph" as const,
+      text: line.text,
+      normalizedText: line.text.normalize("NFKC"),
+      bbox: line.bbox,
+      readingOrder: readingOrder + index,
+      style: {
+        bold: line.bold || undefined,
+        highlight: line.highlighted ? "pdf_annotation" : undefined,
+        underline: line.underlined || undefined,
+      },
+      sourceRef: { page: pageNum },
+    })));
+    pagesText.push(rawPageData.plain);
+    styledPages.push(pageData.styled);
+    if (isLikelyScan(pageData.plain)) scanPageNumbers.push(pageNum);
+    irPages.push({ pageNumber: pageNum, width: pageWidth, height: pageHeight, blocks });
+    onProgress?.(Math.round((pageNum / pdf.numPages) * 35), "Đang đọc lớp văn bản và bố cục PDF...");
+  }
+
+  const ocrPages: OcrPageResult[] = [];
+  if (scanPageNumbers.length) {
+    const selectedPages = scanPageNumbers.slice(0, MAX_OCR_PAGES_PER_IMPORT);
+    if (scanPageNumbers.length > MAX_OCR_PAGES_PER_IMPORT) qualityFlags.push("ocr_page_limit_exceeded");
+    if (typeof document === "undefined") {
+      qualityFlags.push("ocr_requires_browser_runtime");
+    } else {
+      const inputs = [];
+      const renderSizes = new Map<number, { width: number; height: number }>();
+      for (const pageNumber of selectedPages) {
+        const page = await pdf.getPage(pageNumber);
+        const viewportScale = Math.min(2, 2200 / Math.max(page.view[2] - page.view[0], page.view[3] - page.view[1]));
+        const canvas = document.createElement("canvas");
+        await renderPdfPageToCanvas(pdf, pageNumber, canvas, Math.max(1.25, viewportScale));
+        inputs.push({ pageNumber, image: canvas });
+        renderSizes.set(pageNumber, { width: canvas.width, height: canvas.height });
+      }
+      try {
+        ocrPages.push(...await recognizeOcrPages(inputs, (percent, message) => onProgress?.(35 + Math.round(percent * 0.55), message)));
+        for (const ocrPage of ocrPages) {
+          const pageIndex = ocrPage.pageNumber - 1;
+          pagesText[pageIndex] = ocrPage.text;
+          styledPages[pageIndex] = ocrPage.text;
+          if (ocrPage.confidence < 0.72) qualityFlags.push("ocr_low_confidence_page_" + ocrPage.pageNumber);
+          const pageIR = irPages[pageIndex];
+          const page = await pdf.getPage(ocrPage.pageNumber);
+          const renderSize = renderSizes.get(ocrPage.pageNumber);
+          const width = page.view[2] - page.view[0];
+          const height = page.view[3] - page.view[1];
+          const renderWidth = renderSize?.width || width;
+          const renderHeight = renderSize?.height || height;
+          pageIR.blocks.push(...ocrPage.regions.map((region, index) => ({
+            id: "p" + ocrPage.pageNumber + "_ocr_" + index,
+            type: "text_span" as const,
+            text: region.text,
+            normalizedText: region.text.normalize("NFKC"),
+            bbox: [
+              page.view[0] + (region.bbox[0] / renderWidth) * width,
+              page.view[3] - (region.bbox[3] / renderHeight) * height,
+              page.view[0] + (region.bbox[2] / renderWidth) * width,
+              page.view[3] - (region.bbox[1] / renderHeight) * height,
+            ] as [number, number, number, number],
+            readingOrder: pageIR.blocks.length + index,
+            sourceRef: { page: ocrPage.pageNumber },
+          })));
+        }
+      } catch {
+        qualityFlags.push("ocr_failed");
+      }
+    }
+  }
+  if (scanPageNumbers.length > ocrPages.length) qualityFlags.push("scan_pages_unprocessed");
+
+  const cleanedText = cleanPdfExtractedText(pagesText);
+  const cleanedStyledText = cleanPdfExtractedText(styledPages);
+  const sourceHash = await sha256(arrayBuffer);
+  let result = parseRawExamText(cleanedStyledText, {
+    fileName: file.name,
+    fileType: "pdf",
+    allowCompactOptionLabels: ocrPages.length > 0,
+  });
+  result = attachQuestionSourceReferences(result, {
+    schemaVersion: "2.0",
+    sourceFormat: "pdf",
+    sourceHash,
+    parserVersion: "qizzone-pdf-v2",
+    pages: irPages,
+    warnings: qualityFlags,
+  });
+  result.fileSize = file.size;
+  result.extractionMethod = ocrPages.length ? "ocr" : "native_parser";
+  result.sourceHash = sourceHash;
+  result.qualityFlags = [...new Set([...(result.qualityFlags || []), ...qualityFlags])];
+  result.warningsCount += qualityFlags.length;
+  onProgress?.(100, "Đã đọc xong tài liệu PDF.");
+
+  return {
+    rawText: cleanedText,
+    totalPages: pdf.numPages,
+    pagesText,
+    result,
+    pdfDoc: pdf,
+    documentIR: {
+      schemaVersion: "2.0",
+      sourceFormat: "pdf",
+      sourceHash,
+      parserVersion: "qizzone-pdf-v2",
+      pages: irPages,
+      warnings: qualityFlags,
+    },
+    ocrPageCount: ocrPages.length,
+    qualityFlags,
+  };
+}
+
+export async function renderPdfPageToCanvas(
+  pdf: PdfJsTypes.PDFDocumentProxy,
+  pageNumber: number,
+  canvas: HTMLCanvasElement,
+  scale = 1.5,
+): Promise<void> {
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale });
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+  const canvasContext = canvas.getContext("2d");
+  if (!canvasContext) return;
+  await page.render({ canvasContext, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+}
+
+function unionBounds(blocks: DocumentIRBlock[]): PdfBounds | undefined {
+  const bounds = blocks.flatMap(block => block.bbox ? [block.bbox as PdfBounds] : []);
+  if (!bounds.length) return undefined;
+  return [
+    Math.min(...bounds.map(box => box[0])),
+    Math.min(...bounds.map(box => box[1])),
+    Math.max(...bounds.map(box => box[2])),
+    Math.max(...bounds.map(box => box[3])),
+  ];
+}
+
+function expandBounds(bounds: PdfBounds, padding: number): PdfBounds {
+  return [bounds[0] - padding, bounds[1] - padding, bounds[2] + padding, bounds[3] + padding];
+}
+
+export function getScannedPdfPromptBounds(
+  question: ExtractionResult["questions"][number],
+  pageNumber: number,
+  textBlocksById: Map<string, DocumentIRBlock>,
+  allQuestions: ExtractionResult["questions"],
+  pageWidth: number,
+  pageHeight: number,
+): PdfBounds | undefined {
+  const promptBlocks = (question.promptSourceRefs || []).flatMap(id => {
+    const block = textBlocksById.get(id);
+    return block?.sourceRef.page === pageNumber && block.bbox ? [block] : [];
+  });
+  const promptBounds = unionBounds(promptBlocks);
+  if (!promptBounds) return undefined;
+
+  const optionBounds = question.options.flatMap(option => (option.sourceRefs || []).flatMap(id => {
+    const block = textBlocksById.get(id);
+    return block?.sourceRef.page === pageNumber && block.bbox ? [block.bbox as PdfBounds] : [];
+  }));
+  const xPadding = Math.max(16, pageWidth * 0.06);
+  const yPadding = Math.min(100, Math.max(24, pageHeight * 0.08));
+  let top = promptBounds[3] + yPadding;
+  let bottom = promptBounds[1] - yPadding;
+
+  // Include the figure between the question wording and its first option, while
+  // keeping the option text outside the prompt image.
+  const nearestOptionTop = Math.max(...optionBounds
+    .filter(bounds => bounds[3] <= promptBounds[1] + 12)
+    .map(bounds => bounds[3]), -Infinity);
+  if (Number.isFinite(nearestOptionTop) && promptBounds[1] - nearestOptionTop <= 240) {
+    bottom = Math.min(bottom, nearestOptionTop + 7);
+  }
+
+  // Scanned charts often precede “Theo biểu đồ...”. Extend the crop upward only
+  // as far as the previous question on this page, so adjacent questions do not leak in.
+  const currentCenterY = (promptBounds[1] + promptBounds[3]) / 2;
+  const previousQuestionBottoms = allQuestions
+    .filter(candidate => candidate.id !== question.id)
+    .flatMap(candidate => [...new Set([...(candidate.promptSourceRefs || []), ...(candidate.sourceRefs || [])])]
+      .flatMap(id => {
+        const block = textBlocksById.get(id);
+        if (block?.sourceRef.page !== pageNumber || !block.bbox) return [];
+        const bounds = block.bbox as PdfBounds;
+        const horizontalGap = Math.max(0, promptBounds[0] - bounds[2], bounds[0] - promptBounds[2]);
+        const centerY = (bounds[1] + bounds[3]) / 2;
+        return centerY > currentCenterY && horizontalGap < 48 ? [bounds[1]] : [];
+      }));
+  if (previousQuestionBottoms.length) {
+    top = Math.min(top, Math.min(...previousQuestionBottoms) - 7);
+  }
+
+  return [
+    Math.max(0, promptBounds[0] - xPadding),
+    Math.max(0, bottom),
+    Math.min(pageWidth, promptBounds[2] + xPadding),
+    Math.min(pageHeight, top),
+  ];
+}
+
+function boundsDistance(first: PdfBounds, second: PdfBounds): number {
+  const gapX = Math.max(0, first[0] - second[2], second[0] - first[2]);
+  const gapY = Math.max(0, first[1] - second[3], second[1] - first[3]);
+  return Math.hypot(gapX, gapY);
+}
+
+function boundsOverlapRatio(first: PdfBounds, second: PdfBounds): number {
+  const intersectionWidth = Math.max(0, Math.min(first[2], second[2]) - Math.max(first[0], second[0]));
+  const intersectionHeight = Math.max(0, Math.min(first[3], second[3]) - Math.max(first[1], second[1]));
+  const intersectionArea = intersectionWidth * intersectionHeight;
+  const firstArea = Math.max(0, first[2] - first[0]) * Math.max(0, first[3] - first[1]);
+  const secondArea = Math.max(0, second[2] - second[0]) * Math.max(0, second[3] - second[1]);
+  const smallerArea = Math.min(firstArea, secondArea);
+  return smallerArea > 0 ? intersectionArea / smallerArea : 0;
+}
+
+function removeLiteralText(source: string, text: string): string {
+  const value = text.trim();
+  if (value.length < 3) return source;
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return source.replace(new RegExp(escaped, "giu"), " ").replace(/[ \t]{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim();
+}
+
+async function renderPdfRegion(
+  pdf: PdfJsTypes.PDFDocumentProxy,
+  pageNumber: number,
+  bounds: PdfBounds,
+  pageCanvases: Map<number, { canvas: HTMLCanvasElement; viewport: PdfJsTypes.PageViewport }>,
+  padding = 8,
+): Promise<string | undefined> {
+  if (typeof document === "undefined") return undefined;
+  let rendered = pageCanvases.get(pageNumber);
+  if (!rendered) {
+    const page = await pdf.getPage(pageNumber);
+    const maxSide = Math.max(page.view[2] - page.view[0], page.view[3] - page.view[1]);
+    const scale = Math.min(1.8, 1800 / maxSide);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const context = canvas.getContext("2d");
+    if (!context) return undefined;
+    await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise;
+    rendered = { canvas, viewport };
+    pageCanvases.set(pageNumber, rendered);
+  }
+
+  const padded = expandBounds(bounds, padding);
+  const corners = [
+    rendered.viewport.convertToViewportPoint(padded[0], padded[1]),
+    rendered.viewport.convertToViewportPoint(padded[0], padded[3]),
+    rendered.viewport.convertToViewportPoint(padded[2], padded[1]),
+    rendered.viewport.convertToViewportPoint(padded[2], padded[3]),
+  ];
+  const xs = corners.map(point => point[0]);
+  const ys = corners.map(point => point[1]);
+  const left = Math.max(0, Math.floor(Math.min(...xs)));
+  const top = Math.max(0, Math.floor(Math.min(...ys)));
+  const right = Math.min(rendered.canvas.width, Math.ceil(Math.max(...xs)));
+  const bottom = Math.min(rendered.canvas.height, Math.ceil(Math.max(...ys)));
+  const cropWidth = right - left;
+  const cropHeight = bottom - top;
+  if (cropWidth < 16 || cropHeight < 16) return undefined;
+
+  const maxDimension = 1400;
+  const scale = Math.min(1, maxDimension / Math.max(cropWidth, cropHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(cropWidth * scale));
+  canvas.height = Math.max(1, Math.round(cropHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(rendered.canvas, left, top, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+  const image = canvas.toDataURL("image/jpeg", 0.82);
+  if (image.length <= 900_000) return image;
+  const compressed = canvas.toDataURL("image/jpeg", 0.65);
+  return compressed.length <= 900_000 ? compressed : undefined;
+}
+
+/** Crops PDF charts, diagrams, and maps and links each crop to its question or answer option. */
+export async function attachPdfVisualMediaToQuestions(
+  result: ExtractionResult,
+  pdf: PdfJsTypes.PDFDocumentProxy | undefined,
+  documentIR: DocumentIR,
+): Promise<ExtractionResult> {
+  if (!pdf || typeof document === "undefined") return result;
+  const textBlocksById = new Map(documentIR.pages.flatMap(page => page.blocks)
+    .filter(block => block.type === "text_span" || block.type === "paragraph")
+    .map(block => [block.id, block]));
+  const visualBlocks = documentIR.pages.flatMap(page => page.blocks
+    .filter(block => (block.type === "image" || block.type === "shape") && block.bbox)
+    .map(block => ({ pageNumber: page.pageNumber, block })));
+  const pageCanvases = new Map<number, { canvas: HTMLCanvasElement; viewport: PdfJsTypes.PageViewport }>();
+  const mediaByQuestion = new Map<string, { images: string[]; optionImages: Map<string, string[]> }>();
+  const cleanedPromptByQuestion = new Map<string, string>();
+  const cleanedOptionsByQuestion = new Map<string, Map<string, string>>();
+  const attachedRegionsByTarget = new Map<string, Array<{ pageNumber: number; bbox: PdfBounds }>>();
+  const maxAssets = 80;
+  const maxMediaPerQuestion = 8;
+  const maxMediaPerOption = 2;
+  let assetCount = 0;
+  let mediaBytes = 0;
+
+  const hasRoomForTarget = (key: string, limit: number, pageNumber: number, bbox: PdfBounds) => {
+    const attached = attachedRegionsByTarget.get(key) || [];
+    if (attached.length >= limit || attached.some(region => region.pageNumber === pageNumber && boundsOverlapRatio(region.bbox, bbox) >= 0.72)) return false;
+    return true;
+  };
+  const rememberTargetRegion = (key: string, pageNumber: number, bbox: PdfBounds) => {
+    const attached = attachedRegionsByTarget.get(key) || [];
+    attached.push({ pageNumber, bbox });
+    attachedRegionsByTarget.set(key, attached);
+  };
+
+  for (const { pageNumber, block: visualBlock } of visualBlocks) {
+    const visualBounds = visualBlock.bbox as PdfBounds;
+    const pageIR = documentIR.pages.find(page => page.pageNumber === pageNumber);
+    const pageArea = (pageIR?.width || 0) * (pageIR?.height || 0);
+    const isScannedPageImage = visualBlock.type === "image" && pageArea > 0
+      && ((visualBounds[2] - visualBounds[0]) * (visualBounds[3] - visualBounds[1])) / pageArea > 0.72;
+    if (isScannedPageImage) {
+      for (const question of result.questions) {
+        if (assetCount >= maxAssets || mediaBytes >= 15_000_000) break;
+        const targetKey = question.id + ":prompt";
+        const pageWidth = pageIR?.width || 0;
+        const pageHeight = pageIR?.height || 0;
+        const promptBounds = getScannedPdfPromptBounds(question, pageNumber, textBlocksById, result.questions, pageWidth, pageHeight);
+        if (!promptBounds || boundsDistance(promptBounds, visualBounds) > 40 || !hasRoomForTarget(targetKey, maxMediaPerQuestion, pageNumber, promptBounds)) continue;
+        const image = await renderPdfRegion(pdf, pageNumber, promptBounds, pageCanvases);
+        if (!image) continue;
+        assetCount += 1;
+        mediaBytes += image.length;
+        rememberTargetRegion(targetKey, pageNumber, promptBounds);
+        const existing = mediaByQuestion.get(question.id) || { images: [], optionImages: new Map<string, string[]>() };
+        existing.images.push(image);
+        mediaByQuestion.set(question.id, existing);
+      }
+      continue;
+    }
+    const questionTargets = result.questions.flatMap(question => {
+      const promptIds = new Set(question.promptSourceRefs || []);
+      const optionIds = new Set(question.options.flatMap(option => option.sourceRefs || []));
+      const promptBlocks = [...promptIds].flatMap(id => {
+        const block = textBlocksById.get(id);
+        return block?.sourceRef.page === pageNumber && block.bbox ? [block] : [];
+      });
+      const fallbackPromptBlocks = promptBlocks.length ? promptBlocks : [...new Set(question.sourceRefs || [])]
+        .filter(id => !optionIds.has(id))
+        .flatMap(id => {
+          const block = textBlocksById.get(id);
+          return block?.sourceRef.page === pageNumber && block.bbox ? [block] : [];
+        });
+      const referencedPages = new Set((question.promptSourceRefs || []).flatMap(id => {
+        const block = textBlocksById.get(id);
+        return block?.sourceRef.page === undefined ? [] : [block.sourceRef.page];
+      }));
+      const promptCuePages = new Set([...promptIds].flatMap(id => {
+        const block = textBlocksById.get(id);
+        const text = block?.text || block?.normalizedText || "";
+        return block?.sourceRef.page !== undefined && questionReferencesPromptVisual(text)
+          ? [block.sourceRef.page]
+          : [];
+      }));
+      const distinctivePromptCuePages = new Set([...promptIds].flatMap(id => {
+        const block = textBlocksById.get(id);
+        const text = block?.text || block?.normalizedText || "";
+        return block?.sourceRef.page !== undefined && questionReferencesPromptVisual(text) && isPdfPromptVisualCueDistinctive(text)
+          ? [block.sourceRef.page]
+          : [];
+      }));
+      const localCueBlocks = fallbackPromptBlocks.filter(block => questionReferencesPromptVisual(block.text || block.normalizedText || ""));
+      const hasPageLocalVisualCue = localCueBlocks.length > 0;
+      const localCueText = localCueBlocks.map(block => block.text || block.normalizedText || "").join(" ");
+      const localCueBounds = unionBounds(localCueBlocks);
+      // A prompt mapped across many pages is ambiguous unless the matching page
+      // itself contains the question's figure cue.
+      if (!isPdfVisualSourcePageEligible(
+        referencedPages.size,
+        hasPageLocalVisualCue,
+        promptCuePages.size,
+        distinctivePromptCuePages.has(pageNumber),
+      )
+        || !fallbackPromptBlocks.length) return [];
+      const promptAnchorBlocks = localCueBlocks.length ? localCueBlocks : fallbackPromptBlocks;
+      const promptDistance = Math.min(...promptAnchorBlocks.map(block => boundsDistance(block.bbox as PdfBounds, visualBounds)));
+      const optionTargets = question.options.flatMap(option => {
+        const optionBlocks = (option.sourceRefs || []).flatMap(id => {
+          const sourceBlock = textBlocksById.get(id);
+          return sourceBlock?.sourceRef.page === pageNumber && sourceBlock.bbox ? [sourceBlock] : [];
+        });
+        const optionBounds = unionBounds(optionBlocks);
+        if (!optionBounds) return [];
+        return [{ option, distance: boundsDistance(optionBounds, visualBounds) }];
+      }).sort((first, second) => first.distance - second.distance);
+      const nearestOption = optionTargets[0];
+      const optionThreshold = visualBlock.type === "shape" ? 10 : 16;
+      const explicitVisualCue = hasPageLocalVisualCue;
+      if (explicitVisualCue && localCueBounds
+        && !isPdfVisualPositionConsistentWithPromptCue(visualBounds, localCueBounds, localCueText)) return [];
+      const promptThreshold = visualBlock.type === "shape"
+        ? 22
+        : (explicitVisualCue ? 84 : 52);
+      const imageBelongsToPrompt = explicitVisualCue && nearestOption && promptDistance <= nearestOption.distance + 28;
+      const optionIsCloser = nearestOption && !imageBelongsToPrompt
+        && nearestOption.distance <= optionThreshold && nearestOption.distance <= promptDistance;
+      const distance = optionIsCloser ? nearestOption.distance : promptDistance;
+      if (distance > (optionIsCloser ? optionThreshold : promptThreshold)) return [];
+      const promptPriority = !optionIsCloser && explicitVisualCue && promptDistance <= promptThreshold ? 0 : 1;
+      return [{ question, option: optionIsCloser ? nearestOption.option : undefined, distance, promptPriority }];
+    }).sort((first, second) => first.promptPriority - second.promptPriority || first.distance - second.distance);
+    const target = questionTargets[0];
+    if (!target || assetCount >= maxAssets || mediaBytes >= 15_000_000) continue;
+
+    const targetKey = target.option
+      ? target.question.id + ":option:" + target.option.id
+      : target.question.id + ":prompt";
+    const targetLimit = target.option ? maxMediaPerOption : maxMediaPerQuestion;
+    if (!hasRoomForTarget(targetKey, targetLimit, pageNumber, visualBounds)) continue;
+
+    const image = await renderPdfRegion(pdf, pageNumber, visualBounds, pageCanvases, 8);
+    if (!image) continue;
+    assetCount += 1;
+    mediaBytes += image.length;
+    rememberTargetRegion(targetKey, pageNumber, visualBounds);
+    const existing = mediaByQuestion.get(target.question.id) || { images: [], optionImages: new Map<string, string[]>() };
+    // Do not strip text that only touches the image's visual padding. The visual
+    // bounds already include chart labels where detected; keep adjacent prompt text.
+    const textVisualBounds = visualBounds;
+
+    if (target.option) {
+      const optionId = target.option.id;
+      const current = existing.optionImages.get(optionId) || [];
+      current.push(image);
+      existing.optionImages.set(optionId, current);
+    } else {
+      existing.images.push(image);
+      let cleanPrompt = cleanedPromptByQuestion.get(target.question.id) || target.question.content;
+      for (const blockId of target.question.promptSourceRefs || []) {
+        const sourceBlock = textBlocksById.get(blockId);
+        const sourceText = sourceBlock?.text || sourceBlock?.normalizedText || "";
+        if (!sourceBlock?.bbox || sourceBlock.sourceRef.page !== pageNumber || !intersects(sourceBlock.bbox, textVisualBounds)
+          || !isLikelyChartLabel(sourceText) || questionReferencesPromptVisual(sourceText)) continue;
+        cleanPrompt = removeLiteralText(cleanPrompt, sourceText);
+      }
+      cleanedPromptByQuestion.set(target.question.id, cleanPrompt);
+      const optionCleanup = cleanedOptionsByQuestion.get(target.question.id) || new Map<string, string>();
+      for (const option of target.question.options) {
+        let cleanOption = optionCleanup.get(option.id) || option.content;
+        for (const blockId of option.sourceRefs || []) {
+          const sourceBlock = textBlocksById.get(blockId);
+          const sourceText = sourceBlock?.text || sourceBlock?.normalizedText || "";
+          if (!sourceBlock?.bbox || sourceBlock.sourceRef.page !== pageNumber || !intersects(sourceBlock.bbox, textVisualBounds)
+            || !isLikelyChartLabel(sourceText) || questionReferencesPromptVisual(sourceText)) continue;
+          cleanOption = removeLiteralText(cleanOption, sourceText);
+        }
+        if (cleanOption !== option.content) optionCleanup.set(option.id, cleanOption);
+      }
+      cleanedOptionsByQuestion.set(target.question.id, optionCleanup);
+    }
+    mediaByQuestion.set(target.question.id, existing);
+  }
+
+  return {
+    ...result,
+    questions: result.questions.map(question => {
+      const media = mediaByQuestion.get(question.id);
+      if (!media) return question;
+      return {
+        ...question,
+        content: cleanedPromptByQuestion.get(question.id) || question.content,
+        images: media.images.length ? [...(question.images || []), ...media.images] : question.images,
+        options: question.options.map(option => {
+          const images = media.optionImages.get(option.id);
+          const cleanedOption = cleanedOptionsByQuestion.get(question.id)?.get(option.id);
+          return {
+            ...option,
+            ...(cleanedOption ? { content: cleanedOption } : {}),
+            ...(images?.length ? { images: [...(option.images || []), ...images] } : {}),
+          };
+        }),
+      };
+    }),
+  };
+}
