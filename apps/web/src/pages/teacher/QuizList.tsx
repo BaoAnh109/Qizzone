@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   PlusCircle,
@@ -30,13 +30,24 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
-import type { Quiz, QuizStatus } from "@/types/quiz";
+import type { Quiz, QuizSettings, QuizStatus } from "@/types/quiz";
+import type { Classroom, LatePolicy } from "@qizzone/domain";
+import { classroomService } from "@/services/classroomService";
+
+function toLocalDateTimeValue(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 export function QuizList() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { quizzes, updateQuizAssignments, deleteQuiz, duplicateQuiz, togglePublishStatus } =
     useQuizStore();
+  const updatePublishSettings = useQuizStore((state) => state.updatePublishSettings);
   const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
   const toast = useToast();
 
@@ -51,6 +62,29 @@ export function QuizList() {
   const [isSavingAssign, setIsSavingAssign] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedLinkCode, setCopiedLinkCode] = useState<string | null>(null);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [classroomAssignTarget, setClassroomAssignTarget] = useState<Quiz | null>(null);
+  const [selectedClassroomIds, setSelectedClassroomIds] = useState<string[]>([]);
+  const [assignmentDueAt, setAssignmentDueAt] = useState("");
+  const [assignmentHardCloseAt, setAssignmentHardCloseAt] = useState("");
+  const [assignmentLatePolicy, setAssignmentLatePolicy] = useState<LatePolicy>("block_after_due");
+  const [assignmentError, setAssignmentError] = useState("");
+  const [isSavingClassroomAssignment, setIsSavingClassroomAssignment] = useState(false);
+  const [publishSettingsTarget, setPublishSettingsTarget] = useState<Quiz | null>(null);
+  const [publishSettingsDraft, setPublishSettingsDraft] = useState<Partial<QuizSettings>>({});
+  const [isSavingPublishSettings, setIsSavingPublishSettings] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    classroomService.listMyClassrooms()
+      .then((items) => {
+        if (!cancelled) setClassrooms(items.filter((item) => !item.isArchived));
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : "Không thể tải danh sách lớp học.");
+      });
+    return () => { cancelled = true; };
+  }, [toast]);
 
   const handleOpenAssignModal = (quiz: Quiz) => {
     setAssignTarget(quiz);
@@ -58,6 +92,87 @@ export function QuizList() {
     setAssignEmails([...(quiz.settings.assignedEmails || [])]);
     setNewClassInput("");
     setNewEmailInput("");
+  };
+
+  const handleOpenClassroomAssignment = (quiz: Quiz) => {
+    setClassroomAssignTarget(quiz);
+    setSelectedClassroomIds([]);
+    setAssignmentDueAt("");
+    setAssignmentHardCloseAt("");
+    setAssignmentLatePolicy("block_after_due");
+    setAssignmentError("");
+  };
+
+  const handleAssignToClassrooms = async () => {
+    if (!classroomAssignTarget) return;
+    if (selectedClassroomIds.length === 0) {
+      setAssignmentError("Chọn ít nhất một lớp trước khi giao bài.");
+      return;
+    }
+    if (!assignmentDueAt) {
+      setAssignmentError("Vui lòng chọn hạn nộp trước khi giao bài.");
+      return;
+    }
+    const dueDate = assignmentDueAt ? new Date(assignmentDueAt) : null;
+    const hardCloseDate = assignmentHardCloseAt ? new Date(assignmentHardCloseAt) : null;
+    if (dueDate && hardCloseDate && hardCloseDate.getTime() < dueDate.getTime()) {
+      setAssignmentError("Hạn cuối phải sau hoặc bằng hạn nộp.");
+      return;
+    }
+    setAssignmentError("");
+    setIsSavingClassroomAssignment(true);
+    try {
+      await classroomService.assignQuizToClassrooms({
+        quizId: classroomAssignTarget.id,
+        assignments: selectedClassroomIds.map((classroomId) => ({
+          classroomId,
+          instructions: "",
+          dueAt: dueDate?.toISOString() ?? null,
+          latePolicy: assignmentLatePolicy,
+          hardCloseAt: hardCloseDate?.toISOString() ?? null,
+        })),
+      });
+      toast.success("Đã giao bài cho lớp thành công.");
+      setClassroomAssignTarget(null);
+    } catch (error) {
+      setAssignmentError(error instanceof Error ? error.message : "Không thể giao bài cho lớp.");
+    } finally {
+      setIsSavingClassroomAssignment(false);
+    }
+  };
+
+  const handleOpenPublishSettings = (quiz: Quiz) => {
+    setPublishSettingsTarget(quiz);
+    setPublishSettingsDraft({
+      publishScope: quiz.settings.publishScope ?? "public",
+      opensAt: quiz.settings.opensAt ?? null,
+      closesAt: quiz.settings.closesAt ?? null,
+      maxAttempts: quiz.settings.maxAttempts,
+      shuffleQuestions: quiz.settings.shuffleQuestions,
+      shuffleOptions: quiz.settings.shuffleOptions,
+      scoreVisibility: quiz.settings.scoreVisibility ?? "immediate",
+      answerVisibility: quiz.settings.answerVisibility ?? "immediate",
+    });
+  };
+
+  const handleSavePublishSettings = async () => {
+    if (!publishSettingsTarget) return;
+    const opensAt = publishSettingsDraft.opensAt ?? null;
+    const closesAt = publishSettingsDraft.closesAt ?? null;
+    if (opensAt && closesAt && new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
+      toast.error("Thời gian đóng đề phải sau thời gian mở đề.");
+      return;
+    }
+    setIsSavingPublishSettings(true);
+    try {
+      await updatePublishSettings(publishSettingsTarget.id, publishSettingsDraft);
+      toast.success("Cập nhật cài đặt phát hành thành công.");
+      setPublishSettingsTarget(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật cài đặt phát hành.");
+    } finally {
+      setIsSavingPublishSettings(false);
+    }
   };
 
   const handleAddAssignClass = () => {
@@ -377,12 +492,31 @@ export function QuizList() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full text-teal-700 hover:bg-teal-50 border-teal-200"
-                      onClick={() => handleOpenAssignModal(quiz)}
+                      className="min-h-11 w-full text-teal-700 hover:bg-teal-50 border-teal-200"
+                      onClick={() => handleOpenClassroomAssignment(quiz)}
                       leftIcon={<Users className="h-3.5 w-3.5 text-teal-700" />}
                     >
-                      Giao đề cho Lớp / Email
+                      Giao bài cho lớp
                     </Button>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 w-full"
+                        onClick={() => handleOpenAssignModal(quiz)}
+                      >
+                        Chọn đối tượng
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 w-full"
+                        onClick={() => handleOpenPublishSettings(quiz)}
+                      >
+                        Cấu hình phát hành
+                      </Button>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -485,6 +619,97 @@ export function QuizList() {
         >
           <div className="rounded-xl bg-rose-50 p-4 border border-rose-200 text-xs text-rose-900">
             <strong>Cảnh báo:</strong> Đề thi bị xóa sẽ không thể khôi phục lại và các mã phòng liên quan sẽ ngừng hoạt động ngay lập tức.
+          </div>
+        </Modal>
+      )}
+
+      {classroomAssignTarget && (
+        <Modal
+          isOpen={!!classroomAssignTarget}
+          onClose={() => setClassroomAssignTarget(null)}
+          title="Giao bài cho lớp"
+          description={`Chọn lớp và thời hạn cho bài “${classroomAssignTarget.title}”.`}
+          size="lg"
+          footer={<>
+            <Button variant="outline" onClick={() => setClassroomAssignTarget(null)}>Hủy</Button>
+            <Button variant="primary" onClick={() => void handleAssignToClassrooms()} isLoading={isSavingClassroomAssignment}>Giao bài</Button>
+          </>}
+        >
+          <div className="space-y-5">
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold theme-text-primary">Chọn lớp</legend>
+              {classrooms.length === 0 ? (
+                <p className="rounded-lg theme-surface-muted p-3 text-sm theme-text-secondary">Bạn chưa có lớp đang hoạt động. Tạo lớp trước khi giao bài.</p>
+              ) : (
+                <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border theme-border p-2">
+                  {classrooms.map((classroom) => {
+                    const checkboxId = `assign-class-${classroom.id}`;
+                    return <label key={classroom.id} htmlFor={checkboxId} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 theme-hover-surface">
+                      <input
+                        id={checkboxId}
+                        type="checkbox"
+                        checked={selectedClassroomIds.includes(classroom.id)}
+                        onChange={(event) => setSelectedClassroomIds((current) => event.target.checked ? [...current, classroom.id] : current.filter((id) => id !== classroom.id))}
+                        className="h-4 w-4 rounded accent-teal-700"
+                      />
+                      <span className="text-sm font-medium theme-text-primary">{classroom.name}</span>
+                      <span className="ml-auto text-xs theme-text-muted">{classroom.memberCount} học sinh</span>
+                    </label>;
+                  })}
+                </div>
+              )}
+            </fieldset>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label="Hạn nộp" type="datetime-local" value={assignmentDueAt} onChange={(event) => { setAssignmentDueAt(event.target.value); setAssignmentError(""); }} />
+              <Input label="Đóng hẳn / Hạn cuối (tùy chọn)" type="datetime-local" value={assignmentHardCloseAt} onChange={(event) => { setAssignmentHardCloseAt(event.target.value); setAssignmentError(""); }} />
+            </div>
+            <label className="block space-y-1.5 text-sm font-medium theme-text-secondary">
+              <span>Chính sách nộp muộn</span>
+              <select value={assignmentLatePolicy} onChange={(event) => setAssignmentLatePolicy(event.target.value as LatePolicy)} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
+                <option value="block_after_due">Chặn sau hạn nộp</option>
+                <option value="allow_late">Cho phép nộp muộn</option>
+              </select>
+            </label>
+            {assignmentError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{assignmentError}</p>}
+          </div>
+        </Modal>
+      )}
+
+      {publishSettingsTarget && (
+        <Modal
+          isOpen={!!publishSettingsTarget}
+          onClose={() => setPublishSettingsTarget(null)}
+          title="Cấu hình phát hành Azota"
+          description={`Cập nhật phạm vi, thời gian và cách hiển thị kết quả cho “${publishSettingsTarget.title}”.`}
+          size="lg"
+          footer={<>
+            <Button variant="outline" onClick={() => setPublishSettingsTarget(null)}>Hủy</Button>
+            <Button variant="primary" onClick={() => void handleSavePublishSettings()} isLoading={isSavingPublishSettings}>Lưu cài đặt</Button>
+          </>}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5 text-sm font-medium theme-text-secondary sm:col-span-2">
+              <span>Phạm vi phát hành</span>
+              <select aria-label="Phạm vi phát hành" value={publishSettingsDraft.publishScope ?? "public"} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, publishScope: event.target.value as QuizSettings["publishScope"] }))} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
+                <option value="public">Công khai bằng mã hoặc đường dẫn</option>
+                <option value="class_only">Chỉ lớp được giao</option>
+              </select>
+            </label>
+            <Input label="Thời gian mở đề" type="datetime-local" value={toLocalDateTimeValue(publishSettingsDraft.opensAt)} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, opensAt: event.target.value ? new Date(event.target.value).toISOString() : null }))} />
+            <Input label="Thời gian đóng đề" type="datetime-local" value={toLocalDateTimeValue(publishSettingsDraft.closesAt)} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, closesAt: event.target.value ? new Date(event.target.value).toISOString() : null }))} />
+            <Input label="Số lần làm" type="number" min={0} max={100} value={publishSettingsDraft.maxAttempts ?? 0} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, maxAttempts: Math.max(0, Number(event.target.value) || 0) }))} />
+            <label className="space-y-1.5 text-sm font-medium theme-text-secondary">
+              <span>Hiển thị điểm</span>
+              <select aria-label="Hiển thị điểm" value={publishSettingsDraft.scoreVisibility ?? "immediate"} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, scoreVisibility: event.target.value as QuizSettings["scoreVisibility"] }))} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
+                <option value="immediate">Ngay sau khi nộp</option><option value="after_close">Sau khi đóng đề</option><option value="never">Không hiển thị</option>
+              </select>
+            </label>
+            <label className="space-y-1.5 text-sm font-medium theme-text-secondary">
+              <span>Hiển thị đáp án</span>
+              <select aria-label="Hiển thị đáp án" value={publishSettingsDraft.answerVisibility ?? "immediate"} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, answerVisibility: event.target.value as QuizSettings["answerVisibility"] }))} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
+                <option value="immediate">Ngay sau khi nộp</option><option value="after_close">Sau khi đóng đề</option><option value="never">Không hiển thị</option>
+              </select>
+            </label>
           </div>
         </Modal>
       )}

@@ -210,7 +210,27 @@ export function BugReportsAdmin() {
   };
 
   useEffect(() => {
-    void load();
+    let cancelled = false;
+    void bugReportService
+      .listReports()
+      .then((data) => {
+        if (cancelled) return;
+        setReports(Array.isArray(data) ? data : []);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        const message =
+          error instanceof Error ? error.message : "Không thể tải danh sách báo lỗi.";
+        setLoadError(message);
+        toastRef.current.error(message);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

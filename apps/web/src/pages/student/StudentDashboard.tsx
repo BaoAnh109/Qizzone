@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   LogIn,
   Search,
@@ -27,6 +27,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/hooks/useToast";
 import type { Quiz } from "@/types/quiz";
+import type { StudentAssignmentItem } from "@qizzone/domain";
+import { classroomService } from "@/services/classroomService";
 
 export function StudentDashboard() {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ export function StudentDashboard() {
   const [roomCode, setRoomCode] = useState("");
   const [historySearchTerm, setHistorySearchTerm] = useState("");
   const [availableSearchTerm, setAvailableSearchTerm] = useState("");
+  const [classroomAssignments, setClassroomAssignments] = useState<StudentAssignmentItem[]>([]);
 
   const studentResults = user ? getResultsByStudent(user.id) : [];
   const publishedQuizzes = quizzes.filter((q) => q.status === "published");
@@ -55,6 +58,19 @@ export function StudentDashboard() {
   useEffect(() => {
     void checkAndAutoSubmitExpired();
   }, [checkAndAutoSubmitExpired]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let cancelled = false;
+    classroomService.listStudentAssignments()
+      .then((items) => {
+        if (!cancelled) setClassroomAssignments(items);
+      })
+      .catch(() => {
+        if (!cancelled) setClassroomAssignments([]);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // In-progress active sessions count (only valid within time)
   const inProgressQuizzes = publishedQuizzes.filter((q) => {
@@ -246,6 +262,23 @@ export function StudentDashboard() {
           </div>
         </div>
       </div>
+
+      {classroomAssignments.length > 0 && <section className="space-y-4" aria-labelledby="classroom-assignment-heading">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div><h2 id="classroom-assignment-heading" className="text-xl font-bold theme-text-primary">Bài tập từ lớp học ({classroomAssignments.length})</h2><p className="mt-1 text-sm theme-text-secondary">Các bài được giao trong lớp và hạn nộp của bạn.</p></div>
+          <Button variant="outline" onClick={() => navigate("/student/classes")}>Lớp học của tôi</Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{classroomAssignments.map((assignment) => {
+          const label = assignment.status === "completed" ? assignment.isLate ? "Nộp muộn" : "Đã hoàn thành" : assignment.status === "overdue" ? "Quá hạn" : "Cần làm";
+          const resultHref = assignment.latestResultId ? `/student/result/${assignment.latestResultId}` : null;
+          const href = assignment.status === "completed" ? resultHref : `/student/quiz/${assignment.quizId}/lobby?assignmentId=${encodeURIComponent(assignment.assignmentId)}`;
+          return <Card key={assignment.assignmentId}><CardContent className="space-y-3 p-4">
+            <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-medium theme-text-muted">{assignment.classroomName}</p><h3 className="mt-1 font-semibold theme-text-primary">{assignment.title || assignment.quizTitle}</h3></div><Badge variant={assignment.status === "completed" ? "primary" : assignment.status === "overdue" ? "destructive" : "success"} size="sm">{label}</Badge></div>
+            <p className="text-xs theme-text-secondary">{assignment.dueAt ? `Hạn nộp: ${new Date(assignment.dueAt).toLocaleString("vi-VN")}` : "Chưa đặt hạn nộp"}</p>
+            {href ? <Link to={href} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border theme-border px-3 text-sm font-semibold text-blue-800 hover:bg-blue-50">{assignment.status === "completed" ? "Xem kết quả" : "Làm bài"}</Link> : <span className="inline-flex min-h-11 items-center text-sm theme-text-muted">Đã hoàn thành</span>}
+          </CardContent></Card>;
+        })}</div>
+      </section>}
 
       {/* Active In-Progress Sessions (if any) */}
       {inProgressQuizzes.length > 0 && (

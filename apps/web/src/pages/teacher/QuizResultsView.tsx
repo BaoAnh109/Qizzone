@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Download,
@@ -28,9 +28,13 @@ import {
 import { calculateQuestionAnalytics } from "@/utils/questionAnalytics";
 import { useToast } from "@/hooks/useToast";
 import type { ExamResult } from "@/types/exam";
+import type { TeacherQuizTrackingResult } from "@qizzone/domain";
+import { classroomService } from "@/services/classroomService";
 
 export function QuizResultsView() {
   const { quizId } = useParams();
+  const [searchParams] = useSearchParams();
+  const classroomId = searchParams.get("classroomId");
   const navigate = useNavigate();
   const getQuizById = useQuizStore((state) => state.getQuizById);
   const allResults = useExamSessionStore((state) => state.results);
@@ -54,6 +58,28 @@ export function QuizResultsView() {
 
   // Selected student result for detail modal view
   const [selectedResult, setSelectedResult] = useState<ExamResult | null>(null);
+  const [tracking, setTracking] = useState<TeacherQuizTrackingResult | null>(null);
+  const [trackingError, setTrackingError] = useState("");
+  const [isTrackingLoading, setIsTrackingLoading] = useState(true);
+
+  useEffect(() => {
+    if (!quizId) return undefined;
+    let cancelled = false;
+    classroomService.listTeacherQuizTracking(quizId, classroomId)
+      .then((result) => {
+        if (!cancelled) {
+          setTracking(result);
+          setTrackingError("");
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setTrackingError(error instanceof Error ? error.message : "Không thể tải tiến độ lớp học.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsTrackingLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [quizId, classroomId]);
 
   // Filter & Sort Results
   const filteredResults = useMemo(() => {
@@ -212,6 +238,37 @@ export function QuizResultsView() {
           </Button>
         </div>
       </div>
+
+      <Card className="overflow-hidden theme-border shadow-xs">
+        <CardContent className="space-y-4 p-5">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold theme-text-primary">Theo dõi tiến độ theo lớp</h2>
+              <p className="mt-1 text-sm theme-text-secondary">Tình trạng làm bài của học sinh được giao bài trong lớp.</p>
+            </div>
+            {tracking && <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium theme-text-secondary">
+              <span>Tổng {tracking.summary.total}</span><span>Đã nộp {tracking.summary.submittedOnTime}</span><span>Nộp muộn {tracking.summary.submittedLate}</span><span>Đang làm {tracking.summary.inProgress}</span><span>Chưa nộp {tracking.summary.notSubmitted}</span>
+            </div>}
+          </div>
+          {isTrackingLoading ? <p className="text-sm theme-text-muted">Đang tải tiến độ lớp…</p> : trackingError ? <p className="rounded-lg border theme-border p-3 text-sm theme-text-secondary">{trackingError}</p> : !tracking || tracking.rows.length === 0 ? <p className="rounded-lg theme-surface-muted p-4 text-sm theme-text-secondary">Chưa có lớp nào được giao bài thi này.</p> : (
+            <div className="overflow-x-auto rounded-xl border theme-border">
+              <table className="w-full min-w-[620px] text-left text-sm">
+                <thead className="theme-surface-muted theme-text-secondary"><tr><th className="px-4 py-3 font-semibold">Học sinh</th><th className="px-4 py-3 font-semibold">Lớp</th><th className="px-4 py-3 font-semibold">Trạng thái</th><th className="px-4 py-3 font-semibold">Lượt làm</th><th className="px-4 py-3 text-right font-semibold">Điểm</th></tr></thead>
+                <tbody className="divide-y theme-border">{tracking.rows.map((row, index) => {
+                  const statusLabel = row.status === "submitted_late" ? "Nộp muộn" : row.status === "submitted_on_time" ? "Đã nộp đúng hạn" : row.status === "in_progress" ? "Đang làm" : "Chưa nộp";
+                  return <tr key={`${row.classroomId ?? "class"}-${row.studentUid ?? row.invitedEmail}-${index}`}>
+                    <td className="px-4 py-3"><div className="font-medium theme-text-primary">{row.studentName || row.invitedEmail}</div>{row.studentName && <div className="text-xs theme-text-muted">{row.invitedEmail}</div>}</td>
+                    <td className="px-4 py-3 theme-text-secondary">{row.classroomName || "—"}</td>
+                    <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.status === "submitted_late" ? "bg-amber-100 text-amber-900" : row.status === "submitted_on_time" ? "bg-emerald-100 text-emerald-900" : "bg-blue-100 text-blue-900"}`}>{statusLabel}</span></td>
+                    <td className="px-4 py-3 theme-text-secondary">{row.attemptCount}</td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold theme-text-primary">{row.score === null ? "—" : row.score.toFixed(2)}</td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Question Level Analytics */}
       <Card className="overflow-hidden theme-border shadow-xs">
@@ -563,7 +620,7 @@ export function QuizResultsView() {
                       Câu {q.order || qIdx + 1}
                     </Badge>
                     <span className={q.isCorrect ? "text-emerald-700" : "text-rose-700"}>
-                      {q.isCorrect ? "Đúng (+2.5đ)" : "Sai (0đ)"}
+                      {q.isCorrect ? `Đúng (+${q.pointsEarned}đ)` : `Sai (${q.pointsEarned}đ)`}
                     </span>
                   </div>
 

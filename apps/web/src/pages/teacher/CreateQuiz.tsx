@@ -73,13 +73,21 @@ const POPULAR_SUBJECTS = [
   "Đề thi Tổng hợp",
 ];
 
+function toLocalDateTimeValue(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function CreateQuiz() {
   const navigate = useNavigate();
   const location = useLocation();
   const locationState = location.state as CreateQuizLocationState | undefined;
   const { quizId } = useParams();
   const user = useAuthStore((state) => state.user);
-  const { createQuiz, updateQuiz, getQuizById } = useQuizStore();
+  const { createQuiz, updateQuiz, getQuizById, updatePublishSettings } = useQuizStore();
   const toast = useToast();
 
   const isEditing = !!quizId;
@@ -136,12 +144,19 @@ export function CreateQuiz() {
         shuffleQuestions: false,
         shuffleOptions: false,
         allowReview: true,
-        maxAttempts: 0,
+        maxAttempts: 1,
         passPercentage: 50,
         practiceEnabled: true,
         assignedClasses: [],
         assignedEmails: [],
+        publishScope: "public",
+        opensAt: null,
+        closesAt: null,
+        scoreVisibility: "immediate",
+        answerVisibility: "immediate",
       });
+
+  const [publishWindowError, setPublishWindowError] = useState("");
 
   const [classInput, setClassInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
@@ -356,6 +371,13 @@ export function CreateQuiz() {
       return;
     }
 
+    if (status === "published" && settings.opensAt && settings.closesAt && new Date(settings.closesAt).getTime() <= new Date(settings.opensAt).getTime()) {
+      setPublishWindowError("Thời gian đóng đề phải sau thời gian mở đề.");
+      setCurrentStep(3);
+      return;
+    }
+    setPublishWindowError("");
+
     // Check questions validity
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
@@ -389,6 +411,16 @@ export function CreateQuiz() {
 
     try {
       const questionsWithStoredImages = await persistQuestionImages(questions, user?.id);
+      const publishSettings: Partial<QuizSettings> = {
+        publishScope: settings.publishScope ?? "public",
+        opensAt: settings.opensAt ?? null,
+        closesAt: settings.closesAt ?? null,
+        maxAttempts: settings.maxAttempts,
+        shuffleQuestions: settings.shuffleQuestions,
+        shuffleOptions: settings.shuffleOptions,
+        scoreVisibility: settings.scoreVisibility ?? "immediate",
+        answerVisibility: settings.answerVisibility ?? (settings.allowReview ? "immediate" : "never"),
+      };
       if (isEditing && quizId) {
         await updateQuiz(quizId, {
         title: title.trim(),
@@ -398,6 +430,7 @@ export function CreateQuiz() {
         questions: questionsWithStoredImages,
         status,
         });
+        await updatePublishSettings(quizId, publishSettings);
         toast.success(
         status === "published"
           ? "Đề thi đã được xuất bản và cập nhật thành công!"
@@ -417,6 +450,7 @@ export function CreateQuiz() {
         totalQuestions: questionsWithStoredImages.length,
         totalPoints: Math.round(questionsWithStoredImages.reduce((sum, q) => sum + (q.points || 1), 0) * 100) / 100,
         });
+        await updatePublishSettings(created.id, publishSettings);
 
         toast.success(
         status === "published"
@@ -981,6 +1015,38 @@ export function CreateQuiz() {
                 />
               </div>
 
+              <section aria-labelledby="azota-settings-heading" className="space-y-4 rounded-xl border border-teal-200 bg-teal-50/30 p-4 sm:p-5">
+                <div>
+                  <h3 id="azota-settings-heading" className="text-base font-bold theme-text-primary">Thiết lập phát hành Azota</h3>
+                  <p className="mt-1 text-sm theme-text-secondary">Chọn phạm vi, thời gian mở đề và cách học sinh xem kết quả.</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <fieldset className="space-y-2 sm:col-span-2">
+                    <legend className="text-sm font-medium theme-text-secondary">Phạm vi phát hành</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary"><input type="radio" name="publishScope" value="public" checked={(settings.publishScope ?? "public") === "public"} onChange={() => setSettings((current) => ({ ...current, publishScope: "public" }))} className="h-4 w-4 accent-teal-700" />Mọi học sinh</label>
+                      <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border theme-border px-3 py-2 text-sm theme-text-primary"><input type="radio" name="publishScope" value="class_only" checked={settings.publishScope === "class_only"} onChange={() => setSettings((current) => ({ ...current, publishScope: "class_only" }))} className="h-4 w-4 accent-teal-700" />Chỉ lớp được giao</label>
+                    </div>
+                  </fieldset>
+                  <Input label="Thời gian mở đề (Mở bài từ)" type="datetime-local" value={toLocalDateTimeValue(settings.opensAt)} onChange={(event) => { setPublishWindowError(""); setSettings((current) => ({ ...current, opensAt: event.target.value ? new Date(event.target.value).toISOString() : null })); }} />
+                  <Input label="Thời gian đóng đề (Đóng bài lúc)" type="datetime-local" value={toLocalDateTimeValue(settings.closesAt)} onChange={(event) => { setPublishWindowError(""); setSettings((current) => ({ ...current, closesAt: event.target.value ? new Date(event.target.value).toISOString() : null })); }} />
+                  <Input label="Số lần làm tối đa" type="number" min={1} max={100} value={settings.maxAttempts} onChange={(event) => { const value = Number(event.target.value); setSettings((current) => ({ ...current, maxAttempts: Number.isFinite(value) ? Math.max(1, value) : 1 })); }} helperText="Từ 1 đến 100 lần làm." />
+                  <label className="space-y-1.5 text-sm font-medium theme-text-secondary">
+                    <span>Hiển thị điểm</span>
+                    <select aria-label="Hiển thị điểm" value={settings.scoreVisibility ?? "immediate"} onChange={(event) => setSettings((current) => ({ ...current, scoreVisibility: event.target.value as QuizSettings["scoreVisibility"] }))} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
+                      <option value="immediate">Ngay sau khi nộp</option><option value="after_close">Sau khi đóng đề</option><option value="never">Không hiển thị</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1.5 text-sm font-medium theme-text-secondary">
+                    <span>Hiển thị đáp án</span>
+                    <select aria-label="Hiển thị đáp án" value={settings.answerVisibility ?? "immediate"} onChange={(event) => setSettings((current) => ({ ...current, answerVisibility: event.target.value as QuizSettings["answerVisibility"] }))} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
+                      <option value="immediate">Ngay sau khi nộp</option><option value="after_close">Sau khi đóng đề</option><option value="never">Không hiển thị</option>
+                    </select>
+                  </label>
+                </div>
+                {publishWindowError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-800">{publishWindowError}</p>}
+              </section>
+
               {/* Quy chế phòng thi & Bảo mật */}
               <div className="space-y-4 pt-3 border-t theme-border">
                 <p className="text-xs font-bold theme-text-secondary uppercase tracking-wider">
@@ -1101,46 +1167,6 @@ export function CreateQuiz() {
                     </div>
                   </div>
 
-                  {/* Số lần làm bài tối đa */}
-                  <div className="rounded-xl border theme-border p-4 space-y-2.5 sm:col-span-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-semibold theme-text-primary">
-                          Số lần làm bài tối đa:
-                        </p>
-                        <p className="text-xs theme-text-muted mt-0.5">
-                          Nhập <span className="font-mono font-bold text-teal-700">"0"</span> để cho phép học sinh làm bài vô hạn số lần (không giới hạn).
-                        </p>
-                      </div>
-
-                      {settings.maxAttempts === 0 ? (
-                        <Badge variant="success" size="md" dot>
-                          Làm bài vô hạn (Không giới hạn)
-                        </Badge>
-                      ) : (
-                        <Badge variant="primary" size="md">
-                          Tối đa {settings.maxAttempts} lượt làm
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="max-w-xs pt-1">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        placeholder="0 (Vô hạn) hoặc 1, 2, 3..."
-                        value={settings.maxAttempts}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          setSettings((prev) => ({
-                            ...prev,
-                            maxAttempts: isNaN(val) || val < 0 ? 0 : val,
-                          }));
-                        }}
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
 
