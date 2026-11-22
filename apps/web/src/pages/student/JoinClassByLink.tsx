@@ -33,8 +33,10 @@ export function JoinClassByLink() {
   useEffect(() => {
     if (!isInitialized || !isAuthenticated || !user || user.role !== "student" || !code) return undefined;
     let cancelled = false;
-    setJoinState({ status: "loading" });
     void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setJoinState({ status: "loading" });
       try {
         const classroom = await classroomService.joinByCode(code, "link");
         if (!cancelled) setJoinState({ status: "success", classroom });

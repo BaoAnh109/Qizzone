@@ -42,7 +42,10 @@ export function QuizRoom() {
   const retryMode = searchParams.get("mode");
   const sourceResultId = searchParams.get("sourceResultId");
   const assignmentId = searchParams.get("assignmentId");
-  const [assignmentIsLate, setAssignmentIsLate] = useState(false);
+  const [assignmentLateState, setAssignmentLateState] = useState<{ assignmentId: string; isLate: boolean } | null>(null);
+  const assignmentIsLate = Boolean(
+    assignmentId && assignmentLateState?.assignmentId === assignmentId && assignmentLateState.isLate
+  );
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
@@ -66,10 +69,7 @@ export function QuizRoom() {
   const session = quizId ? activeSessions[quizId] : undefined;
 
   useEffect(() => {
-    if (!assignmentId) {
-      setAssignmentIsLate(false);
-      return undefined;
-    }
+    if (!assignmentId) return undefined;
 
     let cancelled = false;
     void classroomService.listStudentAssignments()
@@ -77,12 +77,15 @@ export function QuizRoom() {
         if (cancelled) return;
         const assignment = assignments.find((item) => item.assignmentId === assignmentId);
         const dueAt = assignment?.dueAt ? Date.parse(assignment.dueAt) : Number.NaN;
-        setAssignmentIsLate(Boolean(assignment && (
-          assignment.isLate || (assignment.latePolicy === "allow_late" && Number.isFinite(dueAt) && dueAt <= Date.now())
-        )));
+        setAssignmentLateState({
+          assignmentId,
+          isLate: Boolean(assignment && (
+            assignment.isLate || (assignment.latePolicy === "allow_late" && Number.isFinite(dueAt) && dueAt <= Date.now())
+          )),
+        });
       })
       .catch(() => {
-        if (!cancelled) setAssignmentIsLate(false);
+        if (!cancelled) setAssignmentLateState({ assignmentId, isLate: false });
       });
     return () => { cancelled = true; };
   }, [assignmentId]);

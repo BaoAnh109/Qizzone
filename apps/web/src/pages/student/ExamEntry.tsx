@@ -62,15 +62,14 @@ export function ExamEntry() {
   });
 
   useEffect(() => {
-    if (!quizId) return undefined;
-    if (quiz) {
-      setQuizLoadState({ quizId, status: "loaded" });
-      return undefined;
-    }
+    if (!quizId || quiz) return undefined;
 
     let cancelled = false;
-    setQuizLoadState({ quizId, status: "loading" });
-    void loadQuizzes()
+    void Promise.resolve()
+      .then(() => {
+        if (!cancelled) setQuizLoadState({ quizId, status: "loading" });
+        return loadQuizzes();
+      })
       .then(() => {
         if (!cancelled) setQuizLoadState({ quizId, status: "loaded" });
       })
@@ -81,14 +80,14 @@ export function ExamEntry() {
   }, [quizId, quiz, loadQuizzes]);
 
   useEffect(() => {
-    if (!assignmentId) {
-      setAssignmentLoadState({ assignmentId: null, status: "idle", assignment: null });
-      return undefined;
-    }
+    if (!assignmentId) return undefined;
 
     let cancelled = false;
-    setAssignmentLoadState({ assignmentId, status: "loading", assignment: null });
-    void classroomService.listStudentAssignments()
+    void Promise.resolve()
+      .then(() => {
+        if (!cancelled) setAssignmentLoadState({ assignmentId, status: "loading", assignment: null });
+        return classroomService.listStudentAssignments();
+      })
       .then((assignments) => {
         if (cancelled) return;
         setAssignmentLoadState({
@@ -102,6 +101,12 @@ export function ExamEntry() {
       });
     return () => { cancelled = true; };
   }, [assignmentId]);
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const [studentName, setStudentName] = useState(() =>
     cleanStudentName(user?.fullName || user?.name)
@@ -119,7 +124,6 @@ export function ExamEntry() {
   const assignment = assignmentId && assignmentLoadState.assignmentId === assignmentId
     ? assignmentLoadState.assignment
     : null;
-  const now = Date.now();
   const opensAt = timestamp(quiz?.settings.opensAt);
   const closesAt = timestamp(quiz?.settings.closesAt);
   const availableFrom = timestamp(assignment?.availableFrom);
