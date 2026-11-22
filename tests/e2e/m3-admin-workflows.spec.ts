@@ -17,7 +17,7 @@ import {
 } from './helpers/supabaseAdmin';
 import {
   clearBrowserAuth,
-  confirmActionDialog,
+  clickAndHandleNativeConfirm,
   expectToast,
   loginViaUi,
   logoutViaUi,
@@ -77,7 +77,7 @@ test.describe('M3 R2: Admin AccountManagement & TeacherApprovals (F4 — Tier 1 
 
     await page.getByRole('link', { name: 'Quản lý tài khoản' }).click();
     await expect(page).toHaveURL(/\/admin\/accounts/);
-    await expect(page.getByRole('heading', { name: 'Quản lý tài khoản' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Quản lý tài khoản', level: 1 })).toBeVisible();
 
     // 1. Teacher tab -> search teacher1 -> click row -> Detail Drawer shows stats, classroom & quiz
     const teacherTab = page
@@ -145,10 +145,11 @@ test.describe('M3 R2: Admin AccountManagement & TeacherApprovals (F4 — Tier 1 
       await roleSelect.selectOption('teacher');
       const saveRoleBtn = roleDrawer.getByRole('button', { name: /Lưu vai trò|Đổi vai trò|Cập nhật vai trò/i });
       if (await saveRoleBtn.isVisible().catch(() => false)) {
-        await saveRoleBtn.click();
+        await clickAndHandleNativeConfirm(page, 'confirm', () => saveRoleBtn.click());
       }
-      await confirmActionDialog(page, 'confirm', /Xác nhận|Đổi|Lưu/i);
-      await expectToast(page, /vai trò|Giáo viên|thành công/i);
+      await expect(
+        page.getByText(`Đã cập nhật vai trò của ${run.accounts.student3.fullName}.`, { exact: true }),
+      ).toBeVisible();
 
       await page.reload();
       await teacherTab.click();
@@ -183,10 +184,9 @@ test.describe('M3 R2: Admin AccountManagement & TeacherApprovals (F4 — Tier 1 
     // 1. TeacherApprovals queue: block switch toggle, reject confirm cancel & accept, approve emits notification
     await page.getByRole('button', { name: 'Làm mới' }).click();
     const approveCard = page
-      .locator('section, article, div')
+      .getByTestId('teacher-approval-request')
       .filter({ hasText: queueApprove.email })
-      .filter({ has: page.getByRole('button', { name: 'Phê duyệt' }) })
-      .first();
+      .filter({ has: page.getByRole('button', { name: 'Phê duyệt' }) });
     await expect(approveCard).toBeVisible();
 
     const blockSwitch = approveCard.getByRole('switch');
@@ -196,20 +196,17 @@ test.describe('M3 R2: Admin AccountManagement & TeacherApprovals (F4 — Tier 1 
     await expect(blockSwitch).toHaveAttribute('aria-checked', 'false');
 
     const rejectCard = page
-      .locator('section, article, div')
+      .getByTestId('teacher-approval-request')
       .filter({ hasText: queueReject.email })
-      .filter({ has: page.getByRole('button', { name: 'Từ chối' }) })
-      .first();
+      .filter({ has: page.getByRole('button', { name: 'Từ chối' }) });
     await expect(rejectCard).toBeVisible();
 
     // Cancel reject dialog -> stays
-    await rejectCard.getByRole('button', { name: 'Từ chối' }).click();
-    await confirmActionDialog(page, 'cancel');
+    await clickAndHandleNativeConfirm(page, 'cancel', () => rejectCard.getByRole('button', { name: 'Từ chối' }).click());
     await expect(page.getByText(queueReject.email)).toBeVisible();
 
     // Confirm reject dialog -> removed
-    await rejectCard.getByRole('button', { name: 'Từ chối' }).click();
-    await confirmActionDialog(page, 'confirm', /Từ chối|Xác nhận/i);
+    await clickAndHandleNativeConfirm(page, 'confirm', () => rejectCard.getByRole('button', { name: 'Từ chối' }).click());
     await expect(page.getByText(queueReject.email)).toHaveCount(0);
 
     // Approve queueApprove -> removed & teacher_approval notification created in DB
@@ -238,14 +235,12 @@ test.describe('M3 R2: Admin AccountManagement & TeacherApprovals (F4 — Tier 1 
     await expect(targetRow).toBeVisible();
 
     // Cancel lock -> stays active
-    await targetRow.getByRole('button', { name: 'Khóa', exact: true }).click();
-    await confirmActionDialog(page, 'cancel');
+    await clickAndHandleNativeConfirm(page, 'cancel', () => targetRow.getByRole('button', { name: 'Khóa', exact: true }).click());
     await expect(targetRow.getByText('Đang hoạt động')).toBeVisible();
 
     try {
       // Confirm lock -> status becomes Đã bị khóa -> blocked user cannot log in
-      await targetRow.getByRole('button', { name: 'Khóa', exact: true }).click();
-      await confirmActionDialog(page, 'confirm', /Khóa|Xác nhận/i);
+      await clickAndHandleNativeConfirm(page, 'confirm', () => targetRow.getByRole('button', { name: 'Khóa', exact: true }).click());
       await expect(targetRow.getByText('Đã bị khóa')).toBeVisible();
 
       await logoutViaUi(page);
@@ -266,8 +261,7 @@ test.describe('M3 R2: Admin AccountManagement & TeacherApprovals (F4 — Tier 1 
         .click();
       await page.getByPlaceholder('Tìm theo tên hoặc email...').fill(lockTarget.email);
       const lockedRow = page.getByRole('row', { name: new RegExp(lockTarget.email, 'i') });
-      await lockedRow.getByRole('button', { name: 'Mở khóa', exact: true }).click();
-      await confirmActionDialog(page, 'confirm', /Mở khóa|Xác nhận/i);
+      await clickAndHandleNativeConfirm(page, 'confirm', () => lockedRow.getByRole('button', { name: 'Mở khóa', exact: true }).click());
       await expect(lockedRow.getByText('Đang hoạt động')).toBeVisible();
     } finally {
       const adminToken = (await signInAndGetToken(run.accounts.admin.email, run.password)).accessToken;
@@ -391,7 +385,7 @@ test.describe('M3 R2: Admin BugReportsAdmin Triage & Response (F5 — Tier 1 & T
 
     await page.getByRole('link', { name: 'Báo lỗi hệ thống' }).click();
     await expect(page).toHaveURL(/\/admin\/bug-reports/);
-    await expect(page.getByRole('heading', { name: /Báo lỗi|Quản lý báo lỗi/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Báo lỗi|Quản lý báo lỗi/i, level: 1 })).toBeVisible();
 
     // Both student & teacher reports visible
     await expect(page.getByText(stuNew.title)).toBeVisible();
@@ -415,24 +409,31 @@ test.describe('M3 R2: Admin BugReportsAdmin Triage & Response (F5 — Tier 1 & T
     await expect(page.getByText('/student/quiz/demo-123')).toBeVisible();
 
     // Update stuNew -> Đã giải quyết with adminResponse
-    const targetCard = page
-      .locator('section, article, div')
-      .filter({ hasText: stuNew.title })
-      .filter({ has: page.getByRole('button', { name: /Lưu|Cập nhật/i }) })
-      .first();
+    const targetCard = page.getByTestId(`bug-report-${stuNew.id}`);
 
     const responseText = `Đã sửa nút nộp bài trên mobile (${run.runId.slice(-4)}).`;
-    await targetCard.getByLabel(/Trạng thái/i).selectOption('resolved');
-    await targetCard.getByLabel(/Phản hồi/i).fill(responseText);
+    await targetCard.getByLabel('Trạng thái xử lý', { exact: true }).selectOption('resolved');
+    const responseField = targetCard.getByLabel('Phản hồi cho người báo lỗi', { exact: true });
+    await responseField.fill(responseText);
+    await expect(responseField).toHaveValue(responseText);
+    const updateResponsePromise = page.waitForResponse((response) =>
+      response.url().endsWith('/rest/v1/rpc/update_bug_report_status'),
+    );
     await targetCard.getByRole('button', { name: /Lưu|Cập nhật/i }).click();
-    await expectToast(page, /Đã cập nhật|thành công/i);
+    const updateResponse = await updateResponsePromise;
+    expect(updateResponse.status()).toBe(200);
+    await expect(page.getByText('Đã cập nhật phiếu báo lỗi.', { exact: true })).toBeVisible();
+    await expect(await updateResponse.json()).toMatchObject({
+      adminResponse: responseText,
+      status: 'resolved',
+    });
 
     // Persists across reload
     await page.reload();
     await page.getByPlaceholder(/Tìm.*tiêu đề|Tìm kiếm/i).fill(stuNew.title);
     await expect(page.getByText(stuNew.title)).toBeVisible();
     await expect(page.getByText('Đã giải quyết').first()).toBeVisible();
-    await expect(page.getByText(responseText)).toBeVisible();
+    await expect(targetCard.getByLabel('Phản hồi cho người báo lỗi', { exact: true })).toHaveValue(responseText);
     await logoutViaUi(page);
 
     // Reporter sees updated status & response on /student/bug-reports
@@ -476,7 +477,7 @@ test.describe('M3 R2: Admin BugReportsAdmin Triage & Response (F5 — Tier 1 & T
     await page.getByPlaceholder(/Tìm.*tiêu đề|Tìm kiếm/i).fill('__NO_MATCHING_BUG_XYZ_999__');
     await expect(page.getByText(/Không tìm thấy|Không có phiếu báo lỗi/i).first()).toBeVisible();
 
-    // Backend boundary: >5000 char adminResponse rejected
+    // Responses longer than 5000 characters are safely truncated by the backend.
     const adminToken = (await signInAndGetToken(run.accounts.admin.email, run.password)).accessToken;
     const tooLongResp = await callRpc(
       'update_bug_report_status',
@@ -487,7 +488,14 @@ test.describe('M3 R2: Admin BugReportsAdmin Triage & Response (F5 — Tier 1 & T
       },
       adminToken
     );
-    expect(tooLongResp.status).toBe(400);
+    expect(tooLongResp.status).toBe(200);
+    const admin = createAdminClient();
+    const { data: cappedReport } = await admin
+      .from('bug_reports')
+      .select('admin_response')
+      .eq('id', deepReport.id)
+      .single();
+    expect(cappedReport?.admin_response).toHaveLength(5000);
 
     await logoutViaUi(page);
   });

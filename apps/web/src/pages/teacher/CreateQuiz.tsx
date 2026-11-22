@@ -1102,6 +1102,8 @@ export function CreateQuiz() {
                     <input
                       type="checkbox"
                       checked={settings.allowReview}
+                      aria-labelledby="allow-review-label"
+                      aria-describedby="allow-review-description"
                       onChange={(e) =>
                         setSettings((prev) => ({
                           ...prev,
@@ -1111,10 +1113,10 @@ export function CreateQuiz() {
                       className="mt-0.5 h-4 w-4 rounded-sm text-teal-700 focus:ring-teal-500 cursor-pointer"
                     />
                     <div>
-                      <p className="text-sm font-semibold theme-text-primary">
+                      <p id="allow-review-label" className="text-sm font-semibold theme-text-primary">
                         Cho xem lại lời giải chi tiết
                       </p>
-                      <p className="text-xs theme-text-muted">
+                      <p id="allow-review-description" className="text-xs theme-text-muted">
                         Hiển thị đáp án đúng và lời giải sau khi nộp bài.
                       </p>
                     </div>

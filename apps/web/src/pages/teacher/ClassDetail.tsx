@@ -269,8 +269,8 @@ export function ClassDetail() {
           <div><h2 className="text-lg font-semibold theme-text-primary">Danh sách học sinh</h2><p className="text-sm theme-text-secondary">Học sinh chưa đăng ký sẽ được mời bằng email.</p></div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setIsAddOpen(true)} leftIcon={<Users className="h-4 w-4" />}>Thêm học sinh</Button>
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} leftIcon={<FileSpreadsheet className="h-4 w-4" />}>Nhập danh sách Excel</Button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.csv" className="sr-only" aria-label="Tệp danh sách học sinh" onChange={(event) => void handleFileChange(event.target.files?.[0])} />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={saving} leftIcon={<FileSpreadsheet className="h-4 w-4" />}>Nhập danh sách Excel</Button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.csv" className="sr-only" aria-label="Tệp danh sách học sinh" disabled={saving} onChange={(event) => void handleFileChange(event.target.files?.[0])} />
           </div>
         </div>
         {importError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{importError}</p>}

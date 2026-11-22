@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   BookOpen,
@@ -11,10 +11,13 @@ import {
   UserCheck,
   RotateCcw,
   Eye,
+  Loader2,
 } from "lucide-react";
+import type { StudentAssignmentItem } from "@qizzone/domain";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
+import { classroomService } from "@/services/classroomService";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -26,18 +29,79 @@ function cleanStudentName(rawName?: string): string {
   return rawName.replace(/^(Em|Học sinh|Thầy|Cô)\s+/i, "").trim() || rawName;
 }
 
+type QuizLoadState = { quizId: string | null; status: "idle" | "loading" | "loaded" | "error" };
+type AssignmentLoadState = {
+  assignmentId: string | null;
+  status: "idle" | "loading" | "loaded" | "error";
+  assignment: StudentAssignmentItem | null;
+};
+
+function timestamp(value?: string | null): number | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function ExamEntry() {
   const { quizId } = useParams();
   const [searchParams] = useSearchParams();
   const retryMode = searchParams.get("mode");
   const sourceResultId = searchParams.get("sourceResultId");
+  const assignmentId = searchParams.get("assignmentId")?.trim() || null;
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const getQuizById = useQuizStore((state) => state.getQuizById);
+  const quiz = useQuizStore((state) => state.quizzes.find((item) => item.id === quizId));
+  const loadQuizzes = useQuizStore((state) => state.load);
   const { initSession, getResultsByStudent } = useExamSessionStore();
   const toast = useToast();
+  const [quizLoadState, setQuizLoadState] = useState<QuizLoadState>({ quizId: null, status: "idle" });
+  const [assignmentLoadState, setAssignmentLoadState] = useState<AssignmentLoadState>({
+    assignmentId: null,
+    status: "idle",
+    assignment: null,
+  });
 
-  const quiz = quizId ? getQuizById(quizId) : undefined;
+  useEffect(() => {
+    if (!quizId) return undefined;
+    if (quiz) {
+      setQuizLoadState({ quizId, status: "loaded" });
+      return undefined;
+    }
+
+    let cancelled = false;
+    setQuizLoadState({ quizId, status: "loading" });
+    void loadQuizzes()
+      .then(() => {
+        if (!cancelled) setQuizLoadState({ quizId, status: "loaded" });
+      })
+      .catch(() => {
+        if (!cancelled) setQuizLoadState({ quizId, status: "error" });
+      });
+    return () => { cancelled = true; };
+  }, [quizId, quiz, loadQuizzes]);
+
+  useEffect(() => {
+    if (!assignmentId) {
+      setAssignmentLoadState({ assignmentId: null, status: "idle", assignment: null });
+      return undefined;
+    }
+
+    let cancelled = false;
+    setAssignmentLoadState({ assignmentId, status: "loading", assignment: null });
+    void classroomService.listStudentAssignments()
+      .then((assignments) => {
+        if (cancelled) return;
+        setAssignmentLoadState({
+          assignmentId,
+          status: "loaded",
+          assignment: assignments.find((item) => item.assignmentId === assignmentId) ?? null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setAssignmentLoadState({ assignmentId, status: "error", assignment: null });
+      });
+    return () => { cancelled = true; };
+  }, [assignmentId]);
 
   const [studentName, setStudentName] = useState(() =>
     cleanStudentName(user?.fullName || user?.name)
@@ -48,6 +112,43 @@ export function ExamEntry() {
   const attemptsMade = pastSubmissions.length;
   const maxAttempts = quiz?.settings.maxAttempts || 0; // 0 = unlimited
   const isAttemptsExceeded = maxAttempts > 0 && attemptsMade >= maxAttempts;
+
+  const isQuizLoading = !quiz && (quizLoadState.quizId !== quizId || quizLoadState.status === "loading");
+  const isAssignmentLoading = Boolean(assignmentId)
+    && (assignmentLoadState.assignmentId !== assignmentId || assignmentLoadState.status === "loading");
+  const assignment = assignmentId && assignmentLoadState.assignmentId === assignmentId
+    ? assignmentLoadState.assignment
+    : null;
+  const now = Date.now();
+  const opensAt = timestamp(quiz?.settings.opensAt);
+  const closesAt = timestamp(quiz?.settings.closesAt);
+  const availableFrom = timestamp(assignment?.availableFrom);
+  const dueAt = timestamp(assignment?.dueAt);
+  const hardCloseAt = timestamp(assignment?.hardCloseAt);
+  const isLate = Boolean(assignment && (assignment.isLate || (
+    assignment.latePolicy === "allow_late" && dueAt !== null && dueAt <= now
+  )));
+  let accessMessage: string | null = null;
+  if (opensAt !== null && opensAt > now) accessMessage = "Chưa đến thời gian mở phòng thi.";
+  else if (closesAt !== null && closesAt <= now) accessMessage = "Phòng thi đã hết thời gian mở và đã đóng.";
+  else if (assignmentId && assignmentLoadState.assignmentId === assignmentId && assignmentLoadState.status === "error") {
+    accessMessage = "Không thể kiểm tra quyền truy cập bài tập. Vui lòng tải lại trang.";
+  } else if (assignmentId && assignmentLoadState.assignmentId === assignmentId && assignmentLoadState.status === "loaded" && !assignment) {
+    accessMessage = "Không tìm thấy bài tập hoặc bạn không có quyền truy cập.";
+  } else if (availableFrom !== null && availableFrom > now) accessMessage = "Chưa đến thời gian mở bài tập.";
+  else if (hardCloseAt !== null && hardCloseAt <= now) accessMessage = "Bài tập đã đóng; không thể bắt đầu bài thi.";
+  else if (assignment?.latePolicy === "block_after_due" && dueAt !== null && dueAt <= now) {
+    accessMessage = "Bài tập đã quá hạn và đã khóa nộp muộn.";
+  }
+
+  if (isQuizLoading || isAssignmentLoading) {
+    return (
+      <div role="status" className="max-w-md mx-auto my-12 flex flex-col items-center gap-3 text-center theme-text-secondary">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-700" aria-hidden="true" />
+        <p>{isAssignmentLoading ? "Đang kiểm tra bài tập…" : "Đang tải phòng thi…"}</p>
+      </div>
+    );
+  }
 
   if (!quiz) {
     return (
@@ -88,6 +189,11 @@ export function ExamEntry() {
   }
 
   const handleStartExam = async () => {
+    if (accessMessage) {
+      toast.error(accessMessage);
+      return;
+    }
+
     if (isAttemptsExceeded) {
       toast.error(`Bạn đã hoàn thành đủ ${maxAttempts} lượt làm bài quy định`);
       return;
@@ -106,12 +212,17 @@ export function ExamEntry() {
         studentId: user?.id || "guest-student",
         studentName: studentName.trim(),
         studentClass: studentClassVal || undefined,
+        assignmentId,
       });
       toast.success(`Bắt đầu làm bài thi: ${quiz.title}`);
-      const targetUrl =
-        retryMode === "retry_incorrect" && sourceResultId
-          ? `/student/quiz/${quiz.id}?mode=retry_incorrect&sourceResultId=${sourceResultId}`
-          : `/student/quiz/${quiz.id}`;
+      const targetParams = new URLSearchParams();
+      if (retryMode === "retry_incorrect" && sourceResultId) {
+        targetParams.set("mode", "retry_incorrect");
+        targetParams.set("sourceResultId", sourceResultId);
+      }
+      if (assignmentId) targetParams.set("assignmentId", assignmentId);
+      const targetQuery = targetParams.toString();
+      const targetUrl = `/student/quiz/${quiz.id}${targetQuery ? `?${targetQuery}` : ""}`;
       navigate(targetUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể bắt đầu bài thi.");
@@ -158,6 +269,19 @@ export function ExamEntry() {
         </CardHeader>
 
         <CardContent className="p-6 sm:p-8 space-y-6">
+          {accessMessage && (
+            <div role="alert" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+              <p>{accessMessage}</p>
+            </div>
+          )}
+          {!accessMessage && isLate && (
+            <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+              <p><strong>Nộp muộn:</strong> Bài tập đã quá hạn nhưng giáo viên vẫn cho phép nộp.</p>
+            </div>
+          )}
+
           {/* Metadata Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="rounded-xl theme-surface-muted p-3 border theme-border">
@@ -254,7 +378,7 @@ export function ExamEntry() {
           </div>
 
           {/* Student Confirmation Form */}
-          {!isAttemptsExceeded && (
+          {!isAttemptsExceeded && !accessMessage && (
             <div className="space-y-3 pt-2 border-t theme-border">
               <h3 className="text-sm font-bold theme-text-primary flex items-center gap-1.5">
                 <UserCheck className="h-4 w-4 text-blue-600" />
@@ -272,7 +396,9 @@ export function ExamEntry() {
 
           {/* Start Exam CTA */}
           <div className="space-y-2 pt-4">
-            {isAttemptsExceeded ? (
+            {accessMessage ? (
+              <p className="text-center text-sm theme-text-muted">Bạn chưa thể bắt đầu bài thi lúc này.</p>
+            ) : isAttemptsExceeded ? (
               <Button
                 variant="outline"
                 size="lg"

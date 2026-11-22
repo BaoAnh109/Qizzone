@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import type { Classroom } from "@qizzone/domain";
@@ -27,16 +27,14 @@ export function JoinClassByLink() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, isInitialized } = useAuthStore();
-  const attemptedCodes = useRef(new Set<string>());
   const [joinState, setJoinState] = useState<JoinState>({ status: "idle" });
   const code = (routeCode || searchParams.get("code") || "").trim().toUpperCase();
 
   useEffect(() => {
-    if (!isInitialized || !isAuthenticated || !user || user.role !== "student" || !code || attemptedCodes.current.has(code)) return undefined;
-    attemptedCodes.current.add(code);
+    if (!isInitialized || !isAuthenticated || !user || user.role !== "student" || !code) return undefined;
     let cancelled = false;
-    void Promise.resolve().then(async () => {
-      if (!cancelled) setJoinState({ status: "loading" });
+    setJoinState({ status: "loading" });
+    void (async () => {
       try {
         const classroom = await classroomService.joinByCode(code, "link");
         if (!cancelled) setJoinState({ status: "success", classroom });
@@ -55,7 +53,7 @@ export function JoinClassByLink() {
         }
         if (!cancelled) setJoinState({ status: "error", message });
       }
-    });
+    })();
     return () => { cancelled = true; };
   }, [code, isAuthenticated, isInitialized, user]);
 

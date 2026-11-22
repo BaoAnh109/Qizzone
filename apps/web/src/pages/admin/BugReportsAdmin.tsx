@@ -87,7 +87,7 @@ function TriageCard({ report, highlighted, onSaved, cardRef }: TriageCardProps) 
   };
 
   return (
-    <div ref={cardRef}>
+    <div ref={cardRef} data-testid={`bug-report-${report.id}`}>
       <Card className={cn("transition-shadow duration-150", highlighted && "theme-target-highlight")}>
         <CardContent className="p-5 space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

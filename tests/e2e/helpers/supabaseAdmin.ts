@@ -344,6 +344,31 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((v): v is string => typeof v === 'string' && v.length > 0)));
 }
 
+async function deleteAuthUserWithRetry(
+  admin: ReturnType<typeof createAdminClient>,
+  uid: string,
+): Promise<void> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const { error } = await admin.auth.admin.deleteUser(uid);
+      if (!error || /not found/i.test(error.message)) return;
+      lastError = error;
+    } catch (error) {
+      lastError = error;
+    }
+
+    const message = lastError instanceof Error
+      ? lastError.message
+      : String(lastError ?? 'Unknown error');
+    if (!/fetch failed|network|timeout|ECONNRESET|socket|\b50[234]\b/i.test(message)) break;
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** attempt));
+  }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError ?? 'Unknown error');
+  throw new Error(`cleanupUids failed deleting auth user ${uid}: ${message}`);
+}
+
 export async function cleanupUids(
   uids: string[],
   extraQuizIds: string[] = [],
@@ -475,10 +500,7 @@ export async function cleanupUids(
 
     // 10. Delete Supabase Auth users
     for (const uid of targetUids) {
-      const { error: delAuthErr } = await admin.auth.admin.deleteUser(uid);
-      if (delAuthErr && !/not found/i.test(delAuthErr.message)) {
-        throw new Error(`cleanupUids failed deleting auth user ${uid}: ${delAuthErr.message}`);
-      }
+      await deleteAuthUserWithRetry(admin, uid);
     }
   }
 }

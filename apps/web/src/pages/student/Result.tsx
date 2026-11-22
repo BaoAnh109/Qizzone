@@ -131,6 +131,7 @@ export function Result() {
                 {result.isPassed ? "Đạt yêu cầu (Passed)" : "Chưa đạt yêu cầu"}
               </Badge>
             )}
+            {result.isLate && <Badge variant="warning" size="md">Nộp muộn</Badge>}
             {!isScoreHidden && result.academicRank && (
               <Badge variant={getRankBadgeVariant(result.academicRank)} size="md">
                 Xếp loại: {result.academicRank}

@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
+import { classroomService } from "@/services/classroomService";
 import { useExamTimer } from "@/hooks/useExamTimer";
 import { useQuestionKeyboardShortcuts } from "@/hooks/useQuestionKeyboardShortcuts";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +41,8 @@ export function QuizRoom() {
   const [searchParams] = useSearchParams();
   const retryMode = searchParams.get("mode");
   const sourceResultId = searchParams.get("sourceResultId");
+  const assignmentId = searchParams.get("assignmentId");
+  const [assignmentIsLate, setAssignmentIsLate] = useState(false);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const getQuizById = useQuizStore((state) => state.getQuizById);
@@ -62,6 +65,28 @@ export function QuizRoom() {
   const quiz = quizId ? getQuizById(quizId) : undefined;
   const session = quizId ? activeSessions[quizId] : undefined;
 
+  useEffect(() => {
+    if (!assignmentId) {
+      setAssignmentIsLate(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    void classroomService.listStudentAssignments()
+      .then((assignments) => {
+        if (cancelled) return;
+        const assignment = assignments.find((item) => item.assignmentId === assignmentId);
+        const dueAt = assignment?.dueAt ? Date.parse(assignment.dueAt) : Number.NaN;
+        setAssignmentIsLate(Boolean(assignment && (
+          assignment.isLate || (assignment.latePolicy === "allow_late" && Number.isFinite(dueAt) && dueAt <= Date.now())
+        )));
+      })
+      .catch(() => {
+        if (!cancelled) setAssignmentIsLate(false);
+      });
+    return () => { cancelled = true; };
+  }, [assignmentId]);
+
   const sourceResult = sourceResultId ? getResultById(sourceResultId) : undefined;
   const incorrectQuestionIds = useMemo(() => {
     if (retryMode !== "retry_incorrect" || !sourceResult) return null;
@@ -75,9 +100,10 @@ export function QuizRoom() {
         quiz,
         studentId: user?.id || "guest-student",
         studentName: cleanStudentName(user?.fullName || user?.name),
+        assignmentId,
       });
     }
-  }, [quiz, session, initSession, user]);
+  }, [quiz, session, initSession, user, assignmentId]);
 
   const currentIndex = session?.currentQuestionIndex || 0;
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
@@ -230,6 +256,7 @@ export function QuizRoom() {
             <Badge variant="secondary" size="sm" className="hidden sm:inline-flex">
               {quiz.subject}
             </Badge>
+            {(session.isLate || assignmentIsLate) && <Badge variant="warning" size="sm">Nộp muộn</Badge>}
             <h1 className="font-bold text-sm sm:text-base theme-text-primary truncate">
               {quiz.title}
             </h1>

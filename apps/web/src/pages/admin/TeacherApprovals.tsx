@@ -107,53 +107,55 @@ export function TeacherApprovals() {
 
       <div className="grid gap-4">
         {requests.map(request => (
-          <Card key={request.firebaseUid}>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div>
-                  <CardTitle className="text-base">{request.fullName}</CardTitle>
-                  <CardDescription className="mt-1">{request.email}</CardDescription>
+          <article key={request.firebaseUid} data-testid="teacher-approval-request">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <CardTitle className="text-base">{request.fullName}</CardTitle>
+                    <CardDescription className="mt-1">{request.email}</CardDescription>
+                  </div>
+                  <Badge variant={request.status === "blocked" ? "destructive" : "warning"} dot>
+                    {request.status === "blocked" ? "Đã khóa gửi yêu cầu" : "Chờ xét duyệt"}
+                  </Badge>
                 </div>
-                <Badge variant={request.status === "blocked" ? "destructive" : "warning"} dot>
-                  {request.status === "blocked" ? "Đã khóa gửi yêu cầu" : "Chờ xét duyệt"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col justify-between gap-4 border-t theme-border pt-4 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2 text-xs theme-text-muted">
-                <Clock3 className="h-4 w-4" />
-                Gửi lúc {new Date(request.requestedAt).toLocaleString("vi-VN")}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {request.requestKind === "teacher_access" && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={request.blocked}
-                    aria-label={request.blocked ? "Cho phép tài khoản gửi yêu cầu giáo viên" : "Không cho tài khoản gửi yêu cầu giáo viên"}
-                    disabled={processingUid !== null}
-                    onClick={() => void toggleBlocked(request)}
-                    className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "theme-border theme-surface theme-text-secondary theme-hover-surface"}`}
-                  >
-                    <span className={`relative h-4 w-7 rounded-full transition-colors ${request.blocked ? "bg-rose-500" : "bg-neutral-300"}`}>
-                      <span className={`theme-switch-thumb absolute top-0.5 h-3 w-3 rounded-full theme-surface shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
-                    </span>
-                    {request.blocked ? "Đã khóa gửi yêu cầu" : "Cho phép gửi yêu cầu"}
-                  </button>
-                )}
-                {request.status === "pending" && (
-                  <>
-                    <Button size="sm" variant="destructive" disabled={processingUid !== null} onClick={() => void review(request, "reject")} leftIcon={<X className="h-4 w-4" />}>
-                      Từ chối
-                    </Button>
-                    <Button size="sm" disabled={processingUid !== null} isLoading={processingUid === request.firebaseUid} onClick={() => void review(request, "approve")} leftIcon={<Check className="h-4 w-4" />}>
-                      Phê duyệt
-                    </Button>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="flex flex-col justify-between gap-4 border-t theme-border pt-4 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2 text-xs theme-text-muted">
+                  <Clock3 className="h-4 w-4" />
+                  Gửi lúc {new Date(request.requestedAt).toLocaleString("vi-VN")}
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {request.requestKind === "teacher_access" && (
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={request.blocked}
+                      aria-label={request.blocked ? "Cho phép tài khoản gửi yêu cầu giáo viên" : "Không cho tài khoản gửi yêu cầu giáo viên"}
+                      disabled={processingUid !== null}
+                      onClick={() => void toggleBlocked(request)}
+                      className={`inline-flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${request.blocked ? "border-rose-200 bg-rose-50 text-rose-700" : "theme-border theme-surface theme-text-secondary theme-hover-surface"}`}
+                    >
+                      <span className={`relative h-4 w-7 rounded-full transition-colors ${request.blocked ? "bg-rose-500" : "bg-neutral-300"}`}>
+                        <span className={`theme-switch-thumb absolute top-0.5 h-3 w-3 rounded-full theme-surface shadow transition-transform ${request.blocked ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                      </span>
+                      {request.blocked ? "Đã khóa gửi yêu cầu" : "Cho phép gửi yêu cầu"}
+                    </button>
+                  )}
+                  {request.status === "pending" && (
+                    <>
+                      <Button size="sm" variant="destructive" disabled={processingUid !== null} onClick={() => void review(request, "reject")} leftIcon={<X className="h-4 w-4" />}>
+                        Từ chối
+                      </Button>
+                      <Button size="sm" disabled={processingUid !== null} isLoading={processingUid === request.firebaseUid} onClick={() => void review(request, "approve")} leftIcon={<Check className="h-4 w-4" />}>
+                        Phê duyệt
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </article>
         ))}
       </div>
     </div>

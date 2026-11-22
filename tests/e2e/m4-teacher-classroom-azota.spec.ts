@@ -15,7 +15,7 @@ import {
 } from './helpers/supabaseAdmin';
 import {
   clearBrowserAuth,
-  confirmActionDialog,
+  clickAndHandleNativeConfirm,
   expectToast,
   loginViaUi,
   logoutViaUi,
@@ -56,7 +56,7 @@ test.describe('M4 R3: Teacher Classrooms & Roster Management (F6 & F7 — Tier 1
 
     await page.getByRole('link', { name: 'Lớp học' }).click();
     await expect(page).toHaveURL(/\/teacher\/classes$/);
-    await expect(page.getByRole('heading', { name: /Lớp học|Quản lý lớp học/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Lớp học|Quản lý lớp học/i, level: 1 })).toBeVisible();
 
     // Tier 2: Blank and >120-char classroom name validation
     await page.getByRole('button', { name: /Tạo lớp/i }).first().click();
@@ -110,9 +110,11 @@ test.describe('M4 R3: Teacher Classrooms & Roster Management (F6 & F7 — Tier 1
     await expect(page.getByRole('heading', { name: editedName })).toBeVisible();
 
     // Regenerate invite code -> old code becomes invalid for student1
-    await page.getByRole('button', { name: /Đổi mã|Tạo mã mới/i }).click();
-    await confirmActionDialog(page, 'confirm', /Xác nhận|Đổi mã|Tạo mã mới/i);
-    await expectToast(page, /mã mời|mã lớp/i);
+    await clickAndHandleNativeConfirm(page, 'confirm', () => page.getByRole('button', { name: /Đổi mã|Tạo mã mới/i }).click());
+    await expect.poll(async () => {
+      const { data } = await admin.from('classrooms').select('invite_code').eq('id', clsRow!.id).single();
+      return data?.invite_code;
+    }, { timeout: 15_000 }).not.toBe(oldCode);
 
     const { data: rotatedRow } = await admin
       .from('classrooms')
@@ -149,16 +151,17 @@ test.describe('M4 R3: Teacher Classrooms & Roster Management (F6 & F7 — Tier 1
     expect(disabledJoin.status).toBe(400);
 
     await inviteSwitch.click();
+    await expect(inviteSwitch).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByText('Đã bật mã mời tham gia lớp.', { exact: true })).toBeVisible();
     const enabledJoin = await callRpc(
       'join_classroom_by_code',
       { p_code: rotatedRow!.invite_code, p_via: 'code' },
       s1Token
     );
-    expect(enabledJoin.status).toBe(200);
+    expect(enabledJoin.status, enabledJoin.text).toBe(200);
 
     // Archive classroom -> archived state visible & blocks new joins
-    await page.getByRole('button', { name: /Lưu trữ lớp|Lưu trữ/i }).click();
-    await confirmActionDialog(page, 'confirm', /Lưu trữ|Xác nhận/i);
+    await clickAndHandleNativeConfirm(page, 'confirm', () => page.getByRole('button', { name: /Lưu trữ lớp|Lưu trữ/i }).click());
     await expect(page.getByText(/Đã lưu trữ/i).first()).toBeVisible();
 
     const s2Token = (await signInAndGetToken(run.accounts.student2.email, run.password)).accessToken;
@@ -216,8 +219,8 @@ test.describe('M4 R3: Teacher Classrooms & Roster Management (F6 & F7 — Tier 1
     await addDialog.getByRole('button', { name: /Thêm|Xác nhận|Lưu/i }).click();
     await expectToast(page, /thành công|Đã thêm/i);
 
-    await expect(page.getByText(run.accounts.student1.email)).toBeVisible();
-    await expect(page.getByText(pendingEmail1)).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: run.accounts.student1.email })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: pendingEmail1 })).toBeVisible();
 
     // 2. Boundary file rejections in Excel/CSV import: .xls, malformed .xlsx, 0-byte empty file
     const importBtn = page.getByRole('button', { name: /Nhập.*Excel|Import Excel|Nhập danh sách/i });
@@ -251,8 +254,8 @@ test.describe('M4 R3: Teacher Classrooms & Roster Management (F6 & F7 — Tier 1
     await page.getByRole('button', { name: /Xác nhận nhập|Nhập \d+ email|Thêm vào lớp/i }).click();
     await expectToast(page, /thành công|Đã thêm|Đã nhập/i);
 
-    await expect(page.getByText(run.accounts.student2.email)).toBeVisible();
-    await expect(page.getByText(pendingEmail2)).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: run.accounts.student2.email })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: pendingEmail2 })).toBeVisible();
 
     // 4. Valid .csv with UTF-8 BOM & semicolon delimiter
     if (await importBtn.isVisible().catch(() => false)) {
@@ -266,15 +269,12 @@ test.describe('M4 R3: Teacher Classrooms & Roster Management (F6 & F7 — Tier 1
     await expect(page.getByText(csvPendingEmail)).toBeVisible();
     await page.getByRole('button', { name: /Xác nhận nhập|Nhập \d+ email|Thêm vào lớp/i }).click();
     await expectToast(page, /thành công|Đã thêm|Đã nhập/i);
+    await expect(page.getByRole('row').filter({ hasText: run.accounts.student3.email })).toBeVisible();
+    await expect(page.getByRole('row').filter({ hasText: csvPendingEmail })).toBeVisible();
 
     // 5. Remove active student1 -> removed from roster and student1 loses get_classroom_detail access
-    const s1Row = page
-      .locator('tr, li, div')
-      .filter({ hasText: run.accounts.student1.email })
-      .filter({ has: page.getByRole('button', { name: /Xóa/i }) })
-      .first();
-    await s1Row.getByRole('button', { name: /Xóa/i }).click();
-    await confirmActionDialog(page, 'confirm', /Xóa|Xác nhận/i);
+    const s1Row = page.getByRole('row').filter({ hasText: run.accounts.student1.email });
+    await clickAndHandleNativeConfirm(page, 'confirm', () => s1Row.getByRole('button', { name: /Xóa/i }).click());
     await expect(page.getByText(run.accounts.student1.email)).toHaveCount(0);
 
     const s1Token = (await signInAndGetToken(run.accounts.student1.email, run.password)).accessToken;
@@ -377,12 +377,8 @@ test.describe('M4 R3: Azota Publish Settings, Assign-to-Classroom & Tracking Mat
     });
 
     await page.reload();
-    const quizCard = page
-      .locator('section, article, div')
-      .filter({ hasText: attemptedQuiz.title })
-      .filter({ has: page.getByRole('button', { name: /Cấu hình phát hành|Cài đặt Azota/i }) })
-      .first();
-    await quizCard.getByRole('button', { name: /Cấu hình phát hành|Cài đặt Azota/i }).click();
+    const quizCard = page.getByTestId(`quiz-card-${attemptedQuiz.id}`);
+    await quizCard.getByRole('button', { name: 'Cấu hình phát hành' }).click();
 
     const pubModal = page.getByRole('dialog');
     await expect(pubModal).toBeVisible();
@@ -468,12 +464,8 @@ test.describe('M4 R3: Azota Publish Settings, Assign-to-Classroom & Tracking Mat
     await loginViaUi(page, run.accounts.teacher1.email, run.password, '/teacher');
     await page.goto('/teacher/quizzes');
 
-    const assignCard = page
-      .locator('section, article, div')
-      .filter({ hasText: quizForUiAssign.title })
-      .filter({ has: page.getByRole('button', { name: /Giao.*Lớp|Giao bài/i }) })
-      .first();
-    await assignCard.getByRole('button', { name: /Giao.*Lớp|Giao bài/i }).click();
+    const assignCard = page.getByTestId(`quiz-card-${quizForUiAssign.id}`);
+    await assignCard.getByRole('button', { name: 'Giao bài cho lớp' }).click();
 
     const assignModal = page.getByRole('dialog');
     await expect(assignModal).toBeVisible();
@@ -483,14 +475,14 @@ test.describe('M4 R3: Azota Publish Settings, Assign-to-Classroom & Tracking Mat
     await expect(assignModal).toBeVisible();
 
     // Select classroom
-    await assignModal.getByLabel(new RegExp(classroom.name)).check();
+    await assignModal.getByRole('checkbox', { name: classroom.name }).check();
 
     const now = new Date();
     const dueFuture = new Date(now.getTime() + 60 * 60 * 1000);
     const hardBeforeDue = new Date(now.getTime() + 30 * 60 * 1000);
     const hardAfterDue = new Date(now.getTime() + 4 * 60 * 60 * 1000);
 
-    await assignModal.getByLabel(/Hạn nộp/i).fill(toDatetimeLocalValue(dueFuture));
+    await assignModal.getByRole('textbox', { name: 'Hạn nộp' }).fill(toDatetimeLocalValue(dueFuture));
     await assignModal.getByLabel(/Đóng hẳn|Hạn cuối/i).fill(toDatetimeLocalValue(hardBeforeDue));
     await assignModal.getByRole('button', { name: /Giao bài|Xác nhận|Lưu/i }).click();
     // Inverted hardCloseAt < dueAt rejected
@@ -532,17 +524,18 @@ test.describe('M4 R3: Azota Publish Settings, Assign-to-Classroom & Tracking Mat
       s1Token
     );
     const s1Att = s1Start.json as { id: string };
-    await callRpc(
+    const saveS1Attempt = await callRpc(
       'save_attempt',
       {
-        p_attempt_id: s1Att.id,
-        p_answers: { [trackQuiz.questionIds[0]]: ['A'] },
-        p_flagged: [],
-        p_current_index: 0,
+        p_id: s1Att.id,
         p_revision: 0,
+        p_answers: { [trackQuiz.questionIds[0]]: ['A'] },
+        p_flags: [],
+        p_index: 0,
       },
       s1Token
     );
+    expect(saveS1Attempt.status).toBe(200);
     await callEdge('finalize-exam', {
       token: s1Token,
       body: { attemptId: s1Att.id, idempotencyKey: `m4_track_s1_${s1Att.id}` },
@@ -559,7 +552,8 @@ test.describe('M4 R3: Azota Publish Settings, Assign-to-Classroom & Tracking Mat
 
     // Open QuizResultsView for trackQuiz
     await page.goto(`/teacher/quiz/${trackQuiz.id}/results`);
-    await expect(page.getByRole('heading', { name: new RegExp(trackQuiz.title) })).toBeVisible();
+    const resultsHeading = page.getByRole('heading', { level: 1 });
+    await expect(resultsHeading).toContainText(trackQuiz.title);
 
     // Tracking matrix shows student1 (Nộp muộn), student2 (Đang làm), student3 (Chưa nộp)
     await expect(page.getByText(run.accounts.student1.fullName).first()).toBeVisible();
@@ -584,6 +578,8 @@ test.describe('M4 R3: Azota Publish Settings, Assign-to-Classroom & Tracking Mat
     );
     expect(s1Track.status).toBe(400);
 
+    await detailDialog.getByRole('button', { name: 'Đóng cửa sổ' }).click();
+    await expect(detailDialog).toBeHidden();
     await logoutViaUi(page);
   });
 });

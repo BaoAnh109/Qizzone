@@ -114,6 +114,27 @@ export async function confirmActionDialog(
   }
 }
 
+export async function clickAndHandleNativeConfirm(
+  page: Page,
+  action: 'confirm' | 'cancel',
+  click: () => Promise<unknown>,
+): Promise<void> {
+  const dialogPromise = page.waitForEvent('dialog', { timeout: 5_000 });
+  const clickPromise = click();
+  void clickPromise.catch(() => undefined);
+  let dialog: import('@playwright/test').Dialog;
+  try {
+    dialog = await dialogPromise;
+  } catch (error) {
+    await clickPromise.catch(() => undefined);
+    throw error;
+  }
+
+  if (action === 'confirm') await dialog.accept();
+  else await dialog.dismiss();
+  await clickPromise;
+}
+
 export async function expectToast(page: Page, pattern: RegExp): Promise<void> {
   await expect(page.getByText(pattern).first()).toBeVisible({ timeout: 15_000 });
 }

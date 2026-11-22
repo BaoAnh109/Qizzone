@@ -99,10 +99,9 @@ test.describe('M5 R4: Student Home, Classrooms, Join Links & Roster Privacy (F10
       timeout: 20_000,
     });
     if (page.url().includes('/class/join/')) {
-      const joinBtn = page.getByRole('button', { name: /Tham gia lớp/i });
-      if (await joinBtn.isVisible().catch(() => false)) {
-        await joinBtn.click();
-      }
+      const continueToClassButton = page.getByRole('button', { name: 'Đi đến lớp học - Tham gia lớp' });
+      await expect(continueToClassButton).toBeVisible();
+      await continueToClassButton.click();
       await expect(page).toHaveURL(new RegExp(`/student/classes/${classLinkJoin.id}`), { timeout: 20_000 });
     }
 
@@ -155,7 +154,7 @@ test.describe('M5 R4: Student Home, Classrooms, Join Links & Roster Privacy (F10
 
     // Practice history preserved
     await page.goto('/student/practice');
-    await expect(page.getByRole('heading', { name: /Lịch sử luyện tập/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Lịch sử luyện tập/i, level: 1 })).toBeVisible();
 
     await logoutViaUi(page);
   });
@@ -206,6 +205,7 @@ test.describe('M5 R4: Student Home, Classrooms, Join Links & Roster Privacy (F10
     await loginViaUi(page, run.accounts.teacher2.email, run.password, '/teacher');
     await page.goto(`/class/join/${activeClass.inviteCode}`);
     await expect(page.getByText(/Chỉ tài khoản ở chế độ học sinh/i).first()).toBeVisible();
+    await page.goto('/teacher');
     await logoutViaUi(page);
   });
 });
@@ -296,12 +296,13 @@ test.describe('M5 R4: Exam Deadlines, Late Policies, Redaction & RLS Isolation (
     await page.goto(`/student/quiz/${allowLateQuiz.id}/lobby?assignmentId=${allowLateAssign.id}`);
     await expect(page.getByText(/nộp muộn|Quá hạn/i).first()).toBeVisible();
     await page.getByRole('button', { name: 'Bắt đầu làm bài thi ngay' }).click();
-    await expect(page).toHaveURL(new RegExp(`/student/quiz/${allowLateQuiz.id}`), { timeout: 20_000 });
+    await expect(page).toHaveURL(new RegExp(`/student/quiz/${allowLateQuiz.id}\\?assignmentId=${allowLateAssign.id}$`), { timeout: 20_000 });
     await expect(page.getByText(/nộp muộn|Quá hạn/i).first()).toBeVisible();
 
     await page.getByRole('button', { name: /10/ }).first().click();
-    await page.getByRole('button', { name: 'Hoàn tất & Nộp bài' }).click();
+    await page.getByRole('button', { name: 'Nộp bài', exact: true }).click();
     await page.getByRole('button', { name: 'Nộp bài ngay' }).click();
+    await page.getByRole('button', { name: /Vẫn muốn nộp bài/ }).click();
     await expect(page).toHaveURL(/\/student\/result\//, { timeout: 20_000 });
     await expect(page.getByText('Nộp muộn').first()).toBeVisible();
 
@@ -360,8 +361,9 @@ test.describe('M5 R4: Exam Deadlines, Late Policies, Redaction & RLS Isolation (
     await page.getByRole('button', { name: 'Bắt đầu làm bài thi ngay' }).click();
     await expect(page).toHaveURL(new RegExp(`/student/quiz/${neverQuiz.id}`), { timeout: 20_000 });
     await page.getByRole('button', { name: /10/ }).first().click();
-    await page.getByRole('button', { name: 'Hoàn tất & Nộp bài' }).click();
+    await page.getByRole('button', { name: 'Nộp bài', exact: true }).click();
     await page.getByRole('button', { name: 'Nộp bài ngay' }).click();
+    await page.getByRole('button', { name: /Vẫn muốn nộp bài/ }).click();
     await expect(page).toHaveURL(/\/student\/result\//, { timeout: 20_000 });
 
     const s1ResultUrl = page.url();

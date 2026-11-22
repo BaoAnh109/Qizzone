@@ -162,7 +162,7 @@ export function StudentDashboard() {
       result.roomCode.toLowerCase().includes(historySearchTerm.toLowerCase())
     );
   });
-  const handleJoinByCode = (e?: React.FormEvent) => {
+  const handleJoinByCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanCode = roomCode.trim().toUpperCase();
 
@@ -171,7 +171,17 @@ export function StudentDashboard() {
       return;
     }
 
-    const quiz = getQuizByCode(cleanCode);
+    let quiz = getQuizByCode(cleanCode);
+    if (!quiz) {
+      try {
+        await loadQuizzes();
+      } catch {
+        toast.error("Không thể tải danh sách đề thi. Vui lòng thử lại.");
+        return;
+      }
+      quiz = getQuizByCode(cleanCode);
+    }
+
     if (!quiz) {
       toast.error(`Không tìm thấy phòng thi có mã "${cleanCode}"`);
       return;

@@ -366,6 +366,7 @@ export function QuizList() {
             return (
               <Card
                 key={quiz.id}
+                data-testid={`quiz-card-${quiz.id}`}
                 hoverEffect
                 className="flex flex-col justify-between overflow-hidden"
               >
