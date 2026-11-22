@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, FileSpreadsheet, KeyRound, Pencil, RefreshCw, Settings, Users } from "lucide-react";
+import QRCode from "qrcode";
+import { ArrowLeft, BookOpen, Copy, Download, FileSpreadsheet, KeyRound, Link2, Pencil, QrCode, RefreshCw, Settings, Users } from "lucide-react";
 import type { ClassroomAssignment, ClassroomDetail, ClassroomMember } from "@qizzone/domain";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -47,6 +48,8 @@ export function ClassDetail() {
   const [saving, setSaving] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState("");
   const [editName, setEditName] = useState("");
   const [editSubject, setEditSubject] = useState("");
   const [editGrade, setEditGrade] = useState("");
@@ -246,8 +249,36 @@ export function ClassDetail() {
           <span className="rounded-xl bg-blue-50 p-2.5 text-blue-700"><KeyRound className="h-5 w-5" aria-hidden="true" /></span>
           <div><p className="text-xs font-semibold uppercase tracking-wide theme-text-muted">Mã mời vào lớp</p><p className="mt-1 font-mono text-xl font-bold tracking-wider theme-text-primary">{classroom.inviteCode}</p></div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex min-h-11 items-center gap-2 rounded-lg border theme-border px-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                const inviteLink = `${window.location.origin}/class/join/${classroom.inviteCode}`;
+                void navigator.clipboard.writeText(inviteLink).then(
+                  () => toast.success("Đã sao chép đường dẫn mời vào lớp."),
+                  () => toast.error("Không thể sao chép đường dẫn.")
+                );
+              }}
+              leftIcon={<Link2 className="h-4 w-4" />}
+            >
+              Sao chép link
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const inviteLink = `${window.location.origin}/class/join/${classroom.inviteCode}`;
+                void QRCode.toDataURL(inviteLink, { width: 320, margin: 2 })
+                  .then((url) => {
+                    setQrDataUrl(url);
+                    setIsQrOpen(true);
+                  })
+                  .catch(() => toast.error("Không thể tạo mã QR."));
+              }}
+              leftIcon={<QrCode className="h-4 w-4" />}
+            >
+              Mã QR
+            </Button>
+            <div className="flex min-h-11 items-center gap-2 rounded-lg border theme-border px-3">
             <span className="text-xs font-medium theme-text-secondary">Cho phép tham gia</span>
             <button type="button" role="switch" aria-label="Cho phép tham gia bằng mã mời" aria-checked={classroom.inviteEnabled} onClick={() => void handleToggleInvite()} className="relative inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"><span aria-hidden="true" className={`relative h-7 w-12 rounded-full transition ${classroom.inviteEnabled ? "bg-emerald-600" : "bg-neutral-400"}`}><span className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${classroom.inviteEnabled ? "translate-x-5" : "translate-x-0"}`} /></span></button>
           </div>
@@ -316,6 +347,54 @@ export function ClassDetail() {
 
       <Modal isOpen={isAddOpen} onClose={() => { setIsAddOpen(false); setMemberEmails(""); }} title="Thêm học sinh" description="Nhập một hoặc nhiều email, mỗi địa chỉ trên một dòng hoặc cách nhau bằng dấu phẩy." footer={<><Button variant="outline" onClick={() => { setIsAddOpen(false); setMemberEmails(""); }}>Hủy</Button><Button variant="primary" onClick={() => void handleAddTypedEmails()} isLoading={saving}>Thêm học sinh</Button></>}>
         <Textarea label="Email học sinh" rows={5} placeholder="hoc.sinh@example.com" value={memberEmails} onChange={(event) => setMemberEmails(event.target.value)} />
+      </Modal>
+
+      <Modal
+        isOpen={isQrOpen}
+        onClose={() => setIsQrOpen(false)}
+        title={`Mã QR tham gia lớp ${classroom.name}`}
+        description="Học sinh có thể quét mã QR này hoặc mở đường dẫn mời để tham gia lớp."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const inviteLink = `${window.location.origin}/class/join/${classroom.inviteCode}`;
+                void navigator.clipboard.writeText(inviteLink).then(
+                  () => toast.success("Đã sao chép đường dẫn mời vào lớp."),
+                  () => toast.error("Không thể sao chép đường dẫn.")
+                );
+              }}
+              leftIcon={<Copy className="h-4 w-4" />}
+            >
+              Sao chép link
+            </Button>
+            {qrDataUrl && (
+              <a
+                href={qrDataUrl}
+                download={`qr-${classroom.inviteCode}.png`}
+                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Tải mã QR
+              </a>
+            )}
+          </>
+        }
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          {qrDataUrl && (
+            <div className="rounded-2xl border theme-border bg-white p-3">
+              <img src={qrDataUrl} alt={`Mã QR lớp ${classroom.name}`} className="h-56 w-56" />
+            </div>
+          )}
+          <div className="w-full rounded-xl border theme-border theme-surface-muted p-3 text-sm">
+            <p className="font-mono text-base font-bold text-blue-800">{classroom.inviteCode}</p>
+            <p className="mt-1 break-all text-xs theme-text-secondary">
+              {`${window.location.origin}/class/join/${classroom.inviteCode}`}
+            </p>
+          </div>
+        </div>
       </Modal>
     </div>
   );

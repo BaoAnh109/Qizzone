@@ -81,7 +81,7 @@ test.describe('M5 R4: Student Home, Classrooms, Join Links & Roster Privacy (F10
       latePolicy: 'allow_late',
     });
 
-    // 1. Unauthenticated /class/join/:code redirects to /login?redirect=... then auto-joins after login
+    // 1. Unauthenticated /class/join/:code redirects to /login?redirect=... then returns to link confirmation page
     await clearBrowserAuth(page);
     await page.goto(`/class/join/${classLinkJoin.inviteCode}`);
     await expect(page.getByText(classLinkJoin.inviteCode).or(page.getByRole('button', { name: /Đăng nhập/i }))).toBeVisible();
@@ -99,19 +99,25 @@ test.describe('M5 R4: Student Home, Classrooms, Join Links & Roster Privacy (F10
       timeout: 20_000,
     });
     if (page.url().includes('/class/join/')) {
+      const joinByLinkButton = page.getByRole('button', { name: 'Tham gia lớp' });
+      if (await joinByLinkButton.isVisible().catch(() => false)) {
+        await joinByLinkButton.click();
+      }
       const continueToClassButton = page.getByRole('button', { name: 'Đi đến lớp học - Tham gia lớp' });
-      await expect(continueToClassButton).toBeVisible();
+      await expect(continueToClassButton).toBeVisible({ timeout: 15_000 });
       await continueToClassButton.click();
       await expect(page).toHaveURL(new RegExp(`/student/classes/${classLinkJoin.id}`), { timeout: 20_000 });
     }
 
-    // 2. Join second classroom via code on /student/classes
+    // 2. Join second classroom via code modal on /student/classes
     await page.getByRole('link', { name: 'Lớp học của tôi' }).click();
     await expect(page).toHaveURL(/\/student\/classes$/);
     await expect(page.getByText(classLinkJoin.name)).toBeVisible();
 
-    await page.getByPlaceholder(/Nhập mã lớp|VD:/i).or(page.getByLabel(/Mã lớp/i)).first().fill(classCodeJoin.inviteCode);
-    await page.getByRole('button', { name: /Tham gia/i }).first().click();
+    await page.getByRole('button', { name: 'Tham gia lớp' }).first().click();
+    const joinModal = page.getByRole('dialog');
+    await joinModal.getByPlaceholder(/Nhập mã lớp|VD:/i).or(joinModal.getByLabel(/Mã lớp/i)).first().fill(classCodeJoin.inviteCode);
+    await joinModal.getByRole('button', { name: /Tham gia lớp/i }).click();
     await expectToast(page, /thành công|Đã tham gia/i);
     await expect(page.getByText(classCodeJoin.name)).toBeVisible();
 
