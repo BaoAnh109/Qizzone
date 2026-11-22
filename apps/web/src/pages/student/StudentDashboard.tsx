@@ -1,167 +1,177 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  LogIn,
-  Search,
-  CheckCircle2,
-  Play,
-  TrendingUp,
-  History,
-  Timer,
-  KeyRound,
-  GraduationCap,
-  Mail,
-  Sparkles,
+  ArrowRight,
   BookOpen,
-  Clock,
-  Award,
-  RefreshCw,
-  Eye,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  GraduationCap,
+  History,
+  KeyRound,
+  LogIn,
+  Play,
+  Search,
+  Timer,
+  TrendingUp,
 } from "lucide-react";
-import { useAuthStore } from "@/store/authStore";
-import { useQuizStore } from "@/store/quizStore";
-import { useExamSessionStore, isSessionInProgress } from "@/store/examSessionStore";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import type { Classroom, StudentAssignmentItem } from "@qizzone/domain";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { useToast } from "@/hooks/useToast";
-import type { Quiz } from "@/types/quiz";
-import type { StudentAssignmentItem } from "@qizzone/domain";
 import { classroomService } from "@/services/classroomService";
+import { useAuthStore } from "@/store/authStore";
+import { isSessionInProgress, useExamSessionStore } from "@/store/examSessionStore";
+import { useQuizStore } from "@/store/quizStore";
+
+const HISTORY_PAGE_SIZE = 10;
+
+function getWeekBounds(nowMs: number) {
+  const current = new Date(nowMs);
+  const day = current.getDay(); // 0 = Sun, 1 = Mon
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const start = new Date(current);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(current.getDate() + diffToMonday);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { startMs: start.getTime(), endMs: end.getTime() };
+}
 
 export function StudentDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const { quizzes, getQuizByCode, load: loadQuizzes, isLoading: isQuizzesLoading } = useQuizStore();
-  const {
-    activeSessions,
-    getResultsByStudent,
-    checkAndAutoSubmitExpired,
-  } = useExamSessionStore();
+  const { quizzes, getQuizByCode, load: loadQuizzes } = useQuizStore();
+  const { activeSessions, getResultsByStudent, checkAndAutoSubmitExpired } = useExamSessionStore();
   const toast = useToast();
 
   const [roomCode, setRoomCode] = useState("");
   const [historySearchTerm, setHistorySearchTerm] = useState("");
-  const [availableSearchTerm, setAvailableSearchTerm] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
   const [classroomAssignments, setClassroomAssignments] = useState<StudentAssignmentItem[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
-  const studentResults = user ? getResultsByStudent(user.id) : [];
-  const publishedQuizzes = quizzes.filter((q) => q.status === "published");
+  const studentResults = useMemo(
+    () => (user ? getResultsByStudent(user.id) : []),
+    [getResultsByStudent, user]
+  );
+  const publishedQuizzes = useMemo(
+    () => quizzes.filter((q) => q.status === "published"),
+    [quizzes]
+  );
 
-  // Auto-fetch latest quizzes from server on dashboard mount
   useEffect(() => {
     void loadQuizzes().catch(() => {});
   }, [loadQuizzes]);
 
-  // Auto-finalize any expired exam sessions when visiting dashboard
   useEffect(() => {
     void checkAndAutoSubmitExpired();
   }, [checkAndAutoSubmitExpired]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (!user?.id) return undefined;
     let cancelled = false;
-    classroomService.listStudentAssignments()
-      .then((items) => {
-        if (!cancelled) setClassroomAssignments(items);
+    Promise.all([
+      classroomService.listStudentAssignments(),
+      classroomService.listMyClassrooms(),
+    ])
+      .then(([assignmentItems, classroomItems]) => {
+        if (cancelled) return;
+        setClassroomAssignments(assignmentItems);
+        setClassrooms(classroomItems.filter((item) => !item.isArchived));
       })
       .catch(() => {
-        if (!cancelled) setClassroomAssignments([]);
+        if (!cancelled) {
+          setClassroomAssignments([]);
+          setClassrooms([]);
+        }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
-  // In-progress active sessions count (only valid within time)
-  const inProgressQuizzes = publishedQuizzes.filter((q) => {
-    const s = activeSessions[q.id];
-    return isSessionInProgress(s);
-  });
+  const inProgressQuizzes = useMemo(
+    () => publishedQuizzes.filter((q) => isSessionInProgress(activeSessions[q.id])),
+    [activeSessions, publishedQuizzes]
+  );
 
-  // Match available quizzes for this student based on Class or Email
-  // MẶC ĐỊNH: Đề public không gán lớp hoặc email sẽ KHÔNG hiển thị trên trang chủ
-  // Chỉ khi được gán Email hoặc Lớp thì học sinh phù hợp mới thấy trên trang chủ
-  const userEmail = (user?.email || "").trim().toLowerCase();
-  const userClassNorm = (user?.studentClass || "").trim().toLowerCase();
-
-  const getQuizAudienceBadge = (quiz: Quiz) => {
-    const assignedClasses = (quiz.settings.assignedClasses || []).map((c) => c.trim().toLowerCase());
-    const assignedEmails = (quiz.settings.assignedEmails || []).map((e) => e.trim().toLowerCase());
-
-    if (userEmail && assignedEmails.includes(userEmail)) {
-      return (
-        <Badge variant="primary" size="sm" className="font-bold flex items-center gap-1">
-          <Mail className="h-3 w-3" />
-          <span>Giao đích danh</span>
-        </Badge>
-      );
-    }
-
-    if (userClassNorm && assignedClasses.includes(userClassNorm)) {
-      return (
-        <Badge variant="success" size="sm" className="font-bold flex items-center gap-1">
-          <GraduationCap className="h-3 w-3" />
-          <span>Lớp {user?.studentClass}</span>
-        </Badge>
-      );
-    }
-
-    if (quiz.settings.assignedClasses && quiz.settings.assignedClasses.length > 0) {
-      return (
-        <Badge variant="success" size="sm" className="font-bold flex items-center gap-1">
-          <GraduationCap className="h-3 w-3" />
-          <span>Lớp {quiz.settings.assignedClasses.join(", ")}</span>
-        </Badge>
-      );
-    }
-
-    return null;
-  };
-
-  const matchedQuizzes = publishedQuizzes.filter((quiz) => {
-    const assignedClasses = (quiz.settings.assignedClasses || []).map((c) => c.trim().toLowerCase());
-    const assignedEmails = (quiz.settings.assignedEmails || []).map((e) => e.trim().toLowerCase());
-
-    const hasClassRestriction = assignedClasses.length > 0;
-    const hasEmailRestriction = assignedEmails.length > 0;
-
-    // 1. Mặc định: đề không giao cho lớp hay email nào sẽ KHÔNG hiển thị sẵn trên màn hình
-    if (!hasClassRestriction && !hasEmailRestriction) {
-      return false;
-    }
-
-    // 2. Học sinh có email khớp với email được giao
-    if (hasEmailRestriction && userEmail && assignedEmails.includes(userEmail)) {
-      return true;
-    }
-
-    // 3. Học sinh có lớp khớp với lớp được giao
-    if (hasClassRestriction && userClassNorm && assignedClasses.includes(userClassNorm)) {
-      return true;
-    }
-
-    return false;
-  });
-
-  const filteredAvailableQuizzes = !availableSearchTerm
-    ? matchedQuizzes
-    : matchedQuizzes.filter((quiz) => {
-        const term = availableSearchTerm.toLowerCase();
-        return (
-          quiz.title.toLowerCase().includes(term) ||
-          quiz.subject.toLowerCase().includes(term) ||
-          quiz.code.toLowerCase().includes(term) ||
-          (quiz.teacherName || "").toLowerCase().includes(term)
-        );
+  const todoAssignments = useMemo(() => {
+    return classroomAssignments
+      .filter((item) => item.status !== "completed")
+      .slice()
+      .sort((a, b) => {
+        const aDue = a.dueAt ? Date.parse(a.dueAt) : Number.POSITIVE_INFINITY;
+        const bDue = b.dueAt ? Date.parse(b.dueAt) : Number.POSITIVE_INFINITY;
+        if (aDue !== bDue) return aDue - bDue;
+        const aAvail = a.availableFrom ? Date.parse(a.availableFrom) : 0;
+        const bAvail = b.availableFrom ? Date.parse(b.availableFrom) : 0;
+        return bAvail - aAvail;
       });
+  }, [classroomAssignments]);
 
-  const filteredHistory = studentResults.filter((result) => {
-    return (
-      result.quizTitle.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-      result.subject.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
-      result.roomCode.toLowerCase().includes(historySearchTerm.toLowerCase())
-    );
-  });
+  const { weeklyTodoCount, totalTodoCount, newTodoCount } = useMemo(() => {
+    const { startMs, endMs } = getWeekBounds(nowMs);
+    const recentThresholdMs = nowMs - 48 * 60 * 60 * 1000;
+    let weekly = 0;
+    let newlyAdded = 0;
+
+    for (const item of todoAssignments) {
+      const dueMs = item.dueAt ? Date.parse(item.dueAt) : Number.NaN;
+      const availMs = item.availableFrom ? Date.parse(item.availableFrom) : Number.NaN;
+      const isDueThisWeek = Number.isFinite(dueMs) && dueMs >= startMs && dueMs < endMs;
+      const isAvailableThisWeek = !Number.isFinite(dueMs) && (!Number.isFinite(availMs) || (availMs >= startMs && availMs < endMs));
+      if (isDueThisWeek || isAvailableThisWeek) {
+        weekly += 1;
+      }
+      const isRecentAvailable = Number.isFinite(availMs) && availMs >= recentThresholdMs;
+      const isUntouchedTodo = item.status === "todo" && item.attemptCount === 0 && !item.hasActiveAttempt;
+      if (isRecentAvailable || (!Number.isFinite(availMs) && isUntouchedTodo)) {
+        newlyAdded += 1;
+      }
+    }
+
+    return {
+      weeklyTodoCount: weekly,
+      totalTodoCount: todoAssignments.length,
+      newTodoCount: newlyAdded,
+    };
+  }, [nowMs, todoAssignments]);
+
+  const externalQuizCount = useMemo(() => {
+    const classroomQuizIds = new Set(classroomAssignments.map((item) => item.quizId));
+    return studentResults.filter((result) => !classroomQuizIds.has(result.quizId)).length;
+  }, [classroomAssignments, studentResults]);
+
+  const nearestTodoAssignments = useMemo(() => todoAssignments.slice(0, 2), [todoAssignments]);
+  const topInProgressQuizzes = useMemo(() => inProgressQuizzes.slice(0, 2), [inProgressQuizzes]);
+
+  const filteredHistory = useMemo(() => {
+    const term = historySearchTerm.trim().toLowerCase();
+    if (!term) return studentResults;
+    return studentResults.filter((result) => (
+      result.quizTitle.toLowerCase().includes(term) ||
+      result.subject.toLowerCase().includes(term) ||
+      result.roomCode.toLowerCase().includes(term)
+    ));
+  }, [historySearchTerm, studentResults]);
+
+  const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / HISTORY_PAGE_SIZE));
+  const safeHistoryPage = Math.min(historyPage, totalHistoryPages);
+  const paginatedHistory = useMemo(() => {
+    const start = (safeHistoryPage - 1) * HISTORY_PAGE_SIZE;
+    return filteredHistory.slice(start, start + HISTORY_PAGE_SIZE);
+  }, [filteredHistory, safeHistoryPage]);
+
   const handleJoinByCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanCode = roomCode.trim().toUpperCase();
@@ -192,7 +202,6 @@ export function StudentDashboard() {
       return;
     }
 
-    // If already in-progress and within time, take student directly to quiz room
     const existingSession = activeSessions[quiz.id];
     if (isSessionInProgress(existingSession)) {
       navigate(`/student/quiz/${quiz.id}`);
@@ -202,22 +211,10 @@ export function StudentDashboard() {
     navigate(`/student/quiz/${quiz.id}/lobby`);
   };
 
-  const scoredStudentResults = studentResults.filter(
-    (r): r is typeof r & { score: number } => r.score !== null
-  );
-  const avgScore =
-    scoredStudentResults.length > 0
-      ? (
-          scoredStudentResults.reduce((s, r) => s + r.score, 0) /
-          scoredStudentResults.length
-        ).toFixed(2)
-      : "--";
-
   return (
     <div className="space-y-8 pb-16">
       {/* Top Section: Greeting on Left + Room Code Card on Right */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-6 border-b theme-border">
-        {/* Left: Chào User */}
         <div className="space-y-2 max-w-xl">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60">
             <span>Cổng học sinh</span>
@@ -226,13 +223,11 @@ export function StudentDashboard() {
             Xin chào, {user?.name || user?.fullName || "Bạn học sinh"}
           </h1>
           <p className="text-xs sm:text-sm theme-text-muted leading-relaxed">
-            Các đề thi được thầy cô giao trực tiếp cho bạn qua Email hoặc Lớp sẽ tự động xuất hiện ở mục bên dưới. Bạn cũng có thể nhập mã phòng hoặc nhấn vào liên kết chia sẻ để vào thi.
+            Theo dõi nhanh bài tập tuần này, lớp học đã tham gia, bài đang làm dở và lịch sử kết quả của bạn.
           </p>
         </div>
 
-        {/* Right: Card Tham gia phòng thi qua mã phòng 6 ký tự */}
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-teal-600 to-sky-600 p-5 sm:p-6 text-white shadow-lg shadow-teal-600/20 border border-blue-400/40 shrink-0 lg:max-w-lg w-full lg:w-auto">
-          {/* Subtle Decorative Glow */}
           <div className="pointer-events-none absolute -right-6 -bottom-6 h-28 w-28 rounded-full theme-surface blur-xl" />
           <div className="pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full bg-sky-400/25 blur-lg" />
 
@@ -273,313 +268,207 @@ export function StudentDashboard() {
         </div>
       </div>
 
-      {classroomAssignments.length > 0 && <section className="space-y-4" aria-labelledby="classroom-assignment-heading">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div><h2 id="classroom-assignment-heading" className="text-xl font-bold theme-text-primary">Bài tập từ lớp học ({classroomAssignments.length})</h2><p className="mt-1 text-sm theme-text-secondary">Các bài được giao trong lớp và hạn nộp của bạn.</p></div>
-          <Button variant="outline" onClick={() => navigate("/student/classes")}>Lớp học của tôi</Button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{classroomAssignments.map((assignment) => {
-          const label = assignment.status === "completed" ? assignment.isLate ? "Nộp muộn" : "Đã hoàn thành" : assignment.status === "overdue" ? "Quá hạn" : "Cần làm";
-          const resultHref = assignment.latestResultId ? `/student/result/${assignment.latestResultId}` : null;
-          const href = assignment.status === "completed" ? resultHref : `/student/quiz/${assignment.quizId}/lobby?assignmentId=${encodeURIComponent(assignment.assignmentId)}`;
-          return <Card key={assignment.assignmentId}><CardContent className="space-y-3 p-4">
-            <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-medium theme-text-muted">{assignment.classroomName}</p><h3 className="mt-1 font-semibold theme-text-primary">{assignment.title || assignment.quizTitle}</h3></div><Badge variant={assignment.status === "completed" ? "primary" : assignment.status === "overdue" ? "destructive" : "success"} size="sm">{label}</Badge></div>
-            <p className="text-xs theme-text-secondary">{assignment.dueAt ? `Hạn nộp: ${new Date(assignment.dueAt).toLocaleString("vi-VN")}` : "Chưa đặt hạn nộp"}</p>
-            {href ? <Link to={href} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border theme-border px-3 text-sm font-semibold text-blue-800 hover:bg-blue-50">{assignment.status === "completed" ? "Xem kết quả" : "Làm bài"}</Link> : <span className="inline-flex min-h-11 items-center text-sm theme-text-muted">Đã hoàn thành</span>}
-          </CardContent></Card>;
-        })}</div>
-      </section>}
-
-      {/* Active In-Progress Sessions (if any) */}
-      {inProgressQuizzes.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Timer className="h-5 w-5 text-amber-600 animate-pulse" />
-            <h2 className="text-lg font-bold theme-text-primary">
-              Bài thi đang làm dở ({inProgressQuizzes.length})
-            </h2>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {inProgressQuizzes.map((quiz) => {
-              const activeSession = activeSessions[quiz.id];
-              const answeredCount = Object.keys(activeSession?.answers || {}).length;
-
-              return (
-                <Card key={quiz.id} className="border-amber-300 bg-amber-50/30 overflow-hidden shadow-xs">
-                  <CardHeader className="pb-3 bg-amber-100/50">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <Badge variant="secondary" size="sm">
-                        {quiz.subject}
-                      </Badge>
-                      <Badge variant="warning" size="sm" dot className="font-bold">
-                        Đang làm ({answeredCount}/{quiz.totalQuestions} câu)
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-base font-bold theme-text-primary line-clamp-1">
-                      {quiz.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-3 space-y-3">
-                    <div className="flex items-center justify-between text-xs theme-text-secondary">
-                      <span>Mã: <strong className="font-mono text-teal-700">{quiz.code}</strong></span>
-                      <span>Thời gian: {quiz.settings.durationMinutes > 0 ? `${quiz.settings.durationMinutes} phút` : "Không giới hạn"}</span>
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="w-full font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
-                      onClick={() => navigate(`/student/quiz/${quiz.id}`)}
-                      leftIcon={<Play className="h-4 w-4 fill-current" />}
-                    >
-                      Tiếp tục làm bài
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Stats Cards */}
+      {/* 3 Summary Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className={inProgressQuizzes.length > 0 ? "border-amber-300 bg-amber-50/20" : ""}>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold theme-text-muted">Bài đang làm dở</p>
-              <p className="text-2xl font-extrabold text-amber-700 mt-1 font-mono">
-                {inProgressQuizzes.length}
+        <Card>
+          <CardContent className="p-5 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold theme-text-muted">Số bài cần làm trong tuần</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-extrabold text-blue-700 font-mono">
+                  {weeklyTodoCount}
+                </p>
+                {newTodoCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                    <TrendingUp className="h-3 w-3" aria-hidden="true" />
+                    +{newTodoCount}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs theme-text-secondary">
+                Trong tuần: <strong className="theme-text-primary">{weeklyTodoCount}</strong> · Tổng cần làm:{" "}
+                <strong className="theme-text-primary">{totalTodoCount}</strong>
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-              <Timer className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+              <CalendarClock className="h-5 w-5" aria-hidden="true" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold theme-text-muted">Bài đã hoàn thành</p>
-              <p className="text-2xl font-extrabold text-emerald-900 mt-1 font-mono">
-                {studentResults.length}
+          <CardContent className="p-5 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold theme-text-muted">Số lớp đã tham gia</p>
+              <p className="text-2xl font-extrabold text-emerald-700 font-mono">
+                {classrooms.length}
               </p>
+              <Link
+                to="/student/classes"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900"
+              >
+                <span>Xem lớp học</span>
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-              <CheckCircle2 className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <GraduationCap className="h-5 w-5" aria-hidden="true" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold theme-text-muted">Điểm trung bình</p>
-              <p className="text-2xl font-extrabold text-teal-900 mt-1 font-mono">
-                {avgScore} {avgScore !== "--" ? "đ" : ""}
+          <CardContent className="p-5 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold theme-text-muted">Số bài làm ngoài lớp</p>
+              <p className="text-2xl font-extrabold text-teal-700 font-mono">
+                {externalQuizCount}
+              </p>
+              <p className="text-xs theme-text-secondary">
+                Bài thi tự do hoặc qua mã phòng
               </p>
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-              <TrendingUp className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <Globe className="h-5 w-5" aria-hidden="true" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* SECTION: ĐỀ THI ĐƯỢC GIAO CHO BẠN (Hiện thẳng lên đề đang mở, không cần nhập mã) */}
-      <div className="space-y-4 pt-2">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
+      {/* 2-Column Section: 2 Nearest Todo Assignments | 2 In-Progress Quizzes */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Left: 2 Nearest Todo Assignments */}
+        <section className="space-y-3" aria-labelledby="nearest-assignments-heading">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-teal-700" />
-              <h2 className="text-xl font-bold theme-text-primary">
-                Đề thi được giao cho bạn ({matchedQuizzes.length})
+              <BookOpen className="h-5 w-5 text-blue-700" aria-hidden="true" />
+              <h2 id="nearest-assignments-heading" className="text-lg font-bold theme-text-primary">
+                Bài tập gần nhất cần làm
               </h2>
             </div>
-            <p className="text-xs theme-text-muted mt-0.5">
-              Đề được giao qua lớp hoặc email. Chọn Vào thi để làm bài hoặc Luyện tập để ôn từng câu.
-            </p>
-          </div>
-
-          {/* Search & Refresh */}
-          <div className="flex items-center gap-2">
-            <div className="w-full sm:w-56">
-              <Input
-                placeholder="Tìm đề thi..."
-                value={availableSearchTerm}
-                onChange={(e) => setAvailableSearchTerm(e.target.value)}
-                leftIcon={<Search className="h-3.5 w-3.5" />}
-                className="h-9 text-xs"
-              />
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void loadQuizzes()}
-              isLoading={isQuizzesLoading}
-              leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-              className="h-9 text-xs shrink-0"
-              title="Tải lại danh sách đề thi mới nhất"
+            <Link
+              to="/student/classes"
+              className="text-xs font-semibold text-blue-700 hover:text-blue-900"
             >
-              Làm mới
-            </Button>
+              Xem tất cả ({todoAssignments.length})
+            </Link>
           </div>
-        </div>
 
-        {/* Quizzes Grid */}
-        {filteredAvailableQuizzes.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredAvailableQuizzes.map((quiz) => {
-              const audienceBadge = getQuizAudienceBadge(quiz);
-              const pastSubmissions = studentResults.filter((r) => r.quizId === quiz.id);
-              const attemptsMade = pastSubmissions.length;
-              const maxAttempts = quiz.settings.maxAttempts || 0;
-              const isAttemptsExceeded = maxAttempts > 0 && attemptsMade >= maxAttempts;
-              const activeSession = activeSessions[quiz.id];
-              const isInProgress = isSessionInProgress(activeSession);
-
-              return (
-                <Card
-                  key={quiz.id}
-                  className="flex flex-col justify-between overflow-hidden border-teal-100 hover:border-teal-300 hover:shadow-md transition theme-surface"
-                >
-                  <CardHeader className="pb-3 theme-surface-muted border-b theme-border">
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <Badge variant="secondary" size="sm" className="font-semibold">
-                        {quiz.subject}
-                      </Badge>
-                      {audienceBadge}
-                    </div>
-
-                    <CardTitle className="text-base font-bold theme-text-primary line-clamp-2 leading-snug">
-                      {quiz.title}
-                    </CardTitle>
-
-                    <p className="text-xs theme-text-muted pt-0.5">
-                      Giáo viên: <strong className="theme-text-secondary">{quiz.teacherName || "Thầy Cô"}</strong>
-                    </p>
-                  </CardHeader>
-
-                  <CardContent className="pt-3 pb-4 space-y-3.5 flex-1 flex flex-col justify-between">
-                    <div className="space-y-2 text-xs theme-text-secondary">
-                      <div className="grid grid-cols-2 gap-2 theme-surface-muted p-2.5 rounded-lg border theme-border">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-                          <span>
-                            {quiz.settings.durationMinutes === 0
-                              ? "Vô thời hạn"
-                              : `${quiz.settings.durationMinutes} phút`}
+          {nearestTodoAssignments.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center text-sm theme-text-secondary">
+                Không có bài tập lớp nào cần làm ngay lúc này.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {nearestTodoAssignments.map((assignment) => {
+                const isOverdue = assignment.status === "overdue";
+                const href = `/student/quiz/${assignment.quizId}/lobby?assignmentId=${encodeURIComponent(assignment.assignmentId)}`;
+                return (
+                  <Card key={assignment.assignmentId}>
+                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium theme-text-muted">
+                            {assignment.classroomName}
                           </span>
+                          <Badge variant={isOverdue ? "destructive" : "success"} size="sm">
+                            {isOverdue ? "Quá hạn" : "Cần làm"}
+                          </Badge>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <BookOpen className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-                          <span>{quiz.totalQuestions} câu hỏi</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <KeyRound className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-                          <span className="font-mono font-bold text-teal-700">{quiz.code}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Award className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-                          <span>{quiz.settings.passPercentage}% đạt</span>
-                        </div>
+                        <h3 className="truncate font-semibold theme-text-primary">
+                          {assignment.title || assignment.quizTitle}
+                        </h3>
+                        <p className="text-xs theme-text-secondary">
+                          {assignment.dueAt
+                            ? `Hạn nộp: ${new Date(assignment.dueAt).toLocaleString("vi-VN")}`
+                            : "Chưa đặt hạn nộp"}
+                        </p>
                       </div>
-
-                      {/* Attempts info */}
-                      <div className="flex items-center justify-between text-[11px] theme-text-muted px-0.5">
-                        <span>
-                          Số lượt đã làm: <strong className="theme-text-secondary">{attemptsMade}</strong>
-                          {maxAttempts > 0 && `/${maxAttempts}`}
-                        </span>
-                        {isAttemptsExceeded && (
-                          <span className="text-amber-700 font-semibold">Hết lượt làm</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Exam and practice actions stay together on the assigned quiz. */}
-                    <div className="space-y-2">
-                      {isInProgress ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="w-full font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
-                          onClick={() => navigate(`/student/quiz/${quiz.id}`)}
-                          leftIcon={<Play className="h-4 w-4 fill-current" />}
-                        >
-                          Tiếp tục làm bài
-                        </Button>
-                      ) : isAttemptsExceeded && pastSubmissions[0] ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs font-semibold"
-                          onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
-                          leftIcon={<Eye className="h-3.5 w-3.5" />}
-                        >
-                          {pastSubmissions[0].score !== null && !pastSubmissions[0].scoreHidden
-                            ? `Xem kết quả (${pastSubmissions[0].score.toFixed(2)}đ)`
-                            : "Xem kết quả"}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="w-full font-bold bg-teal-700 hover:bg-teal-800 shadow-xs"
-                          onClick={() => navigate(`/student/quiz/${quiz.id}/lobby`)}
-                          leftIcon={<Play className="h-4 w-4 fill-current" />}
-                        >
-                          Vào thi ngay
-                        </Button>
-                      )}
-                      {quiz.settings.practiceEnabled !== false && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full border-emerald-200 text-emerald-800 hover:bg-emerald-50"
-                          onClick={() => navigate(`/student/practice/${quiz.id}`)}
-                          leftIcon={<BookOpen className="h-4 w-4" />}
-                        >
-                          Luyện tập
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="text-center p-8 border-dashed theme-border theme-surface-muted">
-            <BookOpen className="h-10 w-10 text-neutral-300 mx-auto mb-2" />
-            <h3 className="text-base font-bold theme-text-primary">
-              Chưa có đề thi nào được giao trực tiếp cho bạn
-            </h3>
-            <p className="text-xs theme-text-muted mt-1 max-w-md mx-auto leading-relaxed">
-              Nếu thầy cô cung cấp mã phòng thi hoặc liên kết chia sẻ, bạn hãy nhập mã ở khung bên trên hoặc mở link để tham gia làm bài như bình thường.
-            </p>
-            <div className="pt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void loadQuizzes()}
-                leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-              >
-                Kiểm tra lại dữ liệu
-              </Button>
+                      <Link
+                        to={href}
+                        className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800"
+                      >
+                        Làm bài
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
-          </Card>
-        )}
+          )}
+        </section>
+
+        {/* Right: 2 In-Progress Quizzes */}
+        <section className="space-y-3" aria-labelledby="in-progress-heading">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Timer className="h-5 w-5 text-amber-600" aria-hidden="true" />
+              <h2 id="in-progress-heading" className="text-lg font-bold theme-text-primary">
+                Bài đang làm dở
+              </h2>
+            </div>
+            <span className="text-xs font-medium theme-text-muted">
+              {inProgressQuizzes.length} bài đang làm
+            </span>
+          </div>
+
+          {topInProgressQuizzes.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center text-sm theme-text-secondary">
+                Bạn không có bài thi nào đang làm dở.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {topInProgressQuizzes.map((quiz) => {
+                const activeSession = activeSessions[quiz.id];
+                const answeredCount = Object.keys(activeSession?.answers || {}).length;
+                return (
+                  <Card key={quiz.id} className="border-amber-300/70">
+                    <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" size="sm">
+                            {quiz.subject}
+                          </Badge>
+                          <Badge variant="warning" size="sm" dot>
+                            Đang làm ({answeredCount}/{quiz.totalQuestions} câu)
+                          </Badge>
+                        </div>
+                        <h3 className="truncate font-semibold theme-text-primary">{quiz.title}</h3>
+                        <p className="text-xs theme-text-secondary">
+                          Mã phòng: <strong className="font-mono text-teal-700">{quiz.code}</strong> ·{" "}
+                          {quiz.settings.durationMinutes > 0
+                            ? `${quiz.settings.durationMinutes} phút`
+                            : "Không giới hạn"}
+                        </p>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+                        onClick={() => navigate(`/student/quiz/${quiz.id}`)}
+                        leftIcon={<Play className="h-4 w-4 fill-current" />}
+                      >
+                        Tiếp tục
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* History Section */}
+      {/* History Section with 10 items/page pagination */}
       <div className="space-y-4 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-xl font-bold theme-text-primary flex items-center gap-2">
             <History className="h-5 w-5 text-teal-700" />
-            <span>Lịch sử các bài thi đã hoàn thành</span>
+            <span>Lịch sử các bài thi đã hoàn thành ({filteredHistory.length})</span>
           </h2>
 
           {studentResults.length > 0 && (
@@ -587,7 +476,10 @@ export function StudentDashboard() {
               <Input
                 placeholder="Tìm theo tên bài, mã phòng..."
                 value={historySearchTerm}
-                onChange={(e) => setHistorySearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setHistorySearchTerm(e.target.value);
+                  setHistoryPage(1);
+                }}
                 leftIcon={<Search className="h-4 w-4" />}
               />
             </div>
@@ -597,76 +489,110 @@ export function StudentDashboard() {
         {studentResults.length === 0 ? (
           <Card className="text-center p-8 border-dashed">
             <p className="text-sm theme-text-muted">
-              Bạn chưa hoàn thành bài thi nào. Nhập mã phòng hoặc chọn bài thi được giao bên trên để bắt đầu làm bài!
+              Bạn chưa hoàn thành bài thi nào. Nhập mã phòng hoặc vào lớp học để bắt đầu làm bài!
             </p>
           </Card>
         ) : filteredHistory.length > 0 ? (
-          <Card className="overflow-hidden">
-            <div className="divide-y divide-neutral-100">
-              {filteredHistory.map((result) => (
-                <div
-                  key={result.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:px-6 theme-hover-surface transition"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" size="sm">
-                        {result.subject}
-                      </Badge>
-                      <h4 className="font-bold text-sm theme-text-primary">
-                        {result.quizTitle}
-                      </h4>
-                    </div>
-                    <p className="text-xs theme-text-muted">
-                      Nộp bài lúc: {new Date(result.submittedAt).toLocaleString("vi-VN")} · Mã phòng:{" "}
-                      <span className="font-mono text-teal-700 font-bold">{result.roomCode}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      {result.scoreHidden || result.score === null ? (
-                        <>
-                          <span className="text-sm font-bold theme-text-muted">
-                            Đã ẩn điểm
-                          </span>
-                          <p className="text-[11px] theme-text-muted font-medium">
-                            {result.totalQuestions} câu hỏi
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <span
-                            className={`text-lg font-black font-mono ${
-                              result.isPassed ? "text-emerald-600" : "text-rose-600"
-                            }`}
-                          >
-                            {result.score.toFixed(2)} / 10 đ
-                          </span>
-                          <p className="text-[11px] theme-text-muted font-medium">
-                            Đúng {result.correctCount ?? "—"}/{result.totalQuestions} câu (
-                            {result.percentage ?? 0}%)
-                          </p>
-                        </>
-                      )}
+          <div className="space-y-4">
+            <Card className="overflow-hidden">
+              <div className="divide-y divide-neutral-100">
+                {paginatedHistory.map((result) => (
+                  <div
+                    key={result.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:px-6 theme-hover-surface transition"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" size="sm">
+                          {result.subject}
+                        </Badge>
+                        <h4 className="font-bold text-sm theme-text-primary">
+                          {result.quizTitle}
+                        </h4>
+                      </div>
+                      <p className="text-xs theme-text-muted">
+                        Nộp bài lúc: {new Date(result.submittedAt).toLocaleString("vi-VN")} · Mã phòng:{" "}
+                        <span className="font-mono text-teal-700 font-bold">{result.roomCode}</span>
+                      </p>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/student/result/${result.id}`)}
-                    >
-                      Xem chi tiết
-                    </Button>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        {result.scoreHidden || result.score === null ? (
+                          <>
+                            <span className="text-sm font-bold theme-text-muted">
+                              Đã ẩn điểm
+                            </span>
+                            <p className="text-[11px] theme-text-muted font-medium">
+                              {result.totalQuestions} câu hỏi
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className={`text-lg font-black font-mono ${
+                                result.isPassed ? "text-emerald-600" : "text-rose-600"
+                              }`}
+                            >
+                              {result.score.toFixed(2)} / 10 đ
+                            </span>
+                            <p className="text-[11px] theme-text-muted font-medium">
+                              Đúng {result.correctCount ?? "—"}/{result.totalQuestions} câu (
+                              {result.percentage ?? 0}%)
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/student/result/${result.id}`)}
+                      >
+                        Xem chi tiết
+                      </Button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </Card>
+
+            {totalHistoryPages > 1 && (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs theme-text-muted">
+                  Hiển thị {(safeHistoryPage - 1) * HISTORY_PAGE_SIZE + 1}–
+                  {Math.min(safeHistoryPage * HISTORY_PAGE_SIZE, filteredHistory.length)} / {filteredHistory.length} bài
+                </p>
+                <div className="flex items-center gap-2" role="navigation" aria-label="Phân trang lịch sử bài thi">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={safeHistoryPage <= 1}
+                    onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                    leftIcon={<ChevronLeft className="h-4 w-4" />}
+                  >
+                    Trước
+                  </Button>
+                  <span className="text-xs font-semibold theme-text-secondary px-2">
+                    Trang {safeHistoryPage} / {totalHistoryPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={safeHistoryPage >= totalHistoryPages}
+                    onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages, p + 1))}
+                    rightIcon={<ChevronRight className="h-4 w-4" />}
+                  >
+                    Sau
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </Card>
+              </div>
+            )}
+          </div>
         ) : (
           <Card className="text-center p-8">
             <p className="text-sm theme-text-muted">
-              Không tìm thấy kết quả nào phù hợp với từ khóa "{historySearchTerm}".
+              Không tìm thấy kết quả nào phù hợp với từ khóa &ldquo;{historySearchTerm}&rdquo;.
             </p>
           </Card>
         )}
