@@ -79,3 +79,50 @@ export function formatVietnamDateTime(isoTimestamp: string | Date): string {
     hour12: false,
   }).format(date);
 }
+
+export const IN_APP_NOTIFICATION_TYPES = [
+  "teacher_approval",
+  "role_changed",
+  "account_status",
+  "classroom_joined",
+  "quiz_assigned",
+  "bug_report_created",
+  "bug_report_updated",
+  "system_notice",
+] as const;
+
+export type InAppNotificationType = (typeof IN_APP_NOTIFICATION_TYPES)[number];
+
+export interface InAppNotification {
+  id: string;
+  recipientUid: string;
+  actorUid: string | null;
+  type: InAppNotificationType | string;
+  title: string;
+  body: string;
+  targetRoute: string;
+  metadata: Record<string, unknown>;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export const inAppNotificationSchema = z.object({
+  id: z.string().uuid(),
+  recipientUid: z.string().min(1),
+  actorUid: z.string().nullable().optional().default(null),
+  type: z.string().min(1).max(80),
+  title: z.string().min(1).max(200),
+  body: z.string().min(1).max(2000),
+  targetRoute: z.string().min(1).max(500),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+  isRead: z.boolean(),
+  readAt: z.string().nullable().optional().default(null),
+  createdAt: z.string(),
+});
+
+export const markNotificationsReadSchema = z.object({
+  ids: z.array(z.string().uuid()).max(200).nullable().optional().default(null),
+});
+
+export type MarkNotificationsReadInput = z.infer<typeof markNotificationsReadSchema>;

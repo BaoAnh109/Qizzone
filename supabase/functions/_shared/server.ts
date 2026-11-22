@@ -365,6 +365,8 @@ export function failure(req: Request, error: unknown, requestId?: string) {
   const messages: Record<string, [number, string]> = {
     UNAUTHORIZED: [401, 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'],
     FORBIDDEN: [403, 'Bạn không có quyền sử dụng chức năng này.'],
+    CANNOT_MODIFY_SELF: [403, 'Không thể tự khóa hoặc tự thay đổi vai trò của chính tài khoản đang đăng nhập.'],
+    LAST_ADMIN_PROTECTED: [409, 'Không thể khóa hoặc hạ quyền quản trị viên cuối cùng của hệ thống.'],
     NOT_FOUND: [404, 'Không tìm thấy tài nguyên được yêu cầu.'],
     INVALID_INPUT: [400, 'Dữ liệu yêu cầu không hợp lệ.'],
     TOO_LARGE: [413, 'Kích thước dữ liệu vượt quá giới hạn cho phép.'],

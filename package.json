@@ -11,5 +11,8 @@
     "typecheck": "npm --workspace=@qizzone/domain run typecheck && npm --workspace=@qizzone/document-parser run typecheck && npm --workspace=@qizzone/web run typecheck",
     "lint": "npm --workspace=@qizzone/web run lint",
     "test": "npm --workspace=@qizzone/domain run test && npm --workspace=@qizzone/document-parser run test && npm --workspace=@qizzone/web run test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
   }
 }

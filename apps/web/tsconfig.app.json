@@ -26,6 +26,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@qizzone/domain": ["../../packages/domain/src/index.ts"],
+      "@qizzone/domain/*": ["../../packages/domain/src/*.ts"],
       "@qizzone/document-parser": ["../../packages/document-parser/src/index.ts"]
     }
   },

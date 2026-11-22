@@ -9,8 +9,25 @@ import {
   structuredLog,
 } from '../_shared/server.ts';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const REQUEST_COLUMNS =
   'id,firebase_uid,email,full_name,role,approval_status,approval_requested_at,teacher_request_status,teacher_request_blocked,teacher_requested_at,created_at';
+
+async function runSideEffect(
+  requestId: string,
+  label: string,
+  op: PromiseLike<{ error?: unknown } | void>,
+): Promise<void> {
+  try {
+    const res = await op;
+    if (res && typeof res === 'object' && 'error' in res && res.error) {
+      structuredLog('warn', { requestId, sideEffect: label, error: res.error });
+    }
+  } catch (err) {
+    structuredLog('warn', { requestId, sideEffect: label, error: String(err) });
+  }
+}
 
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors(req) });
@@ -85,15 +102,23 @@ Deno.serve(async req => {
       if (error) throw error;
 
       await Promise.all([
-        db.from('teacher_requests').upsert(
-          { user_uid: target.firebase_uid, blocked: body.blocked, updated_at: now },
-          { onConflict: 'user_uid' },
+        runSideEffect(
+          requestId,
+          'set_blocked.teacher_requests',
+          db.from('teacher_requests').upsert(
+            { user_uid: target.firebase_uid, blocked: body.blocked, updated_at: now },
+            { onConflict: 'user_uid' },
+          ),
         ),
-        db.from('role_audit_logs').insert({
-          actor_uid: auth.uid,
-          target_uid: target.firebase_uid,
-          action: body.blocked ? 'block_teacher_request' : 'unblock_teacher_request',
-        }),
+        runSideEffect(
+          requestId,
+          'set_blocked.role_audit_logs',
+          db.from('role_audit_logs').insert({
+            actor_uid: auth.uid,
+            target_uid: target.firebase_uid,
+            action: body.blocked ? 'block_teacher_request' : 'unblock_teacher_request',
+          }),
+        ),
       ]);
 
       structuredLog('info', {
@@ -120,7 +145,13 @@ Deno.serve(async req => {
     const isLegacyTeacherRequest = target.role === 'teacher' && target.approval_status === 'pending';
     if (!isStudentRequest && !isLegacyTeacherRequest) throw new Error('INVALID_INPUT');
 
-    const { data: targetAuthUser } = await db.auth.admin.getUserById(target.firebase_uid);
+    const hasAuthUser = UUID_REGEX.test(target.firebase_uid);
+    let targetAuthUser: { user: { app_metadata?: Record<string, unknown> } | null } | null = null;
+    if (hasAuthUser) {
+      const { data: authData, error: authReadErr } = await db.auth.admin.getUserById(target.firebase_uid);
+      if (authReadErr) throw authReadErr;
+      targetAuthUser = authData;
+    }
     const nextAppMeta = { ...((targetAuthUser?.user?.app_metadata || {}) as Record<string, unknown>) };
     const now = new Date().toISOString();
 
@@ -130,6 +161,7 @@ Deno.serve(async req => {
         .from('profiles')
         .update({
           teacher_request_status: nextStatus,
+          ...(body.action === 'approve' ? { teacher_request_blocked: false } : {}),
           teacher_reviewed_at: now,
           teacher_reviewed_by: auth.uid,
           updated_at: now,
@@ -144,36 +176,83 @@ Deno.serve(async req => {
       nextAppMeta.account_status = 'approved';
       delete nextAppMeta.requested_role;
 
-      await Promise.all([
-        db.auth.admin.updateUserById(target.firebase_uid, { app_metadata: nextAppMeta }),
-        db.from('teacher_requests').upsert(
-          {
-            user_uid: target.firebase_uid,
-            status: nextStatus,
-            reviewed_at: now,
-            reviewed_by: auth.uid,
-            updated_at: now,
-          },
-          { onConflict: 'user_uid' },
+      const ops: Promise<void>[] = [
+        runSideEffect(
+          requestId,
+          'student_request.teacher_requests',
+          db.from('teacher_requests').upsert(
+            {
+              user_uid: target.firebase_uid,
+              status: nextStatus,
+              ...(body.action === 'approve' ? { blocked: false } : {}),
+              reviewed_at: now,
+              reviewed_by: auth.uid,
+              updated_at: now,
+            },
+            { onConflict: 'user_uid' },
+          ),
         ),
-        db.from('role_audit_logs').insert({
-          actor_uid: auth.uid,
-          target_uid: target.firebase_uid,
-          action: `${body.action}_teacher_access`,
-          previous_role: 'student',
-          new_role: 'student',
-        }),
-        db.rpc('enqueue_notification', {
-          p_recipient_uid: target.firebase_uid,
-          p_event_type: 'teacher_approval',
-          p_template_code: 'teacher_approval',
-          p_payload: {
-            fullName: target.full_name,
-            decision: body.action === 'approve' ? 'Đã phê duyệt quyền giáo viên' : 'Đã bị từ chối',
-          },
-          p_idempotency_key: `teacher-approval-${target.firebase_uid}-${now.slice(0, 16)}`,
-        }),
-      ]);
+        runSideEffect(
+          requestId,
+          'student_request.role_audit_logs',
+          db.from('role_audit_logs').insert({
+            actor_uid: auth.uid,
+            target_uid: target.firebase_uid,
+            action: `${body.action}_teacher_access`,
+            previous_role: 'student',
+            new_role: 'student',
+          }),
+        ),
+        runSideEffect(
+          requestId,
+          'student_request.enqueue_notification',
+          db.rpc('enqueue_notification', {
+            p_recipient_uid: target.firebase_uid,
+            p_event_type: 'teacher_approval',
+            p_template_code: 'teacher_approval',
+            p_payload: {
+              fullName: target.full_name,
+              decision: body.action === 'approve' ? 'Đã phê duyệt quyền giáo viên' : 'Đã bị từ chối',
+            },
+            p_idempotency_key: `teacher-approval-${target.firebase_uid}-${now.slice(0, 16)}`,
+          }),
+        ),
+        runSideEffect(
+          requestId,
+          'student_request.in_app_notifications',
+          db.from('in_app_notifications').insert({
+            recipient_uid: target.firebase_uid,
+            actor_uid: auth.uid,
+            type: 'teacher_approval',
+            title:
+              body.action === 'approve'
+                ? 'Quyền giáo viên đã được duyệt'
+                : 'Yêu cầu quyền giáo viên bị từ chối',
+            body:
+              body.action === 'approve'
+                ? 'Quản trị viên đã phê duyệt yêu cầu quyền giáo viên của bạn.'
+                : 'Yêu cầu cấp quyền giáo viên của bạn chưa được chấp thuận.',
+            target_route: body.action === 'approve' ? '/teacher' : '/student',
+            metadata: { decision: body.action, requestKind: 'student_switch' },
+          }),
+        ),
+      ];
+
+      if (hasAuthUser && targetAuthUser?.user) {
+        ops.push(
+          runSideEffect(
+            requestId,
+            'student_request.updateUserById',
+            (async () => {
+              const { error: updateAuthErr } = await db.auth.admin.updateUserById(target.firebase_uid, {
+                app_metadata: nextAppMeta,
+              });
+              if (updateAuthErr) throw updateAuthErr;
+            })(),
+          ),
+        );
+      }
+      await Promise.all(ops);
 
       return respond(req, { profile: data }, 200, requestId);
     }
@@ -184,6 +263,7 @@ Deno.serve(async req => {
         .update({
           approval_status: 'approved',
           teacher_request_status: 'approved',
+          teacher_request_blocked: false,
           reviewed_at: now,
           reviewed_by: auth.uid,
           teacher_reviewed_at: now,
@@ -199,16 +279,61 @@ Deno.serve(async req => {
       nextAppMeta.app_role = 'teacher';
       nextAppMeta.account_status = 'approved';
       delete nextAppMeta.requested_role;
-      await Promise.all([
-        db.auth.admin.updateUserById(target.firebase_uid, { app_metadata: nextAppMeta }),
-        db.from('role_audit_logs').insert({
-          actor_uid: auth.uid,
-          target_uid: target.firebase_uid,
-          action: 'approve_teacher',
-          previous_role: 'teacher',
-          new_role: 'teacher',
-        }),
-      ]);
+      const ops: Promise<void>[] = [
+        runSideEffect(
+          requestId,
+          'legacy_approve.role_audit_logs',
+          db.from('role_audit_logs').insert({
+            actor_uid: auth.uid,
+            target_uid: target.firebase_uid,
+            action: 'approve_teacher',
+            previous_role: 'teacher',
+            new_role: 'teacher',
+          }),
+        ),
+        runSideEffect(
+          requestId,
+          'legacy_approve.enqueue_notification',
+          db.rpc('enqueue_notification', {
+            p_recipient_uid: target.firebase_uid,
+            p_event_type: 'teacher_approval',
+            p_template_code: 'teacher_approval',
+            p_payload: {
+              fullName: target.full_name,
+              decision: 'Đã phê duyệt quyền giáo viên',
+            },
+            p_idempotency_key: `teacher-approval-${target.firebase_uid}-${now.slice(0, 16)}`,
+          }),
+        ),
+        runSideEffect(
+          requestId,
+          'legacy_approve.in_app_notifications',
+          db.from('in_app_notifications').insert({
+            recipient_uid: target.firebase_uid,
+            actor_uid: auth.uid,
+            type: 'teacher_approval',
+            title: 'Tài khoản giáo viên đã được duyệt',
+            body: 'Quản trị viên đã phê duyệt tài khoản giáo viên của bạn.',
+            target_route: '/teacher',
+            metadata: { decision: 'approve', requestKind: 'legacy_teacher' },
+          }),
+        ),
+      ];
+      if (hasAuthUser && targetAuthUser?.user) {
+        ops.push(
+          runSideEffect(
+            requestId,
+            'legacy_approve.updateUserById',
+            (async () => {
+              const { error: updateAuthErr } = await db.auth.admin.updateUserById(target.firebase_uid, {
+                app_metadata: nextAppMeta,
+              });
+              if (updateAuthErr) throw updateAuthErr;
+            })(),
+          ),
+        );
+      }
+      await Promise.all(ops);
       return respond(req, { profile: data }, 200, requestId);
     }
 
@@ -232,16 +357,61 @@ Deno.serve(async req => {
       .single();
     if (error) throw error;
 
-    await Promise.all([
-      db.auth.admin.updateUserById(target.firebase_uid, { app_metadata: nextAppMeta }),
-      db.from('role_audit_logs').insert({
-        actor_uid: auth.uid,
-        target_uid: target.firebase_uid,
-        action: 'reject_teacher',
-        previous_role: 'teacher',
-        new_role: 'rejected',
-      }),
-    ]);
+    const rejectOps: Promise<void>[] = [
+      runSideEffect(
+        requestId,
+        'legacy_reject.role_audit_logs',
+        db.from('role_audit_logs').insert({
+          actor_uid: auth.uid,
+          target_uid: target.firebase_uid,
+          action: 'reject_teacher',
+          previous_role: 'teacher',
+          new_role: 'rejected',
+        }),
+      ),
+      runSideEffect(
+        requestId,
+        'legacy_reject.enqueue_notification',
+        db.rpc('enqueue_notification', {
+          p_recipient_uid: target.firebase_uid,
+          p_event_type: 'teacher_approval',
+          p_template_code: 'teacher_approval',
+          p_payload: {
+            fullName: target.full_name,
+            decision: 'Đã bị từ chối',
+          },
+          p_idempotency_key: `teacher-approval-${target.firebase_uid}-${now.slice(0, 16)}`,
+        }),
+      ),
+      runSideEffect(
+        requestId,
+        'legacy_reject.in_app_notifications',
+        db.from('in_app_notifications').insert({
+          recipient_uid: target.firebase_uid,
+          actor_uid: auth.uid,
+          type: 'teacher_approval',
+          title: 'Yêu cầu tài khoản giáo viên bị từ chối',
+          body: 'Yêu cầu cấp tài khoản giáo viên của bạn chưa được chấp thuận.',
+          target_route: '/student',
+          metadata: { decision: 'reject', requestKind: 'legacy_teacher' },
+        }),
+      ),
+    ];
+    if (hasAuthUser && targetAuthUser?.user) {
+      rejectOps.push(
+        runSideEffect(
+          requestId,
+          'legacy_reject.updateUserById',
+          (async () => {
+            const { error: updateAuthErr } = await db.auth.admin.updateUserById(target.firebase_uid, {
+              app_metadata: nextAppMeta,
+            });
+            if (updateAuthErr) throw updateAuthErr;
+          })(),
+        ),
+      );
+    }
+    await Promise.all(rejectOps);
 
     return respond(req, { profile: data }, 200, requestId);
   } catch (error) {

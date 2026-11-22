@@ -17,6 +17,7 @@ export interface User {
   teacherRequestStatus?: TeacherRequestStatus;
   teacherRequestBlocked?: boolean;
   teacherRequestedAt?: string;
+  isBlocked?: boolean;
   avatarUrl?: string;
   studentClass?: string;
   authProviders?: string[];
@@ -127,3 +128,104 @@ export const changePasswordSchema = z
   });
 
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
+export type AdminAccountAction =
+  | "list"
+  | "detail"
+  | "toggle_block"
+  | "change_role"
+  | "review_teacher";
+
+export interface AdminAccountSummary {
+  id: string;
+  firebaseUid?: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  baseRole?: UserRole;
+  activeRole?: UserRole;
+  approvalStatus: ApprovalStatus;
+  teacherRequestStatus?: TeacherRequestStatus;
+  teacherRequestBlocked?: boolean;
+  isBlocked: boolean;
+  avatarUrl?: string | null;
+  quizCount: number;
+  classroomCount: number;
+  ownedClassroomCount?: number;
+  enrolledClassroomCount?: number;
+  submissionCount: number;
+  createdAt: string;
+}
+
+export interface AdminAccountClassroomSummary {
+  id: string;
+  name: string;
+  subject: string;
+  gradeLevel: string;
+  inviteCode: string;
+  isArchived: boolean;
+  relationship: "owner" | "member";
+  memberCount: number;
+  assignmentCount: number;
+  createdAt: string;
+}
+
+export interface AdminAccountQuizSummary {
+  id: string;
+  title: string;
+  subject: string;
+  code: string;
+  status: "draft" | "published" | "closed";
+  totalQuestions?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAccountResultSummary {
+  id: string;
+  quizId: string;
+  quizTitle: string;
+  subject: string;
+  score: number | null;
+  percentage: number | null;
+  isPassed: boolean;
+  isLate?: boolean;
+  submittedAt: string;
+}
+
+export interface AdminAccountStats {
+  classroomCount: number;
+  ownedClassroomCount: number;
+  enrolledClassroomCount: number;
+  quizCount: number;
+  attemptCount: number;
+  resultCount: number;
+  avgScore: number | null;
+}
+
+export interface AdminAccountDetail {
+  profile: AdminAccountSummary;
+  stats: AdminAccountStats;
+  classrooms: AdminAccountClassroomSummary[];
+  quizzes: AdminAccountQuizSummary[];
+  recentResults: AdminAccountResultSummary[];
+}
+
+export const adminToggleBlockSchema = z.object({
+  action: z.literal("toggle_block"),
+  userId: z.string().trim().min(1),
+  isBlocked: z.boolean(),
+  role: z.enum(["student", "teacher", "admin"]).optional(),
+});
+
+export const adminChangeRoleSchema = z.object({
+  action: z.literal("change_role"),
+  userId: z.string().trim().min(1),
+  nextRole: z.enum(["student", "teacher", "admin"]),
+});
+
+export const adminReviewTeacherSchema = z.object({
+  action: z.literal("review_teacher"),
+  userId: z.string().trim().min(1),
+  decision: z.enum(["approve", "reject"]),
+});

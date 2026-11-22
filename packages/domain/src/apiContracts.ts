@@ -101,7 +101,7 @@ export const finalizeExamRequestSchema = z.object({
 export type FinalizeExamRequest = z.infer<typeof finalizeExamRequestSchema>;
 
 export const finalizeExamResponseSchema = z.object({
-  score: z.number().min(0).max(10),
+  score: z.number().min(0).max(10).nullable(),
   status: z.enum(["submitted", "already_submitted"]),
   result: z.unknown(),
 });
@@ -114,3 +114,33 @@ export const dispatchEmailRequestSchema = z.object({
 });
 
 export type DispatchEmailRequest = z.infer<typeof dispatchEmailRequestSchema>;
+
+export const manageUserAccountsRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("list"),
+    role: z.enum(["teacher", "student", "admin", "all"]).optional(),
+    includeAdmins: z.boolean().optional(),
+  }),
+  z.object({
+    action: z.literal("detail"),
+    userId: z.string().trim().min(1),
+  }),
+  z.object({
+    action: z.literal("toggle_block"),
+    userId: z.string().trim().min(1),
+    isBlocked: z.boolean(),
+    role: z.enum(["student", "teacher", "admin"]).optional(),
+  }),
+  z.object({
+    action: z.literal("change_role"),
+    userId: z.string().trim().min(1),
+    nextRole: z.enum(["student", "teacher", "admin"]),
+  }),
+  z.object({
+    action: z.literal("review_teacher"),
+    userId: z.string().trim().min(1),
+    decision: z.enum(["approve", "reject"]),
+  }),
+]);
+
+export type ManageUserAccountsRequest = z.infer<typeof manageUserAccountsRequestSchema>;

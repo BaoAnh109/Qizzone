@@ -23,6 +23,16 @@ export interface Question {
   points: number; // Default 1
 }
 
+export const QUIZ_PUBLISH_SCOPES = ["public", "class_only"] as const;
+export type QuizPublishScope = (typeof QUIZ_PUBLISH_SCOPES)[number];
+
+export const QUIZ_VISIBILITY_POLICIES = [
+  "immediate",
+  "after_close",
+  "never",
+] as const;
+export type QuizVisibilityPolicy = (typeof QUIZ_VISIBILITY_POLICIES)[number];
+
 export interface QuizSettings {
   durationMinutes: number; // Exam duration in minutes
   shuffleQuestions: boolean; // Randomize question order
@@ -33,6 +43,18 @@ export interface QuizSettings {
   practiceEnabled?: boolean; // Whether students can use this published quiz for practice (defaults to true)
   assignedClasses?: string[]; // Target classes (e.g. ["12A1", "12A2"])
   assignedEmails?: string[]; // Target student emails (e.g. ["student1@gmail.com"])
+  publishScope?: QuizPublishScope; // "public" (joinable by code/link) or "class_only"
+  opensAt?: string | null; // Optional ISO timestamp when exam opens
+  closesAt?: string | null; // Optional ISO timestamp when exam closes
+  scoreVisibility?: QuizVisibilityPolicy; // When students can see numeric score
+  answerVisibility?: QuizVisibilityPolicy; // When students can see correct answers & explanations
+}
+
+export function resolveQuizAnswerVisibility(
+  settings: Pick<QuizSettings, "answerVisibility" | "allowReview">
+): QuizVisibilityPolicy {
+  if (settings.answerVisibility) return settings.answerVisibility;
+  return settings.allowReview ? "immediate" : "never";
 }
 
 export type QuizStatus = "draft" | "published" | "closed";
@@ -110,12 +132,30 @@ export const quizSettingsSchema = z.object({
     .number({ message: "Vui lòng nhập số lần làm bài hợp lệ" })
     .int("Số lần làm bài phải là số nguyên")
     .min(0, "Số lần làm bài tối thiểu là 0 (0 = Vô hạn)")
+    .max(100, "Số lần làm bài tối đa là 100")
     .default(0),
   passPercentage: z.number().min(0).max(100).default(50),
   practiceEnabled: z.boolean().default(true),
   assignedClasses: z.array(z.string()).optional().default([]),
-  assignedEmails: z.array(z.string()).optional().default([]),
-});
+  assignedEmails: z
+    .array(z.string().trim().email("Email học sinh không hợp lệ"))
+    .optional()
+    .default([]),
+  publishScope: z.enum(QUIZ_PUBLISH_SCOPES).default("public"),
+  opensAt: z.string().datetime({ offset: true }).nullable().optional().default(null),
+  closesAt: z.string().datetime({ offset: true }).nullable().optional().default(null),
+  scoreVisibility: z.enum(QUIZ_VISIBILITY_POLICIES).default("immediate"),
+  answerVisibility: z.enum(QUIZ_VISIBILITY_POLICIES).optional(),
+}).refine(
+  (data) => {
+    if (!data.opensAt || !data.closesAt) return true;
+    return new Date(data.closesAt).getTime() > new Date(data.opensAt).getTime();
+  },
+  {
+    message: "Thời gian đóng đề phải sau thời gian mở đề",
+    path: ["closesAt"],
+  }
+);
 
 export const quizSchema = z.object({
   title: z

@@ -5,6 +5,7 @@ import {
   failure,
   identity,
   respond,
+  structuredLog,
 } from '../_shared/server.ts';
 
 Deno.serve(async req => {
@@ -136,14 +137,26 @@ Deno.serve(async req => {
     const nextAppMeta = { ...currentAppMeta };
     if (approvalStatus === 'approved') {
       const claimedRole = currentAppMeta.app_role;
-      const activeRole =
-        role === 'admin'
-          ? 'admin'
-          : role === 'teacher'
-            ? 'teacher'
-            : teacherRequestStatus === 'approved' && claimedRole === 'teacher'
-              ? 'teacher'
-              : 'student';
+      let activeRole: 'admin' | 'teacher' | 'student';
+      if (role === 'admin') {
+        activeRole = 'admin';
+      } else if (role === 'teacher') {
+        activeRole = 'teacher';
+      } else if (teacherRequestStatus === 'approved') {
+        if (typeof claimedRole === 'string') {
+          activeRole = claimedRole === 'teacher' ? 'teacher' : 'student';
+        } else {
+          const { data: userRoleRow, error: userRoleErr } = await db
+            .from('user_roles')
+            .select('active_role')
+            .eq('user_uid', auth.uid)
+            .maybeSingle<{ active_role: string }>();
+          if (userRoleErr) throw userRoleErr;
+          activeRole = userRoleRow?.active_role === 'teacher' ? 'teacher' : 'student';
+        }
+      } else {
+        activeRole = 'student';
+      }
 
       const needsAuthMetaUpdate =
         currentAppMeta.role !== 'authenticated' ||
@@ -175,6 +188,101 @@ Deno.serve(async req => {
       }
       if (ops.length > 0) {
         await Promise.all(ops);
+      }
+
+      if (role === 'student') {
+        const normalizedEmail = auth.email.trim().toLowerCase();
+        const { data: pendingInvites, error: inviteReadErr } = await db
+          .from('classroom_members')
+          .select('id, classroom_id')
+          .eq('status', 'pending_invite')
+          .eq('invited_email', normalizedEmail);
+        if (inviteReadErr) {
+          structuredLog('warn', { requestId, step: 'pending_invites_read', error: inviteReadErr });
+        }
+
+        if (!inviteReadErr && pendingInvites && pendingInvites.length > 0) {
+          let emailConfirmed = Boolean(auth.user.email_confirmed_at);
+          if (!emailConfirmed) {
+            const remoteAuth = await identity(req, { requireRemoteUser: true });
+            emailConfirmed = Boolean(remoteAuth.user.email_confirmed_at);
+          }
+
+          if (emailConfirmed) {
+            const { data: existingActiveRows, error: activeReadErr } = await db
+              .from('classroom_members')
+              .select('classroom_id')
+              .eq('student_uid', auth.uid)
+              .eq('status', 'active');
+            if (activeReadErr) {
+              structuredLog('warn', { requestId, step: 'active_memberships_read', error: activeReadErr });
+            }
+            const activeClassIds = new Set((existingActiveRows || []).map(r => r.classroom_id));
+            const activatedClassIds: string[] = [];
+            const inviteOps: Promise<{ error?: unknown } | void>[] = [];
+
+            for (const invite of pendingInvites) {
+              if (activeClassIds.has(invite.classroom_id)) {
+                inviteOps.push(
+                  db
+                    .from('classroom_members')
+                    .update({ status: 'removed', updated_at: now })
+                    .eq('id', invite.id),
+                );
+              } else {
+                activatedClassIds.push(invite.classroom_id);
+                activeClassIds.add(invite.classroom_id);
+                inviteOps.push(
+                  db
+                    .from('classroom_members')
+                    .update({
+                      student_uid: auth.uid,
+                      member_name: name,
+                      status: 'active',
+                      joined_at: now,
+                      updated_at: now,
+                    })
+                    .eq('id', invite.id),
+                );
+              }
+            }
+
+            if (inviteOps.length > 0) {
+              const inviteResults = await Promise.all(inviteOps);
+              for (const res of inviteResults) {
+                if (res && typeof res === 'object' && 'error' in res && res.error) {
+                  structuredLog('warn', { requestId, step: 'pending_invites_activate', error: res.error });
+                }
+              }
+            }
+
+            if (activatedClassIds.length > 0) {
+              const { data: joinedClasses, error: classReadErr } = await db
+                .from('classrooms')
+                .select('id, name, teacher_uid')
+                .in('id', activatedClassIds);
+              if (classReadErr) {
+                structuredLog('warn', { requestId, step: 'joined_classes_read', error: classReadErr });
+              }
+              if (joinedClasses && joinedClasses.length > 0) {
+                const { error: notifErr } = await db.from('in_app_notifications').insert(
+                  joinedClasses.map(cls => ({
+                    recipient_uid: auth.uid,
+                    actor_uid: cls.teacher_uid,
+                    type: 'classroom_joined',
+                    title: 'Bạn đã được thêm vào lớp học',
+                    body: `Bạn đã tự động tham gia lớp "${cls.name}" theo lời mời của giáo viên.`,
+                    target_route: `/student/classes/${cls.id}`,
+                    metadata: { classroomId: cls.id, classroomName: cls.name },
+                  })),
+                );
+                if (notifErr) {
+                  structuredLog('warn', { requestId, step: 'classroom_joined_notify', error: notifErr });
+                }
+              }
+            }
+          }
+        }
       }
 
       return respond(req, { ...data, active_role: activeRole }, 200, requestId);

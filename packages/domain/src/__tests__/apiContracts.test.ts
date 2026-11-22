@@ -1,12 +1,29 @@
 import { describe, expect, it } from "vitest";
 import {
+  addClassroomMembersBulkSchema,
+  adminChangeRoleSchema,
+  adminReviewTeacherSchema,
+  adminToggleBlockSchema,
+  assignQuizToClassroomsSchema,
+  BUG_REPORT_STATUSES,
   confirmUploadRequestSchema,
+  createBugReportSchema,
+  createClassroomSchema,
   createUploadUrlRequestSchema,
   extractQuizRequestSchema,
   finalizeExamRequestSchema,
+  finalizeExamResponseSchema,
+  joinClassroomByCodeSchema,
+  listBugReportsFilterSchema,
+  manageUserAccountsRequestSchema,
+  markNotificationsReadSchema,
   MAX_DIRECT_UPLOAD_BYTES,
   OPTION_IDS,
   questionSchema,
+  quizSettingsSchema,
+  resolveQuizAnswerVisibility,
+  updateBugReportStatusSchema,
+  updateClassroomSchema,
   computeNotificationRetryDelaySeconds,
   formatVietnamDateTime,
 } from "../index";
@@ -99,5 +116,131 @@ describe("@qizzone/domain contracts and schemas", () => {
     const formatted = formatVietnamDateTime("2026-11-21T03:30:00.000Z");
     expect(formatted).toContain("10:30");
     expect(formatted).toContain("21/11/2026");
+  });
+
+  it("applies Azota defaults and date-order refinements in quizSettingsSchema and resolveQuizAnswerVisibility", () => {
+    const parsed = quizSettingsSchema.parse({ durationMinutes: 45 });
+    expect(parsed.publishScope).toBe("public");
+    expect(parsed.opensAt).toBeNull();
+    expect(parsed.closesAt).toBeNull();
+    expect(parsed.scoreVisibility).toBe("immediate");
+    expect(resolveQuizAnswerVisibility(parsed)).toBe("immediate");
+    expect(resolveQuizAnswerVisibility({ allowReview: false })).toBe("never");
+    expect(resolveQuizAnswerVisibility({ allowReview: true, answerVisibility: "after_close" })).toBe("after_close");
+
+    expect(
+      quizSettingsSchema.safeParse({
+        durationMinutes: 45,
+        opensAt: "2026-11-22T08:00:00+07:00",
+        closesAt: "2026-11-22T10:00:00Z",
+      }).success
+    ).toBe(true);
+
+    expect(
+      quizSettingsSchema.safeParse({
+        durationMinutes: 45,
+        opensAt: "2026-11-22T10:00:00Z",
+        closesAt: "2026-11-22T09:00:00Z",
+      }).success
+    ).toBe(false);
+
+    expect(
+      quizSettingsSchema.safeParse({
+        durationMinutes: 45,
+        maxAttempts: 100,
+        assignedEmails: ["student@example.test"],
+      }).success
+    ).toBe(true);
+
+    expect(
+      quizSettingsSchema.safeParse({
+        durationMinutes: 45,
+        maxAttempts: 101,
+      }).success
+    ).toBe(false);
+
+    expect(
+      quizSettingsSchema.safeParse({
+        durationMinutes: 45,
+        assignedEmails: ["not-an-email"],
+      }).success
+    ).toBe(false);
+  });
+
+  it("validates classroom, bug report, notification, and admin account schemas", () => {
+    expect(createClassroomSchema.parse({ name: "Lớp 12A1" }).subject).toBe("");
+    expect(updateClassroomSchema.safeParse({ inviteEnabled: false }).success).toBe(true);
+    expect(joinClassroomByCodeSchema.parse({ code: "AB12CD" }).via).toBe("code");
+    expect(
+      addClassroomMembersBulkSchema.safeParse({
+        classroomId: "550e8400-e29b-41d4-a716-446655440000",
+        emails: ["hs1@example.test"],
+        joinedVia: "excel_import",
+      }).success
+    ).toBe(true);
+
+    expect(
+      assignQuizToClassroomsSchema.safeParse({
+        quizId: "550e8400-e29b-41d4-a716-446655440000",
+        assignments: [
+          {
+            classroomId: "550e8400-e29b-41d4-a716-446655440001",
+            availableFrom: "2026-11-22T08:00:00Z",
+            dueAt: "2026-11-22T07:00:00Z",
+          },
+        ],
+      }).success
+    ).toBe(false);
+
+    expect(
+      assignQuizToClassroomsSchema.safeParse({
+        quizId: "550e8400-e29b-41d4-a716-446655440000",
+        assignments: [
+          {
+            classroomId: "550e8400-e29b-41d4-a716-446655440001",
+            availableFrom: "2026-11-22T10:00:00Z",
+            dueAt: null,
+            hardCloseAt: "2026-11-22T09:00:00Z",
+          },
+        ],
+      }).success
+    ).toBe(false);
+
+    expect(
+      assignQuizToClassroomsSchema.safeParse({
+        quizId: "550e8400-e29b-41d4-a716-446655440000",
+        assignments: [
+          {
+            classroomId: "550e8400-e29b-41d4-a716-446655440001",
+            availableFrom: "2026-11-22T08:00:00Z",
+            dueAt: null,
+            hardCloseAt: "2026-11-22T10:00:00Z",
+          },
+        ],
+      }).success
+    ).toBe(true);
+
+    expect(BUG_REPORT_STATUSES).toEqual(["new", "in_progress", "resolved"]);
+    expect(
+      createBugReportSchema.safeParse({
+        title: "Lỗi nộp bài",
+        description: "Khi nhấn nộp bài bị kẹt ở trạng thái đang xử lý.",
+      }).success
+    ).toBe(true);
+    expect(
+      updateBugReportStatusSchema.safeParse({
+        reportId: "550e8400-e29b-41d4-a716-446655440000",
+        status: "in_progress",
+        adminResponse: "Đang kiểm tra log.",
+      }).success
+    ).toBe(true);
+    expect(listBugReportsFilterSchema.safeParse({ status: "resolved", role: "teacher" }).success).toBe(true);
+    expect(markNotificationsReadSchema.parse({}).ids).toBeNull();
+
+    expect(adminToggleBlockSchema.safeParse({ action: "toggle_block", userId: "u1", isBlocked: true }).success).toBe(true);
+    expect(adminChangeRoleSchema.safeParse({ action: "change_role", userId: "u1", nextRole: "teacher" }).success).toBe(true);
+    expect(adminReviewTeacherSchema.safeParse({ action: "review_teacher", userId: "u1", decision: "approve" }).success).toBe(true);
+    expect(manageUserAccountsRequestSchema.safeParse({ action: "detail", userId: "u1" }).success).toBe(true);
+    expect(finalizeExamResponseSchema.safeParse({ score: null, status: "submitted", result: { scoreHidden: true } }).success).toBe(true);
   });
 });

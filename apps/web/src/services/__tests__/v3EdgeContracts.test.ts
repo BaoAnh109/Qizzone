@@ -100,4 +100,51 @@ describe('V3 Edge Contracts & Notification / R2 Security Boundaries', () => {
     expect(changePasswordSource).toContain('https://api.brevo.com/v3/smtp/email');
     expect(changePasswordSource).toContain('updateUserById');
   });
+
+  it('enforces admin self/last-admin guards, dual-role counts, and pending invite activation in M1 Edge Functions', () => {
+    const manageAccountsSource = readFileSync(
+      fileURLToPath(new URL('../../../../../supabase/functions/manage-user-accounts/index.ts', import.meta.url)),
+      'utf8',
+    );
+    const bootstrapSource = readFileSync(
+      fileURLToPath(new URL('../../../../../supabase/functions/bootstrap-profile/index.ts', import.meta.url)),
+      'utf8',
+    );
+    const teacherApprovalsSource = readFileSync(
+      fileURLToPath(new URL('../../../../../supabase/functions/manage-teacher-approvals/index.ts', import.meta.url)),
+      'utf8',
+    );
+
+    const authIdx = manageAccountsSource.indexOf('await identity(req)');
+    const adminIdx = manageAccountsSource.indexOf("requireProfileAndRole(db, auth, ['admin'])");
+    expect(authIdx).toBeGreaterThan(-1);
+    expect(adminIdx).toBeGreaterThan(authIdx);
+    expect(manageAccountsSource).toContain('CANNOT_MODIFY_SELF');
+    expect(manageAccountsSource).toContain('LAST_ADMIN_PROTECTED');
+    expect(manageAccountsSource).toContain("body.action === 'detail'");
+    expect(manageAccountsSource).toContain("body.action === 'change_role'");
+    expect(manageAccountsSource).toContain("body.action === 'review_teacher'");
+    expect(manageAccountsSource).toContain('teacher_request_status.eq.approved');
+    expect(manageAccountsSource).toContain('UUID_REGEX.test');
+    expect(manageAccountsSource).toContain("select('active_role')");
+    expect(manageAccountsSource).toContain('if (userRoleErr) throw userRoleErr');
+    expect(manageAccountsSource).toContain('if (updateAuthErr) throw updateAuthErr');
+    expect(manageAccountsSource).toContain('teacher_request_blocked: false');
+    expect(manageAccountsSource).toContain('blocked: false');
+    expect(manageAccountsSource).toContain('runSideEffect');
+
+    expect(bootstrapSource).toContain("select('active_role')");
+    expect(bootstrapSource).toContain("if (role === 'student')");
+    expect(bootstrapSource).toContain('email_confirmed_at');
+    expect(bootstrapSource).toContain('requireRemoteUser: true');
+    expect(bootstrapSource).toContain("eq('status', 'pending_invite')");
+    expect(bootstrapSource).toContain('classroom_joined');
+    expect(bootstrapSource).toContain('/student/classes/');
+
+    expect(teacherApprovalsSource).toContain('in_app_notifications');
+    expect(teacherApprovalsSource).toContain('runSideEffect');
+    expect(teacherApprovalsSource).toContain('teacher_request_blocked: false');
+    expect(teacherApprovalsSource).toContain('blocked: false');
+    expect(teacherApprovalsSource).not.toContain('body.role');
+  });
 });

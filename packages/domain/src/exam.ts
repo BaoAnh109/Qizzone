@@ -14,6 +14,11 @@ export interface ExamSession {
   studentId: string;
   studentName: string;
   studentClass?: string;
+  assignmentId?: string | null;
+  classroomId?: string | null;
+  dueAtSnapshot?: string | null;
+  isLate?: boolean;
+  lateSeconds?: number;
   startTime: number; // timestamp
   endTime: number; // timestamp
   durationMinutes: number; // 0 = unlimited
@@ -47,6 +52,13 @@ export interface ExamResult {
   studentId: string;
   studentName: string;
   studentClass?: string;
+  assignmentId?: string | null;
+  classroomId?: string | null;
+  dueAtSnapshot?: string | null;
+  isLate?: boolean;
+  lateSeconds?: number;
+  scoreHidden?: boolean;
+  answersHidden?: boolean;
   totalQuestions: number;
   answeredCount: number;
   correctCount: number;
