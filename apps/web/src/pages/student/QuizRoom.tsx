@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Clock,
@@ -15,6 +15,7 @@ import {
   RotateCcw,
   PanelRightClose,
   PanelRightOpen,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
@@ -28,7 +29,14 @@ import { Badge } from "@/components/ui/Badge";
 import { MathRenderer } from "@/components/common/MathRenderer";
 import { QuestionFrame } from "@/components/student/QuestionFrame";
 import { SubmitConfirmModal } from "@/components/student/SubmitConfirmModal";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
+import {
+  clearAttemptTabSwitchCount,
+  getAttemptTabSwitchCount,
+  incrementAttemptTabSwitchCount,
+  recordResultTabSwitchCount,
+} from "@/utils/antiCheatTracker";
 import type { OptionId, Question } from "@/types/quiz";
 
 function cleanStudentName(rawName?: string): string {
@@ -67,6 +75,47 @@ export function QuizRoom() {
 
   const quiz = quizId ? getQuizById(quizId) : undefined;
   const session = quizId ? activeSessions[quizId] : undefined;
+  const antiCheatEnabled = Boolean(quiz?.settings.antiCheatEnabled);
+  const lastViolationAtRef = useRef(0);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [antiCheatWarningOpen, setAntiCheatWarningOpen] = useState(false);
+
+  useEffect(() => {
+    if (!antiCheatEnabled || !quizId || !session?.studentId || session.isSubmitted) return undefined;
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setTabSwitchCount(getAttemptTabSwitchCount(session.studentId, quizId));
+      }
+    });
+
+    const recordViolation = () => {
+      const now = Date.now();
+      if (now - lastViolationAtRef.current < 1000) return;
+      lastViolationAtRef.current = now;
+      const next = incrementAttemptTabSwitchCount(session.studentId, quizId);
+      setTabSwitchCount(next);
+      setAntiCheatWarningOpen(true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        recordViolation();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      recordViolation();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleWindowBlur);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleWindowBlur);
+    };
+  }, [antiCheatEnabled, quizId, session?.isSubmitted, session?.studentId]);
 
   useEffect(() => {
     if (!assignmentId) return undefined;
@@ -172,6 +221,12 @@ export function QuizRoom() {
         studentClass: session.studentClass,
       });
 
+      if (antiCheatEnabled) {
+        const finalCount = Math.max(tabSwitchCount, getAttemptTabSwitchCount(session.studentId, quiz.id));
+        recordResultTabSwitchCount(result.id, quiz.id, session.studentId, finalCount);
+        clearAttemptTabSwitchCount(session.studentId, quiz.id);
+      }
+
       toast.success("Nộp bài thi thành công!");
       setIsSubmitModalOpen(false);
       navigate(`/student/result/${result.id}`, { replace: true });
@@ -268,6 +323,19 @@ export function QuizRoom() {
           {/* Center / Right Toolbar: Timer, Cloud Save, Submit */}
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Auto-Save Buffer Cloud Icon */}
+            {antiCheatEnabled && (
+              <div
+                title="Đề thi đang bật chế độ giám sát chuyển tab"
+                className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border ${
+                  tabSwitchCount > 0
+                    ? "bg-amber-50 border-amber-300 text-amber-800"
+                    : "bg-blue-50 border-blue-200 text-blue-800"
+                }`}
+              >
+                <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Giám sát: {tabSwitchCount} lần rời tab</span>
+              </div>
+            )}
             <div
               title={saveStatus === 'error' ? 'Chưa thể lưu. Hệ thống sẽ thử lại khi có mạng.' : 'Đáp án được lưu tự động'}
               className={`items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg border hidden md:flex ${
@@ -568,6 +636,33 @@ export function QuizRoom() {
         flaggedCount={flaggedCount}
         isLoading={isSubmitting}
       />
+
+      {/* Anti-Cheat Proctoring Warning Modal */}
+      <Modal
+        isOpen={antiCheatWarningOpen}
+        onClose={() => setAntiCheatWarningOpen(false)}
+        title="Cảnh báo giám sát phòng thi"
+        footer={
+          <Button variant="primary" onClick={() => setAntiCheatWarningOpen(false)}>
+            Tôi đã hiểu, tiếp tục làm bài
+          </Button>
+        }
+      >
+        <div className="space-y-3 text-sm theme-text-secondary">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-amber-950">
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+            <div>
+              <p className="font-semibold">Hệ thống vừa ghi nhận bạn rời khỏi màn hình làm bài.</p>
+              <p className="mt-1 text-xs">
+                Số lần rời màn hình hiện tại: <strong className="font-mono">{tabSwitchCount}</strong>. Thông tin này sẽ được gửi kèm trong báo cáo kết quả cho giáo viên.
+              </p>
+            </div>
+          </div>
+          <p className="text-xs theme-text-muted">
+            Vui lòng giữ nguyên cửa sổ làm bài cho đến khi nộp bài hoàn tất.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

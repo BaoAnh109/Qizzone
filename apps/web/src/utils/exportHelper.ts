@@ -1,4 +1,5 @@
 import type { ExamResult } from "@/types/exam";
+import { getResultTabSwitchCount } from "@/utils/antiCheatTracker";
 import {
   buildQuestionAnalyticsCsv,
   type QuestionAnalytics,
@@ -41,6 +42,7 @@ export function exportResultsToCsv(params: {
     "Xếp loại",
     "Kết quả",
     "Thời gian làm bài",
+    "Số lần rời màn hình",
     "Thời điểm nộp bài",
   ];
 
@@ -59,6 +61,7 @@ export function exportResultsToCsv(params: {
       : r.academicRank || (r.score >= 8 ? "Giỏi" : r.score >= 6.5 ? "Khá" : r.score >= 5 ? "Trung bình" : "Yếu"),
     r.scoreHidden || r.isPassed === null ? "Đã ẩn" : r.isPassed ? "ĐẠT" : "CHƯA ĐẠT",
     formatDuration(r.timeSpentSeconds),
+    getResultTabSwitchCount(r),
     new Date(r.submittedAt).toLocaleString("vi-VN"),
   ]);
 

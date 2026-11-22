@@ -48,6 +48,7 @@ export interface QuizSettings {
   closesAt?: string | null; // Optional ISO timestamp when exam closes
   scoreVisibility?: QuizVisibilityPolicy; // When students can see numeric score
   answerVisibility?: QuizVisibilityPolicy; // When students can see correct answers & explanations
+  antiCheatEnabled?: boolean; // Optional tab-switch / blur proctoring (default false)
 }
 
 export function resolveQuizAnswerVisibility(
@@ -146,6 +147,7 @@ export const quizSettingsSchema = z.object({
   closesAt: z.string().datetime({ offset: true }).nullable().optional().default(null),
   scoreVisibility: z.enum(QUIZ_VISIBILITY_POLICIES).default("immediate"),
   answerVisibility: z.enum(QUIZ_VISIBILITY_POLICIES).optional(),
+  antiCheatEnabled: z.boolean().default(false),
 }).refine(
   (data) => {
     if (!data.opensAt || !data.closesAt) return true;

@@ -27,6 +27,7 @@ export interface ExamSession {
   currentQuestionIndex: number;
   isSubmitted: boolean;
   lastSavedAt: string;
+  tabSwitchCount?: number;
 }
 
 export interface QuestionGradingDetail {
@@ -75,4 +76,5 @@ export interface ExamResult {
   details: QuestionGradingDetail[];
   flaggedQuestionIds?: string[];
   submittedAt: string;
+  tabSwitchCount?: number;
 }

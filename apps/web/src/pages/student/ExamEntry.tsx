@@ -285,6 +285,12 @@ export function ExamEntry() {
               <p><strong>Nộp muộn:</strong> Bài tập đã quá hạn nhưng giáo viên vẫn cho phép nộp.</p>
             </div>
           )}
+          {!accessMessage && quiz.settings.antiCheatEnabled && (
+            <div role="status" className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50/70 p-4 text-sm text-amber-950">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+              <p><strong>Chế độ giám sát chống gian lận đang bật:</strong> Hệ thống sẽ cảnh báo và ghi nhận số lần bạn chuyển tab hoặc rời khỏi cửa sổ làm bài.</p>
+            </div>
+          )}
 
           {/* Metadata Highlights */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">

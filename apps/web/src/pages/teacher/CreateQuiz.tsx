@@ -147,6 +147,7 @@ export function CreateQuiz() {
         maxAttempts: 1,
         passPercentage: 50,
         practiceEnabled: true,
+        antiCheatEnabled: false,
         assignedClasses: [],
         assignedEmails: [],
         publishScope: "public",
@@ -1118,6 +1119,28 @@ export function CreateQuiz() {
                       </p>
                       <p id="allow-review-description" className="text-xs theme-text-muted">
                         Hiển thị đáp án đúng và lời giải sau khi nộp bài.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4 cursor-pointer hover:bg-amber-50 transition sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings.antiCheatEnabled)}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          antiCheatEnabled: e.target.checked,
+                        }))
+                      }
+                      className="mt-0.5 h-4 w-4 rounded-sm text-amber-700 focus:ring-amber-600 cursor-pointer"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold theme-text-primary">
+                        Giám sát chuyển tab / rời màn hình (Chống gian lận)
+                      </p>
+                      <p className="text-xs theme-text-muted">
+                        Mặc định tắt. Khi bật, hệ thống cảnh báo học sinh và ghi nhận số lần chuyển tab hoặc rời khỏi cửa sổ làm bài.
                       </p>
                     </div>
                   </label>

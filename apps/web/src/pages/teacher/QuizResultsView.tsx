@@ -26,6 +26,7 @@ import {
   exportResultsToCsv,
 } from "@/utils/exportHelper";
 import { calculateQuestionAnalytics } from "@/utils/questionAnalytics";
+import { getResultTabSwitchCount } from "@/utils/antiCheatTracker";
 import { useToast } from "@/hooks/useToast";
 import type { ExamResult } from "@/types/exam";
 import type { TeacherQuizTrackingResult } from "@qizzone/domain";
@@ -493,6 +494,7 @@ export function QuizResultsView() {
                 <th className="py-3.5 px-4 text-center">Xếp loại</th>
                 <th className="py-3.5 px-4 text-center">Trạng thái</th>
                 <th className="py-3.5 px-4">Thời gian</th>
+                <th className="py-3.5 px-4 text-center">Giám sát</th>
                 <th className="py-3.5 px-4">Thời điểm nộp</th>
                 <th className="py-3.5 px-4 text-right">Chi tiết</th>
               </tr>
@@ -551,6 +553,19 @@ export function QuizResultsView() {
                     </td>
                     <td className="py-3 px-4 font-mono theme-text-muted">
                       {formatDuration(item.timeSpentSeconds)}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {(() => {
+                        const tabCount = getResultTabSwitchCount(item);
+                        if (!quiz?.settings.antiCheatEnabled && tabCount === 0) {
+                          return <span className="text-[11px] theme-text-muted">Tắt</span>;
+                        }
+                        return (
+                          <Badge variant={tabCount > 0 ? "warning" : "success"} size="sm">
+                            {tabCount} lần
+                          </Badge>
+                        );
+                      })()}
                     </td>
                     <td className="py-3 px-4 theme-text-muted">
                       {new Date(item.submittedAt).toLocaleTimeString("vi-VN", {
