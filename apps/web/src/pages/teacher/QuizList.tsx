@@ -86,14 +86,6 @@ export function QuizList() {
     return () => { cancelled = true; };
   }, [toast]);
 
-  const handleOpenAssignModal = (quiz: Quiz) => {
-    setAssignTarget(quiz);
-    setAssignClasses([...(quiz.settings.assignedClasses || [])]);
-    setAssignEmails([...(quiz.settings.assignedEmails || [])]);
-    setNewClassInput("");
-    setNewEmailInput("");
-  };
-
   const handleOpenClassroomAssignment = (quiz: Quiz) => {
     setClassroomAssignTarget(quiz);
     setSelectedClassroomIds([]);
@@ -500,24 +492,14 @@ export function QuizList() {
                       Giao bài cho lớp
                     </Button>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="min-h-11 w-full"
-                        onClick={() => handleOpenAssignModal(quiz)}
-                      >
-                        Chọn đối tượng
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="min-h-11 w-full"
-                        onClick={() => handleOpenPublishSettings(quiz)}
-                      >
-                        Cấu hình phát hành
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11 w-full"
+                      onClick={() => handleOpenPublishSettings(quiz)}
+                    >
+                      Cấu hình phát hành
+                    </Button>
 
                     <div className="grid grid-cols-2 gap-2">
                       <Button
@@ -710,6 +692,18 @@ export function QuizList() {
               <select aria-label="Hiển thị đáp án" value={publishSettingsDraft.answerVisibility ?? "immediate"} onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, answerVisibility: event.target.value as QuizSettings["answerVisibility"] }))} className="theme-control min-h-11 w-full rounded-lg border px-3.5 py-2.5 text-sm theme-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
                 <option value="immediate">Ngay sau khi nộp</option><option value="after_close">Sau khi đóng đề</option><option value="never">Không hiển thị</option>
               </select>
+            </label>
+            <label className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 cursor-pointer sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={Boolean(publishSettingsDraft.antiCheatEnabled)}
+                onChange={(event) => setPublishSettingsDraft((current) => ({ ...current, antiCheatEnabled: event.target.checked }))}
+                className="mt-0.5 h-4 w-4 rounded-sm text-amber-700 focus:ring-amber-600 cursor-pointer"
+              />
+              <div>
+                <p className="text-sm font-semibold theme-text-primary">Giám sát chuyển tab / rời màn hình (Chống gian lận)</p>
+                <p className="text-xs theme-text-muted">Mặc định tắt. Khi bật, hệ thống cảnh báo và ghi nhận số lần học sinh rời màn hình.</p>
+              </div>
             </label>
           </div>
         </Modal>

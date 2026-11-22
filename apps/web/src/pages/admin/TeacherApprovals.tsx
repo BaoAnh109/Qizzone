@@ -4,6 +4,7 @@ import { adminService, type TeacherApprovalRequest } from "@/services/adminServi
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useToast } from "@/hooks/useToast";
 
 export function TeacherApprovals() {
@@ -11,6 +12,7 @@ export function TeacherApprovals() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingUid, setProcessingUid] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<TeacherApprovalRequest | null>(null);
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -34,8 +36,7 @@ export function TeacherApprovals() {
     return () => { active = false; };
   }, []);
 
-  const review = async (request: TeacherApprovalRequest, action: "approve" | "reject") => {
-    if (action === "reject" && !window.confirm(`Từ chối yêu cầu giáo viên của ${request.fullName}?`)) return;
+  const executeReview = async (request: TeacherApprovalRequest, action: "approve" | "reject") => {
     setProcessingUid(request.firebaseUid);
     try {
       if (action === "approve") await adminService.approveTeacher(request.firebaseUid);
@@ -50,6 +51,14 @@ export function TeacherApprovals() {
     } finally {
       setProcessingUid(null);
     }
+  };
+
+  const review = (request: TeacherApprovalRequest, action: "approve" | "reject") => {
+    if (action === "reject") {
+      setRejectTarget(request);
+      return;
+    }
+    void executeReview(request, "approve");
   };
 
   const toggleBlocked = async (request: TeacherApprovalRequest) => {
@@ -158,6 +167,20 @@ export function TeacherApprovals() {
           </article>
         ))}
       </div>
+      <ConfirmModal
+        isOpen={Boolean(rejectTarget)}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={() => {
+          if (!rejectTarget) return;
+          const target = rejectTarget;
+          setRejectTarget(null);
+          void executeReview(target, "reject");
+        }}
+        title="Từ chối yêu cầu giáo viên"
+        description={rejectTarget ? `Từ chối yêu cầu giáo viên của ${rejectTarget.fullName}?` : ""}
+        confirmText="Từ chối"
+        variant="destructive"
+      />
     </div>
   );
 }

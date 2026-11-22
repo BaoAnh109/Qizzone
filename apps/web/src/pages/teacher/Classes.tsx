@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/hooks/useToast";
 import { classroomService } from "@/services/classroomService";
@@ -18,6 +19,7 @@ export function Classes() {
   const [isSaving, setIsSaving] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Classroom | null>(null);
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
@@ -83,10 +85,15 @@ export function Classes() {
     }
   };
 
-  const handleArchiveToggle = async (classroom: Classroom) => {
+  const handleArchiveToggle = (classroom: Classroom) => {
+    setArchiveTarget(classroom);
+  };
+
+  const confirmArchiveToggle = async () => {
+    if (!archiveTarget) return;
+    const classroom = archiveTarget;
+    setArchiveTarget(null);
     const nextArchived = !classroom.isArchived;
-    const prompt = nextArchived ? `Lưu trữ lớp “${classroom.name}”?` : `Khôi phục lớp “${classroom.name}”?`;
-    if (!window.confirm(prompt)) return;
     try {
       const updated = await classroomService.updateClassroom(classroom.id, { isArchived: nextArchived });
       setClassrooms((current) => current.map((item) => item.id === updated.id ? updated : item));
@@ -199,6 +206,15 @@ export function Classes() {
           {formError && <p role="alert" className="text-sm font-medium text-status-danger">{formError}</p>}
         </div>
       </Modal>
+
+      <ConfirmModal
+        isOpen={Boolean(archiveTarget)}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={() => void confirmArchiveToggle()}
+        title={archiveTarget?.isArchived ? "Khôi phục lớp học" : "Lưu trữ lớp học"}
+        description={archiveTarget ? (archiveTarget.isArchived ? `Khôi phục lớp “${archiveTarget.name}”?` : `Lưu trữ lớp “${archiveTarget.name}”?`) : ""}
+        confirmText={archiveTarget?.isArchived ? "Khôi phục" : "Lưu trữ"}
+      />
     </div>
   );
 }

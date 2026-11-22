@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 
@@ -83,6 +84,11 @@ export function AccountManagement() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [roleDraft, setRoleDraft] = useState<UserRole>("student");
+  const [confirmAction, setConfirmAction] = useState<
+    | { type: "block"; account: AdminAccountSummary }
+    | { type: "role"; account: AdminAccountSummary; fromRole: UserRole; toRole: UserRole }
+    | null
+  >(null);
 
   useEffect(() => {
     toastRef.current = toast;
@@ -188,16 +194,16 @@ export function AccountManagement() {
     }
   };
 
-  const handleToggleBlock = async (
+  const handleToggleBlock = (
     account: AdminAccountSummary,
     event?: MouseEvent<HTMLButtonElement>,
   ) => {
     event?.stopPropagation();
+    setConfirmAction({ type: "block", account });
+  };
+
+  const executeToggleBlock = async (account: AdminAccountSummary) => {
     const nextBlocked = !account.isBlocked;
-    const action = nextBlocked ? "khóa" : "mở khóa";
-    if (!window.confirm("Bạn có chắc chắn muốn " + action + " tài khoản \"" + account.fullName + "\" (" + account.email + ")?")) {
-      return;
-    }
 
     const uid = account.firebaseUid || account.id;
     const nextApprovalStatus: ApprovalStatus = nextBlocked ? "rejected" : "approved";
@@ -259,31 +265,26 @@ export function AccountManagement() {
     }
   };
 
-  const handleSaveRole = async () => {
+  const handleSaveRole = () => {
     if (!selectedAccount) return;
     const currentRole = effectiveRole(accountDetail?.profile ?? selectedAccount);
     if (roleDraft === currentRole) return;
-    if (
-      !window.confirm(
-        "Bạn có chắc muốn đổi vai trò của " +
-          selectedAccount.fullName +
-          " từ " +
-          ROLE_LABELS[currentRole] +
-          " sang " +
-          ROLE_LABELS[roleDraft] +
-          "?",
-      )
-    ) {
-      return;
-    }
+    setConfirmAction({
+      type: "role",
+      account: selectedAccount,
+      fromRole: currentRole,
+      toRole: roleDraft,
+    });
+  };
 
-    const uid = selectedAccount.firebaseUid || selectedAccount.id;
-    setProcessingId(selectedAccount.id);
+  const executeSaveRole = async (account: AdminAccountSummary, nextRole: UserRole) => {
+    const uid = account.firebaseUid || account.id;
+    setProcessingId(account.id);
     try {
-      await adminService.changeUserRole(uid, roleDraft);
+      await adminService.changeUserRole(uid, nextRole);
       await loadAccounts();
       await refreshSelectedDetail(uid);
-      toastRef.current.success("Đã cập nhật vai trò của " + selectedAccount.fullName + ".");
+      toastRef.current.success("Đã cập nhật vai trò của " + account.fullName + ".");
     } catch {
       toastRef.current.error("Không thể cập nhật vai trò. Vui lòng thử lại.");
     } finally {
@@ -821,6 +822,43 @@ export function AccountManagement() {
           </div>
         ) : null}
       </Modal>
+
+      <ConfirmModal
+        isOpen={Boolean(confirmAction)}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          const pending = confirmAction;
+          setConfirmAction(null);
+          if (pending.type === "block") {
+            void executeToggleBlock(pending.account);
+          } else {
+            void executeSaveRole(pending.account, pending.toRole);
+          }
+        }}
+        title={
+          confirmAction?.type === "block"
+            ? confirmAction.account.isBlocked
+              ? "Mở khóa tài khoản"
+              : "Khóa tài khoản"
+            : "Đổi vai trò tài khoản"
+        }
+        description={
+          confirmAction?.type === "block"
+            ? `Bạn có chắc chắn muốn ${confirmAction.account.isBlocked ? "mở khóa" : "khóa"} tài khoản "${confirmAction.account.fullName}" (${confirmAction.account.email})?`
+            : confirmAction?.type === "role"
+              ? `Bạn có chắc muốn đổi vai trò của ${confirmAction.account.fullName} từ ${ROLE_LABELS[confirmAction.fromRole]} sang ${ROLE_LABELS[confirmAction.toRole]}?`
+              : ""
+        }
+        confirmText={
+          confirmAction?.type === "block"
+            ? confirmAction.account.isBlocked
+              ? "Mở khóa"
+              : "Khóa"
+            : "Lưu vai trò"
+        }
+        variant={confirmAction?.type === "block" && !confirmAction.account.isBlocked ? "destructive" : "primary"}
+      />
     </div>
   );
 }

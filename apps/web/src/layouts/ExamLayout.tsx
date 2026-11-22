@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { GraduationCap, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface ExamLayoutProps {
   mode?: "exam" | "practice";
@@ -9,16 +11,11 @@ interface ExamLayoutProps {
 export function ExamLayout({ mode = "exam" }: ExamLayoutProps) {
   const navigate = useNavigate();
   const isPractice = mode === "practice";
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
-  const handleExit = () => {
-    const message = isPractice
-      ? "Bạn có chắc chắn muốn rời phòng luyện tập? Câu trả lời chưa kiểm tra vẫn được lưu trên trình duyệt này để bạn tiếp tục sau."
-      : "Bạn có chắc chắn muốn rời khỏi phòng thi?";
-
-    if (window.confirm(message)) {
-      navigate(isPractice ? "/student/practice" : "/student");
-    }
-  };
+  const exitMessage = isPractice
+    ? "Bạn có chắc chắn muốn rời phòng luyện tập? Câu trả lời chưa kiểm tra vẫn được lưu trên trình duyệt này để bạn tiếp tục sau."
+    : "Bạn có chắc chắn muốn rời khỏi phòng thi?";
 
   return (
     <div className="app-shell flex min-h-screen flex-col">
@@ -43,7 +40,7 @@ export function ExamLayout({ mode = "exam" }: ExamLayoutProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExit}
+              onClick={() => setIsExitConfirmOpen(true)}
             >
               Thoát
             </Button>
@@ -57,6 +54,19 @@ export function ExamLayout({ mode = "exam" }: ExamLayoutProps) {
           <Outlet />
         </div>
       </main>
+
+      <ConfirmModal
+        isOpen={isExitConfirmOpen}
+        onClose={() => setIsExitConfirmOpen(false)}
+        onConfirm={() => {
+          setIsExitConfirmOpen(false);
+          navigate(isPractice ? "/student/practice" : "/student");
+        }}
+        title={isPractice ? "Rời phòng luyện tập" : "Rời phòng thi"}
+        description={exitMessage}
+        confirmText="Rời phòng"
+        variant="destructive"
+      />
     </div>
   );
 }

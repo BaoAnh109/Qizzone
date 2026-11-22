@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   PlusCircle,
@@ -8,7 +9,10 @@ import {
   FileUp,
   TrendingUp,
   BarChart2,
+  School,
 } from "lucide-react";
+import type { Classroom } from "@qizzone/domain";
+import { classroomService } from "@/services/classroomService";
 import { useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
@@ -28,6 +32,19 @@ export function TeacherDashboard() {
   const allQuizzes = useQuizStore((state) => state.quizzes);
   const results = useExamSessionStore((state) => state.results);
   const getResultsByQuiz = useExamSessionStore((state) => state.getResultsByQuiz);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    classroomService.listMyClassrooms()
+      .then((items) => {
+        if (!cancelled) setClassrooms(items.filter((item) => !item.isArchived));
+      })
+      .catch(() => {
+        if (!cancelled) setClassrooms([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const quizzes = user?.role === "admin"
     ? allQuizzes
@@ -39,6 +56,7 @@ export function TeacherDashboard() {
 
   const publishedCount = quizzes.filter((q) => q.status === "published").length;
   const totalSubmissions = teacherSubmissions.length;
+  const totalStudentsInClasses = classrooms.reduce((sum, cls) => sum + cls.memberCount, 0);
 
   const stats = [
     {
@@ -47,6 +65,13 @@ export function TeacherDashboard() {
       change: `${publishedCount} đề đang mở thi`,
       icon: FileQuestion,
       color: "text-blue-700 bg-blue-50 border-blue-100",
+    },
+    {
+      title: "Lớp học đang quản lý",
+      value: classrooms.length.toString(),
+      change: `${totalStudentsInClasses} học sinh`,
+      icon: School,
+      color: "text-indigo-700 bg-indigo-50 border-indigo-100",
     },
     {
       title: "Lượt học sinh nộp bài",
@@ -99,7 +124,7 @@ export function TeacherDashboard() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -220,6 +245,66 @@ export function TeacherDashboard() {
               );
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Classrooms */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-4">
+          <div>
+            <CardTitle className="text-lg">Lớp học đang quản lý</CardTitle>
+            <CardDescription className="mt-1">
+              Truy cập nhanh các lớp học để quản lý học sinh, giao bài và xem sổ điểm.
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/teacher/classes")}
+            rightIcon={<ArrowRight className="h-4 w-4" />}
+          >
+            Quản lý lớp học
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {classrooms.length === 0 ? (
+            <div className="rounded-xl border border-dashed theme-border p-6 text-center text-sm theme-text-secondary">
+              Bạn chưa tạo lớp học nào.{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/teacher/classes")}
+                className="font-semibold text-blue-700 hover:underline cursor-pointer"
+              >
+                Tạo lớp học đầu tiên
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {classrooms.slice(0, 3).map((cls) => (
+                <div
+                  key={cls.id}
+                  className="flex flex-col justify-between gap-3 rounded-xl border theme-border p-4 theme-hover-surface transition"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-semibold theme-text-primary truncate">{cls.name}</h4>
+                      <span className="font-mono text-xs font-bold text-blue-700">{cls.inviteCode}</span>
+                    </div>
+                    <p className="mt-1 text-xs theme-text-secondary">
+                      {cls.subject || "Chưa có môn học"} · {cls.memberCount} học sinh · {cls.assignmentCount} bài tập
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/teacher/classes/${cls.id}`)}
+                  >
+                    Vào lớp
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

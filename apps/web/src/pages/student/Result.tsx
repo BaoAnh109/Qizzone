@@ -13,6 +13,8 @@ import {
   RotateCcw,
   Search,
   Flag,
+  School,
+  ShieldAlert,
 } from "lucide-react";
 import { useExamSessionStore } from "@/store/examSessionStore";
 import { useQuizStore } from "@/store/quizStore";
@@ -21,6 +23,7 @@ import { Input } from "@/components/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MathRenderer } from "@/components/common/MathRenderer";
+import { getResultTabSwitchCount } from "@/utils/antiCheatTracker";
 import type { OptionItem } from "@/types/quiz";
 
 export function Result() {
@@ -76,6 +79,7 @@ export function Result() {
 
   const isScoreHidden = Boolean(result.scoreHidden) || result.score === null;
   const allowReview = quiz?.settings?.allowReview !== false && !result.answersHidden;
+  const tabSwitchCount = getResultTabSwitchCount(result);
   const attemptsMade = getResultsByStudent(result.studentId).filter(
     (r) => r.quizId === result.quizId
   ).length;
@@ -135,6 +139,12 @@ export function Result() {
             {!isScoreHidden && result.academicRank && (
               <Badge variant={getRankBadgeVariant(result.academicRank)} size="md">
                 Xếp loại: {result.academicRank}
+              </Badge>
+            )}
+            {(quiz?.settings.antiCheatEnabled || tabSwitchCount > 0) && (
+              <Badge variant={tabSwitchCount > 0 ? "warning" : "secondary"} size="md">
+                <ShieldAlert className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                Giám sát rời màn hình: {tabSwitchCount} lần
               </Badge>
             )}
           </div>
@@ -210,6 +220,16 @@ export function Result() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            {result.classroomId && (
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/student/classes/${result.classroomId}`)}
+                leftIcon={<School className="h-4 w-4" />}
+                className="w-full sm:w-auto"
+              >
+                Quay về lớp học
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => navigate("/student")}

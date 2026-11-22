@@ -39,6 +39,8 @@ import { QuestionContent } from "@/components/common/QuestionContent";
 import { MathRenderer } from "@/components/common/MathRenderer";
 import { persistQuestionImages } from "@/utils/parsers/questionMedia";
 import { useToast } from "@/hooks/useToast";
+import { classroomService } from "@/services/classroomService";
+import type { Classroom } from "@qizzone/domain";
 import { QuizCreationEntry } from "@/components/teacher/QuizCreationEntry";
 import type { OptionId, Question, QuizSettings } from "@/types/quiz";
 
@@ -161,6 +163,19 @@ export function CreateQuiz() {
 
   const [classInput, setClassInput] = useState("");
   const [emailInput, setEmailInput] = useState("");
+  const [myClassrooms, setMyClassrooms] = useState<Classroom[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    classroomService.listMyClassrooms()
+      .then((items) => {
+        if (!cancelled) setMyClassrooms(items.filter((item) => !item.isArchived));
+      })
+      .catch(() => {
+        if (!cancelled) setMyClassrooms([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleAddClass = (clsToAdd?: string) => {
     const val = (clsToAdd ?? classInput).trim();
@@ -1224,6 +1239,41 @@ export function CreateQuiz() {
                       {(settings.assignedClasses || []).length} lớp đã chọn
                     </span>
                   </div>
+
+                  {myClassrooms.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs theme-text-muted">Chọn nhanh từ lớp học của bạn:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {myClassrooms.map((cls) => {
+                          const selected = (settings.assignedClasses || []).includes(cls.name);
+                          return (
+                            <button
+                              key={cls.id}
+                              type="button"
+                              onClick={() => {
+                                setSettings((prev) => {
+                                  const current = prev.assignedClasses || [];
+                                  return {
+                                    ...prev,
+                                    assignedClasses: selected
+                                      ? current.filter((item) => item !== cls.name)
+                                      : [...current, cls.name],
+                                  };
+                                });
+                              }}
+                              className={`min-h-8 rounded-full border px-3 text-xs font-semibold transition cursor-pointer ${
+                                selected
+                                  ? "border-teal-600 bg-teal-600 text-white"
+                                  : "theme-border theme-surface theme-text-secondary hover:theme-text-primary"
+                              }`}
+                            >
+                              {cls.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex gap-2">
                     <Input

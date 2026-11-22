@@ -119,19 +119,17 @@ export async function clickAndHandleNativeConfirm(
   action: 'confirm' | 'cancel',
   click: () => Promise<unknown>,
 ): Promise<void> {
-  const dialogPromise = page.waitForEvent('dialog', { timeout: 5_000 });
+  const dialogPromise = page.waitForEvent('dialog', { timeout: 2_000 }).catch(() => null);
   const clickPromise = click();
   void clickPromise.catch(() => undefined);
-  let dialog: import('@playwright/test').Dialog;
-  try {
-    dialog = await dialogPromise;
-  } catch (error) {
-    await clickPromise.catch(() => undefined);
-    throw error;
+  const dialog = await dialogPromise;
+  if (dialog) {
+    if (action === 'confirm') await dialog.accept();
+    else await dialog.dismiss();
+    await clickPromise;
+    return;
   }
-
-  if (action === 'confirm') await dialog.accept();
-  else await dialog.dismiss();
+  await confirmActionDialog(page, action);
   await clickPromise;
 }
 
