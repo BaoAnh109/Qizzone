@@ -51,7 +51,12 @@ export function SubmitConfirmModal({
       <Modal
         isOpen={isOpen}
         onClose={isLoading ? () => {} : handleClose}
-        title="⚠️ Cảnh báo xác nhận nộp bài lần 2"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-status-warning" aria-hidden="true" />
+            <span>Cảnh báo xác nhận nộp bài lần 2</span>
+          </span>
+        }
         description="Bạn vẫn còn câu hỏi chưa hoàn thành trong bài thi."
         footer={
           <>
@@ -59,7 +64,7 @@ export function SubmitConfirmModal({
               variant="outline"
               onClick={() => setIsSecondConfirm(false)}
               disabled={isLoading}
-              leftIcon={<ArrowLeft className="h-4 w-4" />}
+              leftIcon={<ArrowLeft className="h-4 w-4" aria-hidden="true" />}
             >
               Quay lại làm bài tiếp
             </Button>
@@ -67,7 +72,7 @@ export function SubmitConfirmModal({
               variant="destructive"
               onClick={handleConfirmFinal}
               isLoading={isLoading}
-              leftIcon={<AlertTriangle className="h-4 w-4" />}
+              leftIcon={<AlertTriangle className="h-4 w-4" aria-hidden="true" />}
             >
               {isLoading ? "Đang chấm điểm..." : "Vẫn muốn nộp bài (0đ câu trống)"}
             </Button>
@@ -77,7 +82,7 @@ export function SubmitConfirmModal({
         <div className="space-y-4 text-sm">
           <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-4 text-center text-rose-950">
             <div className="mb-1 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
-              <ShieldAlert className="h-6 w-6" />
+              <ShieldAlert className="h-6 w-6" aria-hidden="true" />
             </div>
             <h4 className="font-extrabold text-base text-rose-900">
               Bạn còn {unansweredCount} câu hỏi chưa trả lời!
@@ -110,7 +115,7 @@ export function SubmitConfirmModal({
             variant="primary"
             onClick={handleFirstSubmitClick}
             isLoading={isLoading}
-            leftIcon={<Send className="h-4 w-4" />}
+            leftIcon={<Send className="h-4 w-4" aria-hidden="true" />}
           >
             {isLoading ? "Đang chấm điểm..." : "Nộp bài ngay"}
           </Button>
@@ -122,7 +127,7 @@ export function SubmitConfirmModal({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-emerald-50 p-3 border border-emerald-100">
             <div className="flex items-center justify-center gap-1 text-emerald-600 mb-1">
-              <CheckCircle2 className="h-4 w-4" />
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               <span className="text-xs font-semibold">Đã làm</span>
             </div>
             <p className="text-xl font-extrabold text-emerald-900 font-mono">
@@ -138,7 +143,7 @@ export function SubmitConfirmModal({
             }`}
           >
             <div className="flex items-center justify-center gap-1 text-rose-600 mb-1">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
               <span className="text-xs font-semibold">Chưa làm</span>
             </div>
             <p className="text-xl font-extrabold font-mono text-rose-700">
@@ -148,7 +153,7 @@ export function SubmitConfirmModal({
 
           <div className="rounded-xl bg-amber-50 p-3 border border-amber-100">
             <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
-              <Flag className="h-4 w-4" />
+              <Flag className="h-4 w-4" aria-hidden="true" />
               <span className="text-xs font-semibold">Đánh dấu</span>
             </div>
             <p className="text-xl font-extrabold text-amber-900 font-mono">
@@ -160,7 +165,7 @@ export function SubmitConfirmModal({
         {/* Warning Banner if has unanswered */}
         {hasUnanswered ? (
           <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 p-3.5 border border-amber-200 text-amber-900 text-xs">
-            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <p className="font-bold text-amber-950">
                 Bạn vẫn còn {unansweredCount} câu hỏi chưa chọn đáp án!
@@ -172,7 +177,7 @@ export function SubmitConfirmModal({
           </div>
         ) : (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 border border-emerald-200 text-emerald-800 text-xs font-medium">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
             <span>Tuyệt vời! Bạn đã hoàn thành toàn bộ câu hỏi trong đề thi.</span>
           </div>
         )}

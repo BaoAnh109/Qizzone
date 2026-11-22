@@ -9,14 +9,14 @@ export function AuthLayout() {
         variant="compact"
         className="fixed right-4 top-4 z-20 sm:right-6 sm:top-6"
       />
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
         <div className="mb-7 text-center">
           <Link
             to="/"
             className="inline-flex items-center gap-2.5 font-display text-xl font-bold tracking-tight theme-text-primary transition-opacity hover:opacity-80"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
-              <GraduationCap className="h-5 w-5" />
+              <GraduationCap className="h-5 w-5" aria-hidden="true" />
             </div>
             <span>
               Qiz<span className="text-primary">zone</span>
@@ -30,7 +30,7 @@ export function AuthLayout() {
         </div>
 
         <p className="mt-7 text-center text-xs theme-text-muted">© 2026 Qizzone</p>
-      </div>
+      </main>
     </div>
   );
 }

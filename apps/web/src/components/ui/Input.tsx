@@ -83,7 +83,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         {error ? (
-          <p id={`${inputId}-error`} className="text-xs font-medium text-rose-600">
+          <p id={`${inputId}-error`} className="text-xs font-medium text-status-danger">
             {error}
           </p>
         ) : helperText ? (

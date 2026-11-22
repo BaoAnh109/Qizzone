@@ -1,5 +1,5 @@
 import { rpc } from '@/lib/cloud';
-import type { Quiz } from '@/types/quiz';
+import type { Quiz, QuizSettings } from '@/types/quiz';
 
 export type QuizInput = Omit<Quiz, 'id' | 'createdAt' | 'updatedAt' | 'code' | 'totalQuestions' | 'totalPoints'> & Partial<Pick<Quiz, 'code' | 'totalQuestions' | 'totalPoints'>>;
 export const quizService = {
@@ -17,4 +17,18 @@ export const quizService = {
     const quizzes = await quizService.list();
     return quizzes.find((q) => q.code.toUpperCase() === code.trim().toUpperCase());
   },
+  joinByCode: (code: string) =>
+    rpc<Quiz>('join_quiz_by_code', {
+      p_code: code.trim().toUpperCase(),
+    }),
+  updatePublishSettings: (
+    quizId: string,
+    settings: Partial<QuizSettings>,
+    status?: Quiz['status'] | null,
+  ) =>
+    rpc<Quiz>('update_quiz_publish_settings', {
+      p_quiz_id: quizId,
+      p_settings: settings,
+      p_status: status ?? null,
+    }),
 };

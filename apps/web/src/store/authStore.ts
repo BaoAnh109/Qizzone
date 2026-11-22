@@ -19,6 +19,7 @@ interface AuthStoreState {
   register: (data: RegisterData) => Promise<User & { needsEmailVerification?: boolean }>;
   requestTeacherAccess: () => Promise<User>;
   switchRole: (role: Extract<UserRole, 'student' | 'teacher'>) => Promise<User>;
+  refreshProfile: () => Promise<User | null>;
   logout: (scope?: 'local' | 'global') => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<User>;
@@ -340,6 +341,43 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       return user;
     } catch (error) {
       set({ isLoading: false });
+      throw new Error(errorMessage(error), { cause: error });
+    }
+  },
+
+  refreshProfile: async () => {
+    try {
+      const profile = await supabaseAuthService.refreshSessionAndProfile();
+      if (!profile) {
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          isInitialized: true,
+        });
+        return null;
+      }
+      const blockedMessage = approvalMessage(profile);
+      if (blockedMessage) {
+        await supabaseAuthService.logout().catch(() => undefined);
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          isInitialized: true,
+          configurationError: blockedMessage,
+        });
+        return null;
+      }
+      set({
+        user: profile,
+        isAuthenticated: true,
+        isLoading: false,
+        isInitialized: true,
+        configurationError: null,
+      });
+      return profile;
+    } catch (error) {
       throw new Error(errorMessage(error), { cause: error });
     }
   },

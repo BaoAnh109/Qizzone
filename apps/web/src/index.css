@@ -50,8 +50,8 @@
 @layer base {
   :root {
     color-scheme: light;
-    --font-body: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-    --font-heading: var(--font-body);
+    --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-heading: "Outfit", "Work Sans", ui-sans-serif, system-ui, sans-serif;
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
     --space-md: 1rem;
@@ -449,6 +449,23 @@
   .route-progress-bar {
     animation: indeterminateProgress 1.4s ease-in-out infinite;
   }
+
+  .theme-popover {
+    background-color: var(--surface-raised);
+    border-color: var(--border);
+    color: var(--text-primary);
+    box-shadow: 0 12px 28px -8px rgba(15, 23, 42, 0.22);
+  }
+
+  .theme-notification-unread {
+    background-color: var(--status-info-surface);
+    border-color: var(--status-info-border);
+  }
+
+  .theme-target-highlight {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
+  }
 }
 
 @keyframes indeterminateProgress {
@@ -648,8 +665,13 @@ html[data-theme="dark"] :where(.focus\:ring-emerald-100:focus, .focus\:ring-emer
 
 html[data-theme="dark"] :where(
   .bg-blue-50,
+  .bg-blue-50\/20,
+  .bg-blue-50\/30,
   .bg-blue-50\/40,
+  .bg-blue-50\/50,
   .bg-blue-50\/60,
+  .bg-blue-50\/80,
+  .bg-blue-50\/90,
   .bg-blue-100,
   .bg-sky-50,
   .bg-cyan-100
@@ -659,6 +681,9 @@ html[data-theme="dark"] :where(
 
 html[data-theme="dark"] :where(
   .bg-teal-50,
+  .bg-teal-50\/20,
+  .bg-teal-50\/30,
+  .bg-teal-50\/40,
   .bg-teal-50\/50,
   .bg-teal-50\/60,
   .bg-teal-50\/70,
@@ -688,7 +713,11 @@ html[data-theme="dark"] :where(
   .bg-amber-50,
   .bg-amber-50\/20,
   .bg-amber-50\/30,
+  .bg-amber-50\/40,
   .bg-amber-50\/50,
+  .bg-amber-50\/60,
+  .bg-amber-50\/70,
+  .bg-amber-50\/80,
   .bg-amber-50\/90,
   .bg-amber-100,
   .bg-amber-100\/50,
@@ -700,7 +729,11 @@ html[data-theme="dark"] :where(
 html[data-theme="dark"] :where(
   .bg-rose-50,
   .bg-rose-50\/20,
+  .bg-rose-50\/30,
+  .bg-rose-50\/40,
+  .bg-rose-50\/50,
   .bg-rose-50\/60,
+  .bg-rose-50\/70,
   .bg-rose-50\/80,
   .bg-rose-50\/90,
   .bg-rose-100
@@ -748,6 +781,7 @@ html[data-theme="dark"] :where(
 }
 
 html[data-theme="dark"] :where(
+  .text-amber-500,
   .text-amber-600,
   .text-amber-700,
   .text-amber-800,
@@ -804,7 +838,7 @@ html[data-theme="dark"] :where(
   border-color: var(--status-success-border);
 }
 
-html[data-theme="dark"] :where(.border-amber-100, .border-amber-200, .border-amber-300) {
+html[data-theme="dark"] :where(.border-amber-100, .border-amber-200, .border-amber-200\/60, .border-amber-200\/80, .border-amber-300) {
   border-color: var(--status-warning-border);
 }
 

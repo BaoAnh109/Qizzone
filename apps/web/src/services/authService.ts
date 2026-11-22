@@ -73,6 +73,7 @@ export function mapProfile(p: ProfileRow, activeRole?: UserRole, avatarFallback?
     teacherRequestStatus,
     teacherRequestBlocked: Boolean(p.teacher_request_blocked),
     teacherRequestedAt: p.teacher_requested_at || undefined,
+    isBlocked: p.approval_status === 'rejected',
     avatarUrl: p.avatar_url || avatarFallback || undefined,
     studentClass: p.student_class || undefined,
     createdAt: p.created_at,
@@ -275,6 +276,19 @@ export const supabaseAuthService = {
       result.active_role,
       supabaseAvatarUrl(current),
     );
+  },
+
+  async refreshSessionAndProfile(): Promise<User | null> {
+    const { data: refreshed } = await supabase().auth.refreshSession();
+    const sessionUser =
+      refreshed.session?.user ?? (await supabase().auth.getUser()).data.user;
+    if (!sessionUser) return null;
+    for (const key of Array.from(inFlightSync.keys())) {
+      if (key.startsWith(`${sessionUser.id}:`)) {
+        inFlightSync.delete(key);
+      }
+    }
+    return syncProfile(sessionUser);
   },
 
   async updateProfile(data: Partial<User>) {

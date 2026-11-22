@@ -10,7 +10,7 @@ function formatDuration(seconds: number): string {
   return `${mins}p ${secs < 10 ? "0" : ""}${secs}s`;
 }
 
-function escapeCsvField(field: string | number | undefined): string {
+function escapeCsvField(field: string | number | null | undefined): string {
   if (field === undefined || field === null) return '""';
   const str = String(field);
   // If field contains comma, quote, or newline, escape it
@@ -47,15 +47,17 @@ export function exportResultsToCsv(params: {
   const rows = results.map((r, idx) => [
     idx + 1,
     r.studentName,
-    r.studentClass || "12A1",
+    r.studentClass || "",
     r.roomCode || roomCode,
     r.subject || subject,
-    r.score.toFixed(2),
-    r.correctCount,
+    r.scoreHidden || r.score === null ? "Đã ẩn" : r.score.toFixed(2),
+    r.scoreHidden || r.correctCount === null ? "Đã ẩn" : r.correctCount,
     r.totalQuestions,
-    `${r.percentage}%`,
-    r.academicRank || (r.score >= 8 ? "Giỏi" : r.score >= 6.5 ? "Khá" : r.score >= 5 ? "Trung bình" : "Yếu"),
-    r.isPassed ? "ĐẠT" : "CHƯA ĐẠT",
+    r.scoreHidden || r.percentage === null ? "Đã ẩn" : `${r.percentage}%`,
+    r.scoreHidden || r.score === null
+      ? "Đã ẩn"
+      : r.academicRank || (r.score >= 8 ? "Giỏi" : r.score >= 6.5 ? "Khá" : r.score >= 5 ? "Trung bình" : "Yếu"),
+    r.scoreHidden || r.isPassed === null ? "Đã ẩn" : r.isPassed ? "ĐẠT" : "CHƯA ĐẠT",
     formatDuration(r.timeSpentSeconds),
     new Date(r.submittedAt).toLocaleString("vi-VN"),
   ]);

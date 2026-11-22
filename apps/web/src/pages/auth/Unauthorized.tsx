@@ -13,7 +13,7 @@ export function Unauthorized() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center theme-surface-muted px-4 py-12 text-center">
+    <main className="flex min-h-screen flex-col items-center justify-center theme-surface-muted px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
           <ShieldAlert className="h-10 w-10" />
@@ -81,7 +81,7 @@ export function Unauthorized() {
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

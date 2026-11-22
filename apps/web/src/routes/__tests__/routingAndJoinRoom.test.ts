@@ -24,6 +24,18 @@ describe('Router & Room Join Routing Logic', () => {
 
     // Teacher attempting non-quiz student portal redirected to /teacher
     expect(getPostLoginRedirect('teacher', '/student')).toBe('/teacher');
+    expect(getPostLoginRedirect('teacher', '/student/classes')).toBe('/teacher');
+    expect(getPostLoginRedirect('teacher', '/student/bug-reports')).toBe('/teacher');
+
+    // Classroom invite links and role-specific V3 routes
+    expect(getPostLoginRedirect('student', '/class/join/CLS123')).toBe('/class/join/CLS123');
+    expect(getPostLoginRedirect('teacher', '/class/join/CLS123')).toBe('/class/join/CLS123');
+    expect(getPostLoginRedirect('admin', '/admin/bug-reports')).toBe('/admin/bug-reports');
+    expect(getPostLoginRedirect('teacher', '/teacher/classes')).toBe('/teacher/classes');
+    expect(getPostLoginRedirect('student', '/student/classes')).toBe('/student/classes');
+    expect(getPostLoginRedirect('student', '/student/bug-reports')).toBe('/student/bug-reports');
+    expect(getPostLoginRedirect('student', '/admin/bug-reports')).toBe('/student');
+    expect(getPostLoginRedirect('teacher', '/admin/bug-reports')).toBe('/teacher');
   });
 
   it('provides correct home routes for each role', () => {

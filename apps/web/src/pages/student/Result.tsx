@@ -74,7 +74,8 @@ export function Result() {
     );
   }
 
-  const allowReview = quiz?.settings?.allowReview !== false;
+  const isScoreHidden = Boolean(result.scoreHidden) || result.score === null;
+  const allowReview = quiz?.settings?.allowReview !== false && !result.answersHidden;
   const attemptsMade = getResultsByStudent(result.studentId).filter(
     (r) => r.quizId === result.quizId
   ).length;
@@ -109,7 +110,9 @@ export function Result() {
       <div className="text-center space-y-3 pt-4">
         <div
           className={`inline-flex h-16 w-16 items-center justify-center rounded-lg ${
-            result.isPassed
+            isScoreHidden
+              ? "theme-surface-muted theme-text-secondary"
+              : result.isPassed
               ? "bg-emerald-100 text-emerald-600"
               : "bg-amber-100 text-amber-600"
           }`}
@@ -119,10 +122,16 @@ export function Result() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <Badge variant={result.isPassed ? "success" : "destructive"} size="md" dot>
-              {result.isPassed ? "Đạt yêu cầu (Passed)" : "Chưa đạt yêu cầu"}
-            </Badge>
-            {result.academicRank && (
+            {isScoreHidden ? (
+              <Badge variant="secondary" size="md" dot>
+                Đã nộp bài (Điểm đang được ẩn)
+              </Badge>
+            ) : (
+              <Badge variant={result.isPassed ? "success" : "destructive"} size="md" dot>
+                {result.isPassed ? "Đạt yêu cầu (Passed)" : "Chưa đạt yêu cầu"}
+              </Badge>
+            )}
+            {!isScoreHidden && result.academicRank && (
               <Badge variant={getRankBadgeVariant(result.academicRank)} size="md">
                 Xếp loại: {result.academicRank}
               </Badge>
@@ -148,11 +157,21 @@ export function Result() {
             </span>
             <div
               className={`text-5xl font-black tracking-tight font-mono ${
-                result.isPassed ? "text-teal-700" : "text-amber-600"
+                isScoreHidden
+                  ? "theme-text-muted"
+                  : result.isPassed
+                  ? "text-teal-700"
+                  : "text-amber-600"
               }`}
             >
-              {result.score.toFixed(2)}{" "}
-              <span className="text-xl font-normal theme-text-muted">/ 10</span>
+              {isScoreHidden || result.score === null ? (
+                "Đã ẩn"
+              ) : (
+                <>
+                  {result.score.toFixed(2)}{" "}
+                  <span className="text-xl font-normal theme-text-muted">/ 10</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -160,14 +179,16 @@ export function Result() {
             <div className="rounded-xl bg-emerald-50/80 p-3.5 border border-emerald-100">
               <span className="text-xs text-emerald-700 font-medium">Số câu đúng</span>
               <p className="text-2xl font-black text-emerald-900 font-mono mt-0.5">
-                {result.correctCount} / {result.totalQuestions}
+                {isScoreHidden || result.correctCount === null
+                  ? "—"
+                  : `${result.correctCount} / ${result.totalQuestions}`}
               </p>
             </div>
 
             <div className="rounded-xl bg-rose-50/80 p-3.5 border border-rose-100">
               <span className="text-xs text-rose-700 font-medium">Số câu sai</span>
               <p className="text-2xl font-black text-rose-900 font-mono mt-0.5">
-                {result.incorrectCount}
+                {isScoreHidden || result.incorrectCount === null ? "—" : result.incorrectCount}
               </p>
             </div>
 
@@ -208,7 +229,7 @@ export function Result() {
                     ? "Làm lại toàn bộ"
                     : `Làm lại toàn bộ (${attemptsMade}/${maxAttempts} lượt)`}
                 </Button>
-                {result.incorrectCount + result.skippedCount > 0 && (
+                {!isScoreHidden && allowReview && (result.incorrectCount ?? 0) + result.skippedCount > 0 && (
                   <Button
                     variant="outline"
                     onClick={() =>
@@ -220,7 +241,7 @@ export function Result() {
                     leftIcon={<RotateCcw className="h-4 w-4 text-amber-600" />}
                     className="font-semibold border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
                   >
-                    Làm lại các câu sai ({result.incorrectCount + result.skippedCount} câu)
+                    Làm lại các câu sai ({(result.incorrectCount ?? 0) + result.skippedCount} câu)
                   </Button>
                 )}
               </div>
@@ -281,7 +302,7 @@ export function Result() {
                   : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
-              Đúng ({result.correctCount})
+              Đúng ({result.correctCount ?? 0})
             </button>
             <button
               type="button"
@@ -292,7 +313,7 @@ export function Result() {
                   : "theme-text-secondary theme-hover-text-primary"
               }`}
             >
-              Sai ({result.incorrectCount})
+              Sai ({result.incorrectCount ?? 0})
             </button>
             <button
               type="button"
@@ -519,7 +540,7 @@ export function Result() {
                       <span>Danh sách câu hỏi</span>
                     </CardTitle>
                     <span className="text-xs font-semibold theme-text-muted">
-                      {result.correctCount}/{result.totalQuestions} đúng
+                      {result.correctCount ?? "—"}/{result.totalQuestions} đúng
                     </span>
                   </div>
                 </CardHeader>

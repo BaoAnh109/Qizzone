@@ -5,10 +5,11 @@ import type { OptionId } from "@/types/quiz";
 export const examSessionService = {
   listSessions: () => rpc<unknown>("list_sessions"),
   listResults: () => rpc<unknown>("list_results"),
-  startAttempt: (quizId: string, studentClass?: string) =>
+  startAttempt: (quizId: string, studentClass?: string, assignmentId?: string | null) =>
     rpc<unknown>("start_attempt", {
       p_quiz_id: quizId,
       p_class: studentClass || null,
+      ...(assignmentId ? { p_assignment_id: assignmentId } : {}),
     }),
   saveAttempt: (params: {
     attemptId: string;

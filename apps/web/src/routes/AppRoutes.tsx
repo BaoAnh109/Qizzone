@@ -29,6 +29,13 @@ const QuizRoom = lazy(() => import("@/pages/student/QuizRoom"));
 const Result = lazy(() => import("@/pages/student/Result"));
 const TeacherApprovals = lazy(() => import("@/pages/admin/TeacherApprovals"));
 const AccountManagement = lazy(() => import("@/pages/admin/AccountManagement"));
+const BugReportsAdmin = lazy(() => import("@/pages/admin/BugReportsAdmin"));
+const TeacherClasses = lazy(() => import("@/pages/teacher/Classes"));
+const TeacherClassDetail = lazy(() => import("@/pages/teacher/ClassDetail"));
+const StudentClasses = lazy(() => import("@/pages/student/Classes"));
+const StudentClassDetail = lazy(() => import("@/pages/student/ClassDetail"));
+const JoinClassByLink = lazy(() => import("@/pages/student/JoinClassByLink"));
+const BugReportsPage = lazy(() => import("@/components/common/BugReportsPage"));
 const JoinByLink = lazy(() => import("@/pages/student/JoinByLink"));
 
 function RootRedirect() {
@@ -68,6 +75,9 @@ export function AppRoutes() {
           <Route element={<ProtectedRoute allowedRoles={["teacher", "admin"]} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/teacher" element={<TeacherDashboard />} />
+              <Route path="/teacher/classes" element={<TeacherClasses />} />
+              <Route path="/teacher/classes/:classId" element={<TeacherClassDetail />} />
+              <Route path="/teacher/bug-reports" element={<BugReportsPage />} />
               <Route path="/teacher/create-quiz" element={<CreateQuiz />} />
               <Route path="/teacher/edit-quiz/:quizId" element={<CreateQuiz />} />
               <Route path="/teacher/quizzes" element={<QuizList />} />
@@ -91,12 +101,15 @@ export function AppRoutes() {
             <Route element={<DashboardLayout />}>
               <Route path="/admin/teacher-approvals" element={<TeacherApprovals />} />
               <Route path="/admin/accounts" element={<AccountManagement />} />
+              <Route path="/admin/bug-reports" element={<BugReportsAdmin />} />
             </Route>
           </Route>
 
           {/* Direct Join Link & Quiz Aliases */}
           <Route path="/join" element={<JoinByLink />} />
           <Route path="/join/:code" element={<JoinByLink />} />
+          <Route path="/class/join" element={<JoinClassByLink />} />
+          <Route path="/class/join/:code" element={<JoinClassByLink />} />
           <Route path="/quiz/:quizId" element={<QuizRedirect />} />
           <Route path="/exam/:quizId" element={<QuizRedirect />} />
 
@@ -104,6 +117,9 @@ export function AppRoutes() {
           <Route element={<ProtectedRoute allowedRole="student" />}>
             <Route element={<DashboardLayout />}>
               <Route path="/student" element={<StudentDashboard />} />
+              <Route path="/student/classes" element={<StudentClasses />} />
+              <Route path="/student/classes/:classId" element={<StudentClassDetail />} />
+              <Route path="/student/bug-reports" element={<BugReportsPage />} />
               <Route path="/student/practice" element={<PracticeHistory />} />
               <Route path="/student/practice/:quizId" element={<PracticeSetup />} />
               <Route path="/student/practice/:sessionId/result" element={<PracticeResult />} />

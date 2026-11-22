@@ -561,6 +561,9 @@ Deno.serve(async req => {
         reviewed_by: auth.uid,
         updated_at: now,
       };
+      if (target.approval_status === 'pending') {
+        profileUpdate.approval_status = 'approved';
+      }
       if (nextRole === 'teacher' || nextRole === 'admin') {
         profileUpdate.teacher_request_blocked = false;
       }
@@ -620,20 +623,42 @@ Deno.serve(async req => {
             metadata: { previousRole: target.role, nextRole },
           }),
         ),
-      ];
-
-      if (updated.approval_status === 'approved') {
-        ops.push(
-          runSideEffect(
-            requestId,
-            'change_role.syncTargetAuthMetadata',
-            syncTargetAuthMetadata(db, target.firebase_uid, nextAppMeta => {
+        runSideEffect(
+          requestId,
+          'change_role.syncTargetAuthMetadata',
+          syncTargetAuthMetadata(db, target.firebase_uid, nextAppMeta => {
+            if (updated.approval_status === 'approved') {
               nextAppMeta.role = 'authenticated';
               nextAppMeta.app_role = nextRole;
               nextAppMeta.account_status = 'approved';
               delete nextAppMeta.requested_role;
-              return nextAppMeta;
-            }),
+            } else {
+              delete nextAppMeta.role;
+              delete nextAppMeta.app_role;
+              nextAppMeta.account_status = updated.approval_status;
+              nextAppMeta.requested_role = nextRole;
+            }
+            return nextAppMeta;
+          }),
+        ),
+      ];
+
+      if (target.teacher_request_status === 'pending') {
+        ops.push(
+          runSideEffect(
+            requestId,
+            'change_role.teacher_requests',
+            db.from('teacher_requests').upsert(
+              {
+                user_uid: target.firebase_uid,
+                status: nextRole === 'teacher' ? 'approved' : 'none',
+                ...(nextRole === 'teacher' || nextRole === 'admin' ? { blocked: false } : {}),
+                reviewed_at: now,
+                reviewed_by: auth.uid,
+                updated_at: now,
+              },
+              { onConflict: 'user_uid' },
+            ),
           ),
         );
       }
@@ -648,7 +673,15 @@ Deno.serve(async req => {
         previousRole: target.role,
         nextRole,
       });
-      return respond(req, { profile: updated, active_role: nextRole }, 200, requestId);
+      return respond(
+        req,
+        {
+          profile: updated,
+          active_role: updated.approval_status === 'approved' ? nextRole : null,
+        },
+        200,
+        requestId,
+      );
     }
 
     if (body.action === 'review_teacher') {

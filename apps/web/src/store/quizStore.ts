@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Quiz } from '@/types/quiz';
+import type { Quiz, QuizSettings } from '@/types/quiz';
 import { quizService, type QuizInput } from '@/services/quizService';
 import { errorMessage } from '@/lib/cloud';
 import { useAuthStore } from '@/store/authStore';
@@ -22,6 +22,8 @@ interface QuizState {
   deleteQuiz: (id: string) => Promise<void>;
   togglePublishStatus: (id: string) => Promise<Quiz>;
   duplicateQuiz: (id: string) => Promise<Quiz>;
+  joinQuizByCode: (code: string) => Promise<Quiz>;
+  updatePublishSettings: (id: string, settings: Partial<QuizSettings>, status?: Quiz['status'] | null) => Promise<Quiz>;
 }
 
 export const useQuizStore = create<QuizState>((set, get) => ({
@@ -110,6 +112,31 @@ export const useQuizStore = create<QuizState>((set, get) => ({
     const source = get().getQuizById(id);
     if (!source) throw new Error('Không tìm thấy đề.');
     return get().createQuiz({ ...source, title: `${source.title} (Bản sao)`, status: 'draft' });
+  },
+  joinQuizByCode: async code => {
+    const joined = await quizService.joinByCode(code);
+    set(state => ({
+      quizzes: state.quizzes.some(q => q.id === joined.id)
+        ? state.quizzes.map(q => (q.id === joined.id ? joined : q))
+        : [joined, ...state.quizzes],
+    }));
+    return joined;
+  },
+  updatePublishSettings: async (id, settings, status) => {
+    const existing = get().getQuizById(id);
+    if (existing) {
+      const user = useAuthStore.getState().user;
+      if (user && user.role !== 'admin' && existing.teacherId && existing.teacherId !== user.id) {
+        throw new Error('Bạn không có quyền thay đổi cấu hình đề thi của giáo viên khác.');
+      }
+    }
+    const updated = await quizService.updatePublishSettings(id, settings, status ?? null);
+    set(state => ({
+      quizzes: state.quizzes.some(q => q.id === updated.id)
+        ? state.quizzes.map(q => (q.id === updated.id ? updated : q))
+        : [updated, ...state.quizzes],
+    }));
+    return updated;
   },
 }));
 

@@ -67,14 +67,16 @@ export function QuizResultsView() {
           filterStatus === "all"
             ? true
             : filterStatus === "passed"
-            ? r.isPassed
-            : !r.isPassed;
+            ? r.isPassed === true
+            : r.isPassed === false;
 
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
-        if (sortBy === "score_desc") return b.score - a.score;
-        if (sortBy === "score_asc") return a.score - b.score;
+        if (sortBy === "score_desc") return (b.score ?? -1) - (a.score ?? -1);
+        if (sortBy === "score_asc") {
+          return (a.score ?? Number.POSITIVE_INFINITY) - (b.score ?? Number.POSITIVE_INFINITY);
+        }
         if (sortBy === "time_desc") {
           return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
         }
@@ -84,19 +86,22 @@ export function QuizResultsView() {
 
   // Analytics Stats
   const totalSubmissions = rawResults.length;
+  const scoredResults = rawResults.filter(
+    (r): r is ExamResult & { score: number } => r.score !== null
+  );
   const averageScore =
-    totalSubmissions > 0
-      ? (rawResults.reduce((sum, r) => sum + r.score, 0) / totalSubmissions).toFixed(2)
+    scoredResults.length > 0
+      ? (scoredResults.reduce((sum, r) => sum + r.score, 0) / scoredResults.length).toFixed(2)
       : "0.00";
   const maxScore =
-    totalSubmissions > 0
-      ? Math.max(...rawResults.map((r) => r.score)).toFixed(2)
+    scoredResults.length > 0
+      ? Math.max(...scoredResults.map((r) => r.score)).toFixed(2)
       : "0.00";
   const minScore =
-    totalSubmissions > 0
-      ? Math.min(...rawResults.map((r) => r.score)).toFixed(2)
+    scoredResults.length > 0
+      ? Math.min(...scoredResults.map((r) => r.score)).toFixed(2)
       : "0.00";
-  const passedCount = rawResults.filter((r) => r.isPassed).length;
+  const passedCount = rawResults.filter((r) => r.isPassed === true).length;
   const passRate =
     totalSubmissions > 0
       ? Math.round((passedCount / totalSubmissions) * 100)
@@ -447,30 +452,45 @@ export function QuizResultsView() {
                       {item.studentName}
                     </td>
                     <td className="py-3 px-4 font-mono theme-text-secondary">
-                      {item.studentClass || "12A1"}
+                      {item.studentClass || "—"}
                     </td>
                     <td className="py-3 px-4 text-center font-black font-mono text-sm text-teal-700">
-                      {item.score.toFixed(2)}
+                      {item.score !== null ? item.score.toFixed(2) : "Đã ẩn"}
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-semibold theme-text-secondary">
-                      {item.correctCount} / {item.totalQuestions}
+                      {item.correctCount !== null
+                        ? `${item.correctCount} / ${item.totalQuestions}`
+                        : `— / ${item.totalQuestions}`}
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-semibold theme-text-secondary">
-                      {item.percentage}%
+                      {item.percentage !== null ? `${item.percentage}%` : "—"}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className="font-semibold text-[11px] theme-text-secondary">
-                        {item.academicRank || (item.score >= 8 ? "Giỏi" : item.score >= 6.5 ? "Khá" : "Trung bình")}
+                        {item.academicRank ||
+                          (item.score === null
+                            ? "—"
+                            : item.score >= 8
+                            ? "Giỏi"
+                            : item.score >= 6.5
+                            ? "Khá"
+                            : "Trung bình")}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <Badge
-                        variant={item.isPassed ? "success" : "destructive"}
-                        size="sm"
-                        dot
-                      >
-                        {item.isPassed ? "Đạt" : "Chưa đạt"}
-                      </Badge>
+                      {item.isPassed === null ? (
+                        <Badge variant="secondary" size="sm">
+                          Đã ẩn
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant={item.isPassed ? "success" : "destructive"}
+                          size="sm"
+                          dot
+                        >
+                          {item.isPassed ? "Đạt" : "Chưa đạt"}
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-mono theme-text-muted">
                       {formatDuration(item.timeSpentSeconds)}
@@ -513,7 +533,9 @@ export function QuizResultsView() {
           isOpen={!!selectedResult}
           onClose={() => setSelectedResult(null)}
           title={`Bài làm của thí sinh: ${selectedResult.studentName}`}
-          description={`Điểm số: ${selectedResult.score.toFixed(2)} / 10 · Đúng ${selectedResult.correctCount}/${selectedResult.totalQuestions} câu · Nộp lúc: ${new Date(selectedResult.submittedAt).toLocaleString("vi-VN")}`}
+          description={`Điểm số: ${
+            selectedResult.score !== null ? `${selectedResult.score.toFixed(2)} / 10` : "Đã ẩn"
+          } · Đúng ${selectedResult.correctCount ?? "—"}/${selectedResult.totalQuestions} câu · Nộp lúc: ${new Date(selectedResult.submittedAt).toLocaleString("vi-VN")}`}
           footer={
             <Button variant="outline" onClick={() => setSelectedResult(null)}>
               Đóng cửa sổ

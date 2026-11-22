@@ -214,7 +214,9 @@ export function ExamEntry() {
                     onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
                     leftIcon={<Eye className="h-3.5 w-3.5" />}
                   >
-                    Xem kết quả bài đã nộp ({pastSubmissions[0].score.toFixed(2)}đ)
+                    {pastSubmissions[0].score !== null && !pastSubmissions[0].scoreHidden
+                      ? `Xem kết quả bài đã nộp (${pastSubmissions[0].score.toFixed(2)}đ)`
+                      : "Xem kết quả bài đã nộp"}
                   </Button>
                 )}
               </div>

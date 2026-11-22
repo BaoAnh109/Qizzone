@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeftRight, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Settings2 } from "lucide-react";
+import { ArrowLeftRight, Bug, CheckCircle2, ChevronDown, Clock3, GraduationCap, LogOut, User as UserIcon, Menu, ShieldAlert, Settings2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import { AccountSettingsModal } from "@/components/common/AccountSettingsModal";
+import { BugReportModal } from "@/components/common/BugReportModal";
+import { NotificationBell } from "@/components/common/NotificationBell";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 
 interface NavbarProps {
@@ -24,6 +26,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   const location = useLocation();
   const toast = useToast();
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const profileTriggerRef = useRef<HTMLButtonElement>(null);
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -31,6 +34,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
   const switchRole = useAuthStore((state) => state.switchRole);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBugModalOpen, setIsBugModalOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -39,8 +43,19 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
     const handlePointerDown = (event: MouseEvent) => {
       if (!profileMenuRef.current?.contains(event.target as Node)) setIsProfileOpen(false);
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsProfileOpen(false);
+        profileTriggerRef.current?.focus();
+      }
+    };
     document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isProfileOpen]);
 
   const handleLogout = async () => {
@@ -85,6 +100,9 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
 
   const getPageTitle = () => {
     const path = location.pathname;
+    if (path.startsWith("/teacher/classes/")) return "Chi tiết lớp học";
+    if (path === "/teacher/classes") return "Quản lý lớp học";
+    if (path === "/teacher/bug-reports") return "Báo lỗi & Hỗ trợ";
     if (path.startsWith("/teacher/edit-quiz/")) return "Chỉnh sửa đề thi";
     if (path.startsWith("/teacher/create-quiz")) return "Soạn đề thi mới";
     if (path.startsWith("/teacher/extract-quiz")) return "Tạo đề từ tài liệu";
@@ -93,6 +111,10 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
     if (path.includes("/results")) return "Kết quả đề thi";
     if (path === "/admin/teacher-approvals") return "Duyệt tài khoản giáo viên";
     if (path === "/admin/accounts") return "Quản lý tài khoản";
+    if (path === "/admin/bug-reports") return "Quản lý báo lỗi";
+    if (path.startsWith("/student/classes/")) return "Chi tiết lớp học";
+    if (path === "/student/classes") return "Lớp học của tôi";
+    if (path === "/student/bug-reports") return "Báo lỗi & Hỗ trợ";
     if (path === "/student/practice") return "Lịch sử luyện tập";
     if (path.startsWith("/student/practice/") && path.endsWith("/result")) return "Kết quả luyện tập";
     if (path.startsWith("/student/practice/")) return "Thiết lập lượt luyện";
@@ -129,7 +151,21 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {(user?.role === "student" || user?.role === "teacher") && (
+              <button
+                type="button"
+                onClick={() => setIsBugModalOpen(true)}
+                aria-label="Báo lỗi hệ thống"
+                title="Báo lỗi"
+                className="flex h-11 w-11 items-center justify-center rounded-full theme-text-secondary transition-colors duration-150 theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+              >
+                <Bug className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+
+            <NotificationBell />
+
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
                 <div className="flex items-center gap-2 justify-end">
@@ -141,24 +177,26 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
 
               <div className="relative" ref={profileMenuRef}>
                 <button
+                  ref={profileTriggerRef}
                   type="button"
                   aria-label="Mở tài khoản"
+                  aria-haspopup="menu"
                   aria-expanded={isProfileOpen}
                   onClick={() => setIsProfileOpen((open) => !open)}
-                  className="flex h-11 items-center gap-1.5 rounded-full p-1 text-primary transition-colors theme-hover-info focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
+                  className="flex h-11 items-center gap-1.5 rounded-full p-1 text-primary transition-colors theme-hover-info focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] cursor-pointer"
                 >
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt="Ảnh đại diện" referrerPolicy="no-referrer" className="h-8 w-8 rounded-full object-cover" />
                   ) : (
                     <span className="theme-avatar flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold">
-                      {user?.fullName?.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" />}
+                      {user?.fullName?.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" aria-hidden="true" />}
                     </span>
                   )}
-                  <ChevronDown className="hidden h-3.5 w-3.5 sm:block" />
+                  <ChevronDown className="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
                 </button>
 
                 {isProfileOpen && (
-                  <div className="absolute right-0 top-11 z-40 w-80 overflow-hidden rounded-xl border theme-border theme-surface-raised shadow-xl">
+                  <div className="fixed inset-x-4 top-18 z-40 overflow-hidden rounded-xl border theme-border theme-surface-raised shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-80">
                     <div className="border-b theme-border px-4 py-3">
                       <p className="truncate text-sm font-semibold theme-text-primary">{user?.fullName || "Người dùng"}</p>
                       <p className="truncate text-xs theme-text-muted">{user?.email}</p>
@@ -231,7 +269,7 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                       <button
                         type="button"
                         onClick={() => { setIsProfileOpen(false); setIsSettingsOpen(true); }}
-                        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium theme-text-secondary transition theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium theme-text-secondary transition theme-hover-surface theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                       >
                         <Settings2 className="h-4 w-4" aria-hidden="true" />
                         Cài đặt tài khoản
@@ -242,9 +280,9 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
                       <button
                         type="button"
                         onClick={() => void handleLogout()}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition hover:bg-rose-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer"
                       >
-                        <LogOut className="h-4 w-4" />
+                        <LogOut className="h-4 w-4" aria-hidden="true" />
                         Đăng xuất
                       </button>
                     </div>
@@ -275,6 +313,13 @@ export function Navbar({ onToggleMobileSidebar }: NavbarProps) {
         </p>
       </Modal>
       {isSettingsOpen && <AccountSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
+      {isBugModalOpen && (
+        <BugReportModal
+          isOpen={isBugModalOpen}
+          onClose={() => setIsBugModalOpen(false)}
+          defaultPageRoute={`${location.pathname}${location.search}`}
+        />
+      )}
     </>
   );
 }

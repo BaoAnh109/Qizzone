@@ -53,7 +53,7 @@ describe("CSV Export Helpers Unit Tests", () => {
       submittedAt: "2026-08-30T10:00:00.000Z",
     };
 
-    expect(mockResult.score.toFixed(2)).toBe("10.00");
+    expect(mockResult.score?.toFixed(2)).toBe("10.00");
     expect(mockResult.isPassed).toBe(true);
     expect(mockResult.academicRank).toBe("Xuất sắc");
   });

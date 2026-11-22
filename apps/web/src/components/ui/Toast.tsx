@@ -18,17 +18,17 @@ export interface ToastProps {
 }
 
 const icons: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />,
-  error: <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />,
-  warning: <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />,
-  info: <Info className="h-5 w-5 text-teal-700 shrink-0" />,
+  success: <CheckCircle2 className="h-5 w-5 text-status-success shrink-0" aria-hidden="true" />,
+  error: <AlertCircle className="h-5 w-5 text-status-danger shrink-0" aria-hidden="true" />,
+  warning: <AlertTriangle className="h-5 w-5 text-status-warning shrink-0" aria-hidden="true" />,
+  info: <Info className="h-5 w-5 text-status-accent shrink-0" aria-hidden="true" />,
 };
 
 const typeStyles: Record<ToastType, string> = {
-  success: "border-emerald-200 bg-emerald-50/90 text-emerald-950",
-  error: "border-rose-200 bg-rose-50/90 text-rose-950",
-  warning: "border-amber-200 bg-amber-50/90 text-amber-950",
-  info: "border-teal-200 bg-teal-50/90 text-teal-950",
+  success: "theme-status-success",
+  error: "theme-status-danger",
+  warning: "theme-status-warning",
+  info: "theme-status-accent",
 };
 
 export function Toast({ toast, onDismiss }: ToastProps) {
@@ -36,7 +36,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     <div
       role="alert"
       className={cn(
-        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border theme-surface p-4 shadow-lg",
+        "pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border p-4 shadow-lg",
         "animate-in slide-in-from-top-2 sm:slide-in-from-bottom-2 duration-200 transition-all",
         typeStyles[toast.type]
       )}
@@ -56,9 +56,9 @@ export function Toast({ toast, onDismiss }: ToastProps) {
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Đóng thông báo"
-        className="rounded-md p-1 opacity-60 hover:opacity-100 hover:bg-black/5 transition cursor-pointer"
+        className="flex min-h-8 min-w-8 items-center justify-center rounded-md p-1 opacity-75 hover:opacity-100 theme-hover-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus transition cursor-pointer"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

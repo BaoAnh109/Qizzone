@@ -26,6 +26,7 @@ import {
   updateClassroomSchema,
   computeNotificationRetryDelaySeconds,
   formatVietnamDateTime,
+  type ExamResult,
 } from "../index";
 
 describe("@qizzone/domain contracts and schemas", () => {
@@ -242,5 +243,34 @@ describe("@qizzone/domain contracts and schemas", () => {
     expect(adminReviewTeacherSchema.safeParse({ action: "review_teacher", userId: "u1", decision: "approve" }).success).toBe(true);
     expect(manageUserAccountsRequestSchema.safeParse({ action: "detail", userId: "u1" }).success).toBe(true);
     expect(finalizeExamResponseSchema.safeParse({ score: null, status: "submitted", result: { scoreHidden: true } }).success).toBe(true);
+
+    const redactedResult: ExamResult = {
+      id: "res-redacted",
+      quizId: "quiz-1",
+      quizTitle: "Đề kiểm tra 15 phút",
+      subject: "Toán học",
+      roomCode: "QZ1234",
+      studentId: "stu-1",
+      studentName: "Học sinh A",
+      scoreHidden: true,
+      answersHidden: true,
+      totalQuestions: 10,
+      answeredCount: 10,
+      correctCount: null,
+      incorrectCount: null,
+      skippedCount: 0,
+      score: null,
+      totalPointsEarned: null,
+      maxTotalPoints: 10,
+      percentage: null,
+      isPassed: null,
+      passPercentage: 50,
+      academicRank: null,
+      timeSpentSeconds: 300,
+      details: [],
+      submittedAt: "2026-11-22T08:00:00Z",
+    };
+    expect(redactedResult.score).toBeNull();
+    expect(redactedResult.scoreHidden).toBe(true);
   });
 });

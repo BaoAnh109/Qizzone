@@ -82,7 +82,7 @@ function readLocalDraft(session: CloudSession): LocalExamDraft | undefined {
     const allowedQuestions = new Set(session.questionOrder || []);
     const validAnswers = value.answers && typeof value.answers === 'object' && !Array.isArray(value.answers)
       && Object.entries(value.answers).every(([questionId, selected]) =>
-        allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 4
+        allowedQuestions.has(questionId) && Array.isArray(selected) && selected.length <= 5
         && selected.every(optionId => typeof optionId === 'string'));
     const validFlags = Array.isArray(value.flaggedQuestionIds)
       && value.flaggedQuestionIds.every(questionId => typeof questionId === 'string' && allowedQuestions.has(questionId));
@@ -150,7 +150,13 @@ interface ExamSessionState {
   load: () => Promise<void>;
   retry: () => Promise<void>;
   reset: () => void;
-  initSession: (params: { quiz: Quiz; studentId: string; studentName: string; studentClass?: string }) => Promise<ExamSession>;
+  initSession: (params: {
+    quiz: Quiz;
+    studentId: string;
+    studentName: string;
+    studentClass?: string;
+    assignmentId?: string | null;
+  }) => Promise<ExamSession>;
   getSession: (quizId: string) => ExamSession | undefined;
   selectAnswer: (params: { quizId: string; questionId: string; optionId: OptionId; isMultipleChoice?: boolean }) => void;
   toggleFlagQuestion: (quizId: string, questionId: string) => void;
@@ -280,10 +286,31 @@ export const useExamSessionStore = create<ExamSessionState>((set, get) => {
       return inFlightSessionLoad;
     },
     retry: () => get().load(),
-    initSession: async ({ quiz, studentClass }) => {
+    initSession: async ({ quiz, studentClass, assignmentId }) => {
       const existing = get().activeSessions[quiz.id];
-      if (existing && !existing.isSubmitted) return existing;
-      const recovery = recoverLocalDraft(asSession(await examSessionService.startAttempt(quiz.id, studentClass)));
+      const requestedAssignmentId = assignmentId ?? null;
+      const hasAssignmentMismatch =
+        Boolean(requestedAssignmentId) &&
+        (existing?.assignmentId ?? null) !== requestedAssignmentId;
+
+      if (existing && !existing.isSubmitted && !hasAssignmentMismatch) {
+        return existing;
+      }
+
+      const serverSession = asSession(
+        await examSessionService.startAttempt(quiz.id, studentClass, assignmentId),
+      );
+
+      if (
+        requestedAssignmentId &&
+        (serverSession.assignmentId ?? null) !== requestedAssignmentId
+      ) {
+        throw new Error(
+          'Bạn đang có một bài làm chưa nộp cho đề thi này ở giao bài khác. Vui lòng hoàn tất hoặc nộp bài đang làm trước khi bắt đầu bài mới.',
+        );
+      }
+
+      const recovery = recoverLocalDraft(serverSession);
       const session = recovery.session;
       set(state => ({
         activeSessions: { ...state.activeSessions, [quiz.id]: session },

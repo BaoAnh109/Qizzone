@@ -61,16 +61,16 @@ export interface ExamResult {
   answersHidden?: boolean;
   totalQuestions: number;
   answeredCount: number;
-  correctCount: number;
-  incorrectCount: number;
+  correctCount: number | null;
+  incorrectCount: number | null;
   skippedCount: number;
-  score: number; // Thang điểm 10 (làm tròn 2 chữ số)
-  totalPointsEarned: number;
+  score: number | null; // Thang điểm 10 (làm tròn 2 chữ số), null khi scoreHidden = true
+  totalPointsEarned: number | null;
   maxTotalPoints: number;
-  percentage: number;
-  isPassed: boolean;
+  percentage: number | null;
+  isPassed: boolean | null;
   passPercentage: number;
-  academicRank: AcademicRank;
+  academicRank: AcademicRank | null;
   timeSpentSeconds: number;
   details: QuestionGradingDetail[];
   flaggedQuestionIds?: string[];

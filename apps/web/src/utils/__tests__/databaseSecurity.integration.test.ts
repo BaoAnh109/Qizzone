@@ -1148,6 +1148,127 @@ describe('Supabase migration, RLS, and server-side grading', () => {
     ).rejects.toThrow(/không hợp lệ/i);
     expect(admin.app_role).toBe('admin');
 
+    // 6. M2 hardening: status='closed' unlocks 'after_close', list_student_assignments closed/closesAt/overdue & multi-class attempt alignment
+    const cls2 = json<{ id: string; inviteCode: string }>(
+      (await asAuthenticated<{ payload: unknown }>(teacherA, "select public.create_classroom('Lớp 12C', 'Toán', '12', '') as payload"))[0].payload,
+    );
+    await asAuthenticated(studentA, "select public.join_classroom_by_code($1, 'code')", [cls2.inviteCode]);
+    await asAuthenticated(studentB, "select public.join_classroom_by_code($1, 'code')", [cls2.inviteCode]);
+
+    const m2QuizId = (await asAuthenticated<{ id: string }>(
+      teacherA,
+      'select public.save_quiz($1::jsonb, null, null) as id',
+      [JSON.stringify({
+        title: 'M2 Closed & After Close',
+        subject: 'Toán',
+        status: 'published',
+        settings: {
+          durationMinutes: 15,
+          maxAttempts: 2,
+          passPercentage: 50,
+          publishScope: 'class_only',
+          scoreVisibility: 'after_close',
+          answerVisibility: 'after_close',
+          closesAt: null,
+        },
+        questions: makeQuestions('m2-closed'),
+      })],
+    ))[0].id;
+
+    const draftQuizId = (await asAuthenticated<{ id: string }>(
+      teacherA,
+      'select public.save_quiz($1::jsonb, null, null) as id',
+      [JSON.stringify({
+        title: 'M2 Draft Excluded',
+        subject: 'Toán',
+        status: 'draft',
+        settings: { durationMinutes: 15, maxAttempts: 1, passPercentage: 50, publishScope: 'class_only' },
+        questions: makeQuestions('m2-draft'),
+      })],
+    ))[0].id;
+
+    const m2Assign1Rows = await asAuthenticated<{ payload: unknown }>(
+      teacherA,
+      'select public.assign_quiz_to_classrooms($1, $2::jsonb) as payload',
+      [m2QuizId, JSON.stringify([{ classroomId: cls.id, dueAt: null, latePolicy: 'allow_late', hardCloseAt: null }])],
+    );
+    const m2Assign1Id = json<Array<{ id: string }>>(m2Assign1Rows[0].payload)[0].id;
+    await asAuthenticated(
+      teacherA,
+      'select public.assign_quiz_to_classrooms($1, $2::jsonb)',
+      [m2QuizId, JSON.stringify([{ classroomId: cls2.id, dueAt: null, latePolicy: 'allow_late', hardCloseAt: null }])],
+    );
+    await asAuthenticated(
+      teacherA,
+      'select public.assign_quiz_to_classrooms($1, $2::jsonb)',
+      [draftQuizId, JSON.stringify([{ classroomId: cls2.id, dueAt: null, latePolicy: 'allow_late', hardCloseAt: null }])],
+    );
+
+    // Student B starts & submits attempt via cls (m2Assign1Id)
+    const m2AttB = json<{ id: string; revision: number; questionOrder: string[] }>(
+      (await asAuthenticated<{ payload: unknown }>(studentB, 'select public.start_attempt($1, null, $2) as payload', [m2QuizId, m2Assign1Id]))[0].payload,
+    );
+    await asAuthenticated(studentB, 'select public.save_attempt($1,$2,$3::jsonb,$4::jsonb,$5)', [
+      m2AttB.id, m2AttB.revision, JSON.stringify({ [m2AttB.questionOrder[0]]: ['E'] }), '[]', 0,
+    ]);
+    await asAuthenticated(studentB, 'select public.submit_attempt($1)', [m2AttB.id]);
+
+    // Before closing: studentB's score & answers are hidden in both list_results and list_student_assignments (including cls2!)
+    const preCloseResults = json<Array<{ quizId: string; score: number | null; scoreHidden: boolean; answersHidden: boolean; details: unknown[] }>>(
+      (await asAuthenticated<{ payload: unknown }>(studentB, 'select public.list_results() as payload'))[0].payload,
+    ).filter(r => r.quizId === m2QuizId);
+    expect(preCloseResults[0].score).toBeNull();
+    expect(preCloseResults[0].scoreHidden).toBe(true);
+    expect(preCloseResults[0].answersHidden).toBe(true);
+    expect(preCloseResults[0].details).toEqual([]);
+
+    const preCloseCls2Assignments = json<Array<{ quizId: string; status: string; attemptCount: number; scoreHidden: boolean; bestScore: number | null }>>(
+      (await asAuthenticated<{ payload: unknown }>(studentB, 'select public.list_student_assignments($1) as payload', [cls2.id]))[0].payload,
+    );
+    expect(preCloseCls2Assignments.some(a => a.quizId === draftQuizId)).toBe(false);
+    const preCloseCls2M2 = preCloseCls2Assignments.find(a => a.quizId === m2QuizId)!;
+    expect(preCloseCls2M2.status).toBe('completed');
+    expect(preCloseCls2M2.attemptCount).toBe(1);
+    expect(preCloseCls2M2.scoreHidden).toBe(true);
+    expect(preCloseCls2M2.bestScore).toBeNull();
+
+    // Teacher sets quiz status='closed' without closesAt/hard_close_at -> unlocks after_close, keeps quiz in list_student_assignments, and marks unsubmitted studentA as 'overdue'
+    await asAuthenticated(teacherA, 'select public.set_quiz_status($1, $2)', [m2QuizId, 'closed']);
+
+    const postCloseResults = json<Array<{ quizId: string; score: number | null; scoreHidden: boolean; answersHidden: boolean; details: unknown[] }>>(
+      (await asAuthenticated<{ payload: unknown }>(studentB, 'select public.list_results() as payload'))[0].payload,
+    ).filter(r => r.quizId === m2QuizId);
+    expect(postCloseResults[0].score).toBe(10);
+    expect(postCloseResults[0].scoreHidden).toBe(false);
+    expect(postCloseResults[0].answersHidden).toBe(false);
+    expect(postCloseResults[0].details).toHaveLength(1);
+
+    const postCloseCls2AssignmentsB = json<Array<{ quizId: string; status: string; scoreHidden: boolean; bestScore: number | null }>>(
+      (await asAuthenticated<{ payload: unknown }>(studentB, 'select public.list_student_assignments($1) as payload', [cls2.id]))[0].payload,
+    );
+    const postCloseCls2M2B = postCloseCls2AssignmentsB.find(a => a.quizId === m2QuizId)!;
+    expect(postCloseCls2M2B.status).toBe('completed');
+    expect(postCloseCls2M2B.scoreHidden).toBe(false);
+    expect(postCloseCls2M2B.bestScore).toBe(10);
+
+    const postCloseCls2AssignmentsA = json<Array<{ quizId: string; status: string }>>(
+      (await asAuthenticated<{ payload: unknown }>(studentA, 'select public.list_student_assignments($1) as payload', [cls2.id]))[0].payload,
+    );
+    expect(postCloseCls2AssignmentsA.find(a => a.quizId === m2QuizId)?.status).toBe('overdue');
+
+    // Re-publish quiz with past closesAt -> hardCloseAt coalesces closesAt and unsubmitted assignment is 'overdue'
+    await asAuthenticated(
+      teacherA,
+      'select public.update_quiz_publish_settings($1, $2::jsonb, $3)',
+      [m2QuizId, JSON.stringify({ closesAt: pastClose }), 'published'],
+    );
+    const coalescedAssignmentsA = json<Array<{ quizId: string; status: string; hardCloseAt: string | null }>>(
+      (await asAuthenticated<{ payload: unknown }>(studentA, 'select public.list_student_assignments($1) as payload', [cls2.id]))[0].payload,
+    );
+    const coalescedM2A = coalescedAssignmentsA.find(a => a.quizId === m2QuizId)!;
+    expect(coalescedM2A.hardCloseAt).not.toBeNull();
+    expect(coalescedM2A.status).toBe('overdue');
+
     await db.close();
   }, 30_000);
 });

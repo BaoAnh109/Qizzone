@@ -176,11 +176,14 @@ export function StudentDashboard() {
     navigate(`/student/quiz/${quiz.id}/lobby`);
   };
 
+  const scoredStudentResults = studentResults.filter(
+    (r): r is typeof r & { score: number } => r.score !== null
+  );
   const avgScore =
-    studentResults.length > 0
+    scoredStudentResults.length > 0
       ? (
-          studentResults.reduce((s, r) => s + r.score, 0) /
-          studentResults.length
+          scoredStudentResults.reduce((s, r) => s + r.score, 0) /
+          scoredStudentResults.length
         ).toFixed(2)
       : "--";
 
@@ -473,7 +476,9 @@ export function StudentDashboard() {
                           onClick={() => navigate(`/student/result/${pastSubmissions[0].id}`)}
                           leftIcon={<Eye className="h-3.5 w-3.5" />}
                         >
-                          Xem kết quả ({pastSubmissions[0].score.toFixed(2)}đ)
+                          {pastSubmissions[0].score !== null && !pastSubmissions[0].scoreHidden
+                            ? `Xem kết quả (${pastSubmissions[0].score.toFixed(2)}đ)`
+                            : "Xem kết quả"}
                         </Button>
                       ) : (
                         <Button
@@ -577,16 +582,30 @@ export function StudentDashboard() {
 
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <span
-                        className={`text-lg font-black font-mono ${
-                          result.isPassed ? "text-emerald-600" : "text-rose-600"
-                        }`}
-                      >
-                        {result.score.toFixed(2)} / 10 đ
-                      </span>
-                      <p className="text-[11px] theme-text-muted font-medium">
-                        Đúng {result.correctCount}/{result.totalQuestions} câu ({result.percentage}%)
-                      </p>
+                      {result.scoreHidden || result.score === null ? (
+                        <>
+                          <span className="text-sm font-bold theme-text-muted">
+                            Đã ẩn điểm
+                          </span>
+                          <p className="text-[11px] theme-text-muted font-medium">
+                            {result.totalQuestions} câu hỏi
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <span
+                            className={`text-lg font-black font-mono ${
+                              result.isPassed ? "text-emerald-600" : "text-rose-600"
+                            }`}
+                          >
+                            {result.score.toFixed(2)} / 10 đ
+                          </span>
+                          <p className="text-[11px] theme-text-muted font-medium">
+                            Đúng {result.correctCount ?? "—"}/{result.totalQuestions} câu (
+                            {result.percentage ?? 0}%)
+                          </p>
+                        </>
+                      )}
                     </div>
 
                     <Button

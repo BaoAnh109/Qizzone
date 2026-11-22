@@ -44,3 +44,10 @@ docs/*
 !docs/tasks/
 !docs/tasks/**
 !docs/*.md
+
+# Playwright E2E
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+tests/e2e/.auth/

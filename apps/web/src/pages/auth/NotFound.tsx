@@ -47,7 +47,7 @@ export function NotFound() {
   }, [countdown, autoRedirectEnabled, isInitialized, homePath, navigate]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center theme-surface-muted px-4 py-12 text-center">
+    <main className="flex min-h-screen flex-col items-center justify-center theme-surface-muted px-4 py-12 text-center">
       <div className="mx-auto max-w-md space-y-6">
         <div className="relative inline-flex">
           <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 shadow-xs">
@@ -101,7 +101,7 @@ export function NotFound() {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

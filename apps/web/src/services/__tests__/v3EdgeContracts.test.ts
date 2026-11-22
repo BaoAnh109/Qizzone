@@ -132,6 +132,12 @@ describe('V3 Edge Contracts & Notification / R2 Security Boundaries', () => {
     expect(manageAccountsSource).toContain('teacher_request_blocked: false');
     expect(manageAccountsSource).toContain('blocked: false');
     expect(manageAccountsSource).toContain('runSideEffect');
+    expect(manageAccountsSource).toContain("if (target.approval_status === 'pending')");
+    expect(manageAccountsSource).toContain("profileUpdate.approval_status = 'approved'");
+    expect(manageAccountsSource).toContain("if (target.teacher_request_status === 'pending')");
+    expect(manageAccountsSource).toContain("'change_role.teacher_requests'");
+    expect(manageAccountsSource).toContain("nextAppMeta.account_status = updated.approval_status");
+    expect(manageAccountsSource).toContain("active_role: updated.approval_status === 'approved' ? nextRole : null");
 
     expect(bootstrapSource).toContain("select('active_role')");
     expect(bootstrapSource).toContain("if (role === 'student')");

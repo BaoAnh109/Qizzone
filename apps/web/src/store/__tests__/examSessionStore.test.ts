@@ -144,4 +144,76 @@ describe('cloud exam session store', () => {
     expect(examSessionService.submitAttempt).toHaveBeenCalledWith(session.id);
     expect(useExamSessionStore.getState().activeSessions[quiz.id].isSubmitted).toBe(true);
   });
+
+  it('reuses existing unsubmitted session when assignmentId matches or is omitted', async () => {
+    useExamSessionStore.setState({
+      activeSessions: { [quiz.id]: { ...session, assignmentId: 'assign-1' } },
+    });
+
+    const sameAssignment = await useExamSessionStore.getState().initSession({
+      quiz,
+      studentId: 'student-1',
+      studentName: 'Student',
+      assignmentId: 'assign-1',
+    });
+    const omittedAssignment = await useExamSessionStore.getState().initSession({
+      quiz,
+      studentId: 'student-1',
+      studentName: 'Student',
+    });
+
+    expect(sameAssignment).toMatchObject({ id: 'attempt-1', assignmentId: 'assign-1' });
+    expect(omittedAssignment).toMatchObject({ id: 'attempt-1', assignmentId: 'assign-1' });
+    expect(examSessionService.startAttempt).not.toHaveBeenCalled();
+  });
+
+  it('throws without overwriting activeSessions when assignmentId mismatches a still-open server attempt', async () => {
+    useExamSessionStore.setState({
+      activeSessions: { [quiz.id]: { ...session, assignmentId: 'assign-1' } },
+    });
+    vi.mocked(examSessionService.startAttempt).mockResolvedValue({
+      ...session,
+      assignmentId: 'assign-1',
+    } as never);
+
+    await expect(
+      useExamSessionStore.getState().initSession({
+        quiz,
+        studentId: 'student-1',
+        studentName: 'Student',
+        assignmentId: 'assign-2',
+      }),
+    ).rejects.toThrow(/giao bài khác/i);
+
+    expect(examSessionService.startAttempt).toHaveBeenCalledWith(quiz.id, undefined, 'assign-2');
+    expect(useExamSessionStore.getState().activeSessions[quiz.id]).toMatchObject({
+      id: 'attempt-1',
+      assignmentId: 'assign-1',
+    });
+  });
+
+  it('updates activeSessions cleanly when server creates a new attempt for requested assignmentId', async () => {
+    useExamSessionStore.setState({
+      activeSessions: { [quiz.id]: { ...session, assignmentId: 'assign-1' } },
+    });
+    vi.mocked(examSessionService.startAttempt).mockResolvedValue({
+      ...session,
+      id: 'attempt-2',
+      assignmentId: 'assign-2',
+    } as never);
+
+    const nextSession = await useExamSessionStore.getState().initSession({
+      quiz,
+      studentId: 'student-1',
+      studentName: 'Student',
+      assignmentId: 'assign-2',
+    });
+
+    expect(nextSession).toMatchObject({ id: 'attempt-2', assignmentId: 'assign-2' });
+    expect(nextSession.assignmentId).toBe('assign-2');
+    expect(useExamSessionStore.getState().activeSessions[quiz.id]).toMatchObject({
+      id: 'attempt-2',
+      assignmentId: 'assign-2',
+    });
+  });
 });

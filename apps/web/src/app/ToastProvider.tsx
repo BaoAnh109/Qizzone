@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Toast, { type ToastItem, type ToastType } from "@/components/ui/Toast";
 import { ToastContext } from "./toastContext";
 
@@ -63,10 +63,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [showToast]
   );
 
+  const contextValue = useMemo(
+    () => ({ showToast, success, error, warning, info, dismissToast }),
+    [showToast, success, error, warning, info, dismissToast]
+  );
+
   return (
-    <ToastContext.Provider
-      value={{ showToast, success, error, warning, info, dismissToast }}
-    >
+    <ToastContext.Provider value={contextValue}>
       {children}
 
       {/* Toast Viewport Portal */}

@@ -1,4 +1,11 @@
 import { edge } from '@/lib/cloud';
+import type {
+  AdminAccountDetail,
+  AdminAccountSummary,
+  ApprovalStatus,
+  TeacherRequestStatus,
+  UserRole,
+} from '@qizzone/domain';
 
 interface TeacherApprovalRow {
   id?: string;
@@ -35,6 +42,52 @@ export interface AccountRow {
   created_at: string;
   quiz_count?: number;
   submission_count?: number;
+}
+
+export interface AdminAccountSummaryRow {
+  id?: string;
+  firebase_uid?: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  base_role?: UserRole;
+  active_role?: UserRole;
+  approval_status?: ApprovalStatus;
+  teacher_request_status?: TeacherRequestStatus;
+  teacher_request_blocked?: boolean;
+  is_blocked?: boolean;
+  avatar_url?: string | null;
+  quiz_count?: number;
+  classroom_count?: number;
+  owned_classroom_count?: number;
+  enrolled_classroom_count?: number;
+  submission_count?: number;
+  created_at: string;
+}
+
+function mapAccountSummary(row: AdminAccountSummaryRow): AdminAccountSummary {
+  const uid = row.id || row.firebase_uid || '';
+  const approvalStatus: ApprovalStatus = row.approval_status || 'approved';
+  return {
+    id: uid,
+    firebaseUid: row.firebase_uid || uid,
+    email: row.email,
+    fullName: row.full_name,
+    role: row.role,
+    baseRole: row.base_role || row.role,
+    activeRole: row.active_role || row.role,
+    approvalStatus,
+    teacherRequestStatus: row.teacher_request_status,
+    teacherRequestBlocked: Boolean(row.teacher_request_blocked),
+    isBlocked: row.is_blocked ?? approvalStatus === 'rejected',
+    avatarUrl: row.avatar_url ?? null,
+    quizCount: row.quiz_count ?? 0,
+    classroomCount: row.classroom_count ?? 0,
+    ownedClassroomCount: row.owned_classroom_count ?? 0,
+    enrolledClassroomCount: row.enrolled_classroom_count ?? 0,
+    submissionCount: row.submission_count ?? 0,
+    createdAt: row.created_at,
+  };
 }
 
 export interface UserAccount {
@@ -114,11 +167,48 @@ export const adminService = {
     return promise;
   },
 
-  async toggleBlockUser(userId: string, isBlocked: boolean, role?: 'teacher' | 'student'): Promise<void> {
+  async toggleBlockUser(userId: string, isBlocked: boolean, role?: 'teacher' | 'student' | 'admin'): Promise<void> {
     await edge(
       'manage-user-accounts',
       { action: 'toggle_block', userId, isBlocked, ...(role ? { role } : {}) },
       15_000,
     );
   },
+
+  async listAccountSummaries(
+    role?: 'teacher' | 'student' | 'admin' | 'all',
+    includeAdmins?: boolean,
+  ): Promise<AdminAccountSummary[]> {
+    const result = await edge<{ accounts: AdminAccountSummaryRow[] }>(
+      'manage-user-accounts',
+      {
+        action: 'list',
+        ...(role ? { role } : {}),
+        ...(includeAdmins !== undefined ? { includeAdmins } : {}),
+      },
+      15_000,
+    );
+    return Array.isArray(result?.accounts) ? result.accounts.map(mapAccountSummary) : [];
+  },
+
+  getAccountDetail: (userId: string): Promise<AdminAccountDetail> =>
+    edge<AdminAccountDetail>(
+      'manage-user-accounts',
+      { action: 'detail', userId },
+      15_000,
+    ),
+
+  changeUserRole: (userId: string, nextRole: 'student' | 'teacher' | 'admin') =>
+    edge<{ profile: AdminAccountSummaryRow; active_role: UserRole | null }>(
+      'manage-user-accounts',
+      { action: 'change_role', userId, nextRole },
+      15_000,
+    ),
+
+  reviewTeacherAccount: (userId: string, decision: 'approve' | 'reject') =>
+    edge<{ profile: AdminAccountSummaryRow }>(
+      'manage-user-accounts',
+      { action: 'review_teacher', userId, decision },
+      15_000,
+    ),
 };

@@ -4,6 +4,8 @@ import AppRoutes from "@/routes/AppRoutes";
 import { disposeAuthListener, useAuthStore } from "@/store/authStore";
 import { useQuizStore } from "@/store/quizStore";
 import { useExamSessionStore } from "@/store/examSessionStore";
+import { useClassroomStore } from "@/store/classroomStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { LegacyMigrationAssistant } from "@/components/common/LegacyMigrationAssistant";
 import { Button } from "@/components/ui/Button";
 
@@ -29,17 +31,29 @@ function CloudDataBootstrap() {
   const isInitialized = useAuthStore(state => state.isInitialized);
   const loadQuizzes = useQuizStore(state => state.load);
   const loadExamData = useExamSessionStore(state => state.load);
+  const loadClassrooms = useClassroomStore(state => state.load);
+  const loadNotifications = useNotificationStore(state => state.load);
+  const subscribeNotificationsRealtime = useNotificationStore(state => state.subscribeRealtime);
+  const unsubscribeNotificationsRealtime = useNotificationStore(state => state.unsubscribeRealtime);
   const resetQuizzes = useQuizStore(state => state.reset);
   const resetExamData = useExamSessionStore(state => state.reset);
+  const resetClassrooms = useClassroomStore(state => state.reset);
+  const resetNotifications = useNotificationStore(state => state.reset);
   const quizError = useQuizStore(state => state.error);
   const examError = useExamSessionStore(state => state.error);
+  const classroomError = useClassroomStore(state => state.error);
   const [isRetrying, setIsRetrying] = useState(false);
-  const cloudError = quizError || examError;
+  const cloudError = quizError || examError || classroomError;
 
   const retryCloudData = async () => {
     setIsRetrying(true);
     try {
-      await Promise.all([loadQuizzes(), loadExamData()]);
+      await Promise.all([
+        loadQuizzes(),
+        loadExamData(),
+        loadClassrooms(),
+        loadNotifications().catch(() => undefined),
+      ]);
     } catch {
       // The stores keep the localized error visible for the next retry.
     } finally {
@@ -51,16 +65,42 @@ function CloudDataBootstrap() {
     if (!isInitialized || !user) {
       resetQuizzes();
       resetExamData();
+      resetClassrooms();
+      resetNotifications();
       return;
     }
     void (async () => {
       try {
-        await Promise.all([loadQuizzes(), loadExamData()]);
+        await Promise.all([
+          loadQuizzes(),
+          loadExamData(),
+          loadClassrooms(),
+          loadNotifications().catch(() => undefined),
+        ]);
       } catch {
         // Individual pages remain available so the user can retry after connectivity is restored.
       }
     })();
-  }, [isInitialized, user, loadQuizzes, loadExamData, resetQuizzes, resetExamData]);
+  }, [
+    isInitialized,
+    user,
+    loadQuizzes,
+    loadExamData,
+    loadClassrooms,
+    loadNotifications,
+    resetQuizzes,
+    resetExamData,
+    resetClassrooms,
+    resetNotifications,
+  ]);
+
+  useEffect(() => {
+    if (!isInitialized || !user?.id) return;
+    subscribeNotificationsRealtime(user.id);
+    return () => {
+      unsubscribeNotificationsRealtime();
+    };
+  }, [isInitialized, user?.id, subscribeNotificationsRealtime, unsubscribeNotificationsRealtime]);
 
   return (
     <>

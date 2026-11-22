@@ -370,9 +370,9 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
                       type="button"
                       aria-label={showCurrentPassword ? 'Ẩn mật khẩu hiện tại' : 'Hiện mật khẩu hiện tại'}
                       onClick={() => setShowCurrentPassword(v => !v)}
-                      className="flex h-7 w-7 items-center justify-center rounded theme-text-muted transition theme-hover-text-primary"
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md theme-text-muted transition theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                     >
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showCurrentPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                     </button>
                   )}
                   value={currentPassword}
@@ -392,9 +392,9 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
                         type="button"
                         aria-label={showNewPassword ? 'Ẩn mật khẩu mới' : 'Hiện mật khẩu mới'}
                         onClick={() => setShowNewPassword(v => !v)}
-                        className="flex h-7 w-7 items-center justify-center rounded theme-text-muted transition theme-hover-text-primary"
+                        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md theme-text-muted transition theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showNewPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     )}
                     value={newPassword}
@@ -436,9 +436,9 @@ export function AccountSettingsModal({ isOpen, onClose }: { isOpen: boolean; onC
                       type="button"
                       aria-label={showConfirmPassword ? 'Ẩn xác nhận mật khẩu mới' : 'Hiện xác nhận mật khẩu mới'}
                       onClick={() => setShowConfirmPassword(v => !v)}
-                      className="flex h-7 w-7 items-center justify-center rounded theme-text-muted transition theme-hover-text-primary"
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md theme-text-muted transition theme-hover-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                     >
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                     </button>
                   )}
                   value={confirmPassword}
